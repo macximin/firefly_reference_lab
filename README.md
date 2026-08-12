@@ -16,7 +16,7 @@ InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 
 
 1. `evidence/source_manifest.json`에 분석 대상과 권리 상태를 등록한다.
 2. 권리 상태가 `owned`, `licensed`, `permission_granted`, `public_domain` 중 하나인지 검증한다.
-3. 원문은 `private_sources/<work-id>/`에 둔다. 이 경로는 커밋되지 않는다.
+3. 원문은 `private_sources/korean_webnovel_corpus/<필명>/<work-id>.txt`에 둔다. 이 경로는 커밋되지 않는다.
 4. `analyses/<work-id>/structure.md`에 회차/Arc 단위 분석을 작성한다.
 5. 여러 작품의 공통점과 차이는 `comparisons/`에 기록하고, InkOS 적용안은 `inkos_handoffs/`에 남긴다.
 
@@ -31,6 +31,7 @@ node tools/validate-source-manifest.mjs
 | 경로 | 역할 |
 | --- | --- |
 | `private_sources/` | 커밋하지 않는 원문 입력. 소유·허가·퍼블릭도메인 자료만. |
+| `restricted_inputs/` | 커밋하지 않는 내부 분석 입력. 원천 권리 상태가 불명확한 보고서는 여기서 가설로만 취급한다. |
 | `evidence/` | 출처·권리·해시·접근일이 기록된 매니페스트와 증거 메모. |
 | `analyses/` | 작품별 구조 분석: 약속, 압박, 전환, 보상, 다음 훅. |
 | `comparisons/` | 내 작품 간 및 레퍼런스 대비 분석. |

@@ -1,5 +1,6 @@
 # Rights-restricted source material must never be committed here.
 private_sources/
+restricted_inputs/
 exports/
 *.epub
 *.mobi
