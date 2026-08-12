@@ -1,0 +1,10 @@
+# Rights-restricted source material must never be committed here.
+private_sources/
+exports/
+*.epub
+*.mobi
+*.azw3
+
+# Local tooling
+node_modules/
+.DS_Store
