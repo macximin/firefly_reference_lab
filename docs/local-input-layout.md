@@ -6,7 +6,7 @@ private_sources/
     강동호/
     서오/
     흑곰작가/
-restricted_inputs/
+reference_inputs/
   chinese_shortdrama/
     2026-08-06_중국식_도파민_퍼스트_숏드라마_성공법칙_대표보고서.md
 ```

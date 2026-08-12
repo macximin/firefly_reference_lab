@@ -1,6 +1,6 @@
-# Rights-restricted source material must never be committed here.
+# Local input material is not committed here.
 private_sources/
-restricted_inputs/
+reference_inputs/
 exports/
 *.epub
 *.mobi
