@@ -26,7 +26,7 @@ node tools/validate-source-manifest.mjs
 
 | 경로 | 역할 |
 | --- | --- |
-| `private_sources/` | 커밋하지 않는 원문 입력. 소유·허가·퍼블릭도메인 자료만. |
+| `private_sources/` | 커밋하지 않는 로컬 원문 입력. |
 | `reference_inputs/` | 커밋하지 않는 참고 분석 입력. |
 | `evidence/` | 로컬 위치·해시·접근일이 기록된 매니페스트와 증거 메모. |
 | `analyses/` | 작품별 구조 분석: 약속, 압박, 전환, 보상, 다음 훅. |

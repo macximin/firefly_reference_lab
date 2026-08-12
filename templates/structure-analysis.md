@@ -1,11 +1,10 @@
 # {{title}} 구조 분석
 
-## 입력·권리
+## 입력
 
 - Work ID: `{{work-id}}`
 - Source manifest: `evidence/source_manifest.json`
 - 분석 범위: `{{chapters-or-arc}}`
-- 권리 상태: `{{rights-status}}`
 - 분석일: `{{YYYY-MM-DD}}`
 
 ## 독자 약속과 즉시 보상
