@@ -1,25 +1,28 @@
 # InkOS Reverse Lab
 
-내 작품과 참고 작품을 비교해 **재사용 가능한 서사 구조**를 추출하는 독립 연구 저장소다.
+내 작품과 참고 작품을 전수 비교해 **웹소설에 맞는 실제 Arc 구조와 페이싱**을 추출하는 독립 연구 저장소다.
 
 InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 간 구조 비교, 증거 기록, 분석 도구, 그리고 InkOS에 반영할 기획·Arc 인사이트를 보관한다.
 
 ## 작업 원칙
 
 1. 원문은 로컬 입력 폴더에만 두고 Git에 커밋하지 않는다.
-2. 분석 목적은 작가의 문장을 모사하는 것이 아니라, 훅·갈등·전환·보상·클리프행어 같은 추상 구조를 비교하는 것이다.
+2. 실제 인물·사건·장소·관계·물건·승패·보상을 먼저 보존한다. 추상 용어가 작품 표면을 대신하면 불합격이다.
+3. 현실 고증보다 재미의 인과, 기대와 보상, 감정적 납득을 기준으로 본다.
+4. 자연 사건 Arc와 1~3화 제작 패킷을 미리 같은 단위로 가정하지 않는다. 원문에서 경계를 찾는다.
 
 ## 시작하기
 
-1. `evidence/source_manifest.json`에 분석 대상과 로컬 위치를 등록한다.
-2. 원문은 `private_sources/korean_webnovel_corpus/<필명>/<work-id>.txt`에 둔다. 이 경로는 커밋되지 않는다.
-4. `analyses/<work-id>/structure.md`에 회차/Arc 단위 분석을 작성한다.
-5. 여러 작품의 공통점과 차이는 `comparisons/`에 기록하고, InkOS 적용안은 `inkos_handoffs/`에 남긴다.
+1. 원문은 `private_sources/korean_webnovel_corpus/<필명>/`에 둔다. 이 경로는 커밋되지 않는다.
+2. `docs/session-briefs/`에서 담당 작품 발주를 읽고 `templates/work-arc-analysis-contract.md`를 따른다.
+3. `analyses/<work-slug>/`에 전 회차 지도, 전체 기획서, Arc Atlas·페이싱, InkOS 적용·간극 보고서, 자유 개선 보고서와 완료 영수증을 만든다.
+4. 관리자 검수를 통과한 작품만 `comparisons/`에서 비교하고, InkOS 적용 계약은 `inkos_handoffs/`에 남긴다.
 
 검증:
 
 ```bash
 node tools/validate-source-manifest.mjs
+node tools/validate-five-work-analyses.mjs --strict
 ```
 
 ## 폴더
@@ -29,21 +32,27 @@ node tools/validate-source-manifest.mjs
 | `private_sources/` | 커밋하지 않는 로컬 원문 입력. |
 | `reference_inputs/` | 커밋하지 않는 참고 분석 입력. |
 | `evidence/` | 로컬 위치·해시·접근일이 기록된 매니페스트와 증거 메모. |
-| `analyses/` | 작품별 구조 분석: 약속, 압박, 전환, 보상, 다음 훅. |
+| `docs/session-briefs/` | 작품별 독립 분석 발주와 입력·출력 경계. |
+| `templates/` | 회차·Arc·기획서·보고서 공통 분석 계약. |
+| `analyses/` | 작품별 전 회차 지도, 기획서, Arc Atlas·페이싱과 InkOS 보고서. |
 | `comparisons/` | 내 작품 간 및 레퍼런스 대비 분석. |
 | `inkos_handoffs/` | 기획서·Arc·문체 계약에 반영할, 모사 없는 추상 인사이트. |
 | `tools/` | 재현 가능한 검사와 분석 보조 도구. |
 | `tests/` | 도구와 분석 계약의 회귀 테스트. |
+| `exports/` | 커밋하지 않는 세션 로그와 관리자 임시 산출물. |
 
-## 최소 분석 단위
+## 작품별 필수 산출물
 
-`analyses/<work-id>/structure.md`는 각 회차 또는 1~3화 Arc마다 아래를 기록한다.
+각 작품은 다음 9개 파일을 최소로 갖는다.
 
-- 독자에게 한 약속과 즉시 주는 보상
-- 주인공 목표·장애·압박
-- 전환점과 되돌릴 수 없는 상태 변화
-- 회차 종료 훅
-- 인물·관계·세계 상태 변화
-- 근거 위치와 신뢰도
+- `source_receipt.json`
+- `chapter_map.csv`
+- `project_bible.md`
+- `arc_map.csv`
+- `arc_pacing.csv`
+- `arc_atlas.md`
+- `inkos_usage_and_gap_report.md`
+- `free_improvements_report.md`
+- `completion_receipt.md`
 
-`templates/structure-analysis.md`를 복사해서 시작한다.
+전체 필드와 완료 조건은 `templates/work-arc-analysis-contract.md`가 권위다. 전 회차를 한 행씩 포함하고, 모든 Arc에 실제 사건형 이름·구체 인물·장소·결산·다음 훅과 회차별 페이싱을 남긴다.
