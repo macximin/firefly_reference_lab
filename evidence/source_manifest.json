@@ -1,4 +1,19 @@
 {
   "schemaVersion": 1,
-  "works": []
+  "works": [],
+  "collections": [
+    {
+      "id": "ff-sources-korean-webnovel-corpus",
+      "title": "FF Sources Korean webnovel local corpus",
+      "ownerType": "third_party",
+      "rightsStatus": "permission_granted",
+      "sourceLocator": "/Users/a2501/Desktop/v3_firefly_studio/edge_repos/v3_ff_sources/합본들",
+      "rightsEvidenceRef": "/Users/a2501/Desktop/v3_firefly_studio/edge_repos/v3_ff_sources/config/source-rights-clearance.tsv",
+      "accessedAt": "2026-08-13T00:00:00+09:00",
+      "itemCount": 22,
+      "totalBytes": 138666000,
+      "scope": "internal_analysis_and_derivative_planning",
+      "notes": "Local read-only cache. Do not copy source texts into this repository."
+    }
+  ]
 }

@@ -11,3 +11,5 @@ Each entry requires:
 - `sourceHash` for the local input, or `null` before the input is obtained
 
 Do not add external works with `unknown`, `fair_use`, `purchased_only`, or other unverified statuses. A purchase alone is not a permission to redistribute the text.
+
+For a verified local corpus, use `collections` rather than copying each source file. A collection records its local locator, clearance evidence, access date, count, size, and allowed scope. The source texts remain in their source repository.
