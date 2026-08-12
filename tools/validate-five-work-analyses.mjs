@@ -222,6 +222,42 @@ function validateScores(rows, warnings, label) {
   }
 }
 
+function validateArcLengthShape(rows, warnings, label) {
+  if (rows.length < 12) return;
+  const lengths = rows.map((row) => Number(row.episode_count));
+  if (lengths.some((length) => !Number.isInteger(length) || length < 1)) return;
+  const packetSized = lengths.filter((length) => length <= 3).length;
+  const maximum = Math.max(...lengths);
+  const ratio = packetSized / lengths.length;
+  if (ratio >= 0.65 && maximum <= 8) {
+    warnings.push(`${label}: ${rows.length}개 Arc 중 ${packetSized}개(${Math.round(ratio * 100)}%)가 1~3화이고 최대도 ${maximum}화라 자연 Arc보다 제작 Packet 분할일 가능성이 큼`);
+  }
+}
+
+function countPattern(rows, column, pattern) {
+  let count = 0;
+  for (const row of rows) {
+    pattern.lastIndex = 0;
+    if (pattern.test(row[column] ?? "")) count += 1;
+  }
+  pattern.lastIndex = 0;
+  return count;
+}
+
+function validateFormulaicPacing(rows, warnings, label) {
+  if (rows.length < 20) return;
+  const patterns = [
+    ["`다음 추진=` 템플릿", /다음 추진=/gu, 0.25],
+    ["행동→전환→보상 화살표 템플릿", /\s→\s/gu, 0.6],
+  ];
+  for (const [description, pattern, threshold] of patterns) {
+    const count = countPattern(rows, description.includes("추진") ? "pacing_note" : "concrete_event", pattern);
+    if (count >= Math.max(8, Math.ceil(rows.length * threshold))) {
+      warnings.push(`${label}: ${description}이 ${count}/${rows.length}행에서 반복되어 장면별 편집 판단 대신 공식 생성일 가능성이 큼`);
+    }
+  }
+}
+
 function checkForbidden(text, label, errors) {
   for (const [pattern, explanation] of forbiddenOutputPatterns) {
     if (pattern.test(text)) errors.push(`${label}: ${explanation}`);
@@ -334,6 +370,8 @@ async function validateWork(work) {
   }
   countExactValues(pacing, "pacing_note", warnings, "arc_pacing.csv");
   validateScores(pacing, warnings, "arc_pacing.csv");
+  validateArcLengthShape(arcs, warnings, "arc_map.csv");
+  validateFormulaicPacing(pacing, warnings, "arc_pacing.csv");
 
   return { ...work, errors, warnings, arcCount: arcs.length };
 }
