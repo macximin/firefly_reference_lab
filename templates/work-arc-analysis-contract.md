@@ -70,6 +70,14 @@ arc_id,arc_name,start_sequence,end_sequence,start_label,end_label,episode_count,
 sequence,visible_label,arc_id,arc_phase,concrete_event,tension_1_10,reward_1_10,hook_1_10,information_weight,action_weight,relationship_weight,emotion_weight,material_or_status_weight,pacing_note
 ```
 
+다섯 `*_weight` 열은 한 작품 안에서 아래 셋 중 **한 척도만** 사용한다. 문자열 등급(`low`, `medium`, `high`)이나 척도 혼용은 허용하지 않는다.
+
+- 독립 강도형: 다섯 열 모두 `1`~`10` 정수. 각 값은 독립 강도라 합계 제약이 없다.
+- 정규화 비율형: 다섯 열 모두 `0`~`1` 숫자. 한 행의 합은 `1`이어야 하며 부동소수점 허용 오차는 `±0.01`이다.
+- 백분율 구성형: 다섯 열 모두 `0`~`100` 숫자. 한 행의 합은 `100`이어야 하며 반올림 허용 오차는 `±1`이다.
+
+예를 들어 앞 구간은 `0.25`, 뒤 구간은 `7`로 쓰는 식의 작품 내 혼용은 금지한다. 다섯 열 가운데 일부만 다른 척도를 쓰는 행도 금지한다. 사용한 척도는 `completion_receipt.md`에 기록한다.
+
 ## `project_bible.md`
 
 실제 고유명사를 사용해 다음을 충분히 길게 쓴다.

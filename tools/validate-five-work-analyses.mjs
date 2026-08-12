@@ -222,6 +222,80 @@ function validateScores(rows, warnings, label) {
   }
 }
 
+const pacingRibbonColumns = [
+  "information_weight",
+  "action_weight",
+  "relationship_weight",
+  "emotion_weight",
+  "material_or_status_weight",
+];
+
+function sequenceSamples(rows) {
+  const samples = rows.slice(0, 5).map((row) => row.sequence || "?");
+  return `${samples.join(", ")}${rows.length > samples.length ? ", …" : ""}`;
+}
+
+export function validatePacingRibbonWeights(rows, warnings, label = "arc_pacing.csv") {
+  const modes = new Map([
+    ["1~10 정수 강도형", []],
+    ["0~1 정규화 비율형", []],
+    ["0~100 백분율 구성형", []],
+  ]);
+  const nonNumeric = [];
+  const invalidShape = [];
+  const badRatioSums = [];
+  const badPercentageSums = [];
+
+  for (const row of rows) {
+    const rawValues = pacingRibbonColumns.map((column) => row[column]?.trim() ?? "");
+    const values = rawValues.map(Number);
+    if (rawValues.some((value) => value === "") || values.some((value) => !Number.isFinite(value))) {
+      nonNumeric.push(row);
+      continue;
+    }
+
+    if (values.every((value) => Number.isInteger(value) && value >= 1 && value <= 10)) {
+      modes.get("1~10 정수 강도형").push(row);
+      continue;
+    }
+
+    if (values.every((value) => value >= 0 && value <= 1)) {
+      modes.get("0~1 정규화 비율형").push(row);
+      const sum = values.reduce((total, value) => total + value, 0);
+      if (Math.abs(sum - 1) > 0.01) badRatioSums.push(row);
+      continue;
+    }
+
+    if (values.every((value) => value >= 0 && value <= 100) && values.some((value) => value > 10)) {
+      modes.get("0~100 백분율 구성형").push(row);
+      const sum = values.reduce((total, value) => total + value, 0);
+      if (Math.abs(sum - 100) > 1) badPercentageSums.push(row);
+      continue;
+    }
+
+    invalidShape.push(row);
+  }
+
+  if (nonNumeric.length > 0) {
+    warnings.push(`${label}.ribbon_weights: 비수치 또는 빈 값이 ${nonNumeric.length}/${rows.length}행에 있음 (sequence ${sequenceSamples(nonNumeric)})`);
+  }
+  if (invalidShape.length > 0) {
+    warnings.push(`${label}.ribbon_weights: 허용 척도(1~10 정수, 합계 1의 0~1 비율, 합계 100의 백분율)에 맞지 않는 값 조합이 ${invalidShape.length}/${rows.length}행에 있음 (sequence ${sequenceSamples(invalidShape)})`);
+  }
+  if (badRatioSums.length > 0) {
+    warnings.push(`${label}.ribbon_weights: 0~1 비율형 합계가 1±0.01이 아닌 행이 ${badRatioSums.length}개 있음 (sequence ${sequenceSamples(badRatioSums)})`);
+  }
+  if (badPercentageSums.length > 0) {
+    warnings.push(`${label}.ribbon_weights: 백분율 구성형 합계가 100±1이 아닌 행이 ${badPercentageSums.length}개 있음 (sequence ${sequenceSamples(badPercentageSums)})`);
+  }
+
+  const usedModes = [...modes.entries()].filter(([, modeRows]) => modeRows.length > 0);
+  if (usedModes.length > 1) {
+    const counts = usedModes.map(([mode, modeRows]) => `${mode} ${modeRows.length}행`).join(", ");
+    warnings.push(`${label}.ribbon_weights: 작품 안에서 척도가 혼재함 (${counts})`);
+  }
+}
+
 function validateArcLengthShape(rows, warnings, label) {
   if (rows.length < 12) return;
   const lengths = rows.map((row) => Number(row.episode_count));
@@ -370,6 +444,7 @@ async function validateWork(work) {
   }
   countExactValues(pacing, "pacing_note", warnings, "arc_pacing.csv");
   validateScores(pacing, warnings, "arc_pacing.csv");
+  validatePacingRibbonWeights(pacing, warnings, "arc_pacing.csv");
   validateArcLengthShape(arcs, warnings, "arc_map.csv");
   validateFormulaicPacing(pacing, warnings, "arc_pacing.csv");
 
