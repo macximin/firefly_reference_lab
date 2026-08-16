@@ -2,12 +2,12 @@
 
 작성일: 2026-08-15  
 최종 갱신: 2026-08-16  
-상태: **P0~P8 계약팩 완료 / P9 실제 작품 파일럿 대기**  
+상태: **P0~P8 계약팩 완료 / P9 프리프로덕션 초안 완료 / owner lock 대기**
 정본 템플릿: `templates/writing-system/`
 
 ## 0. 현재 상태
 
-P0 상업 편집 정본과 P1~P8의 실행 계약을 만들었다. 다음 단계는 계약을 더 늘리는 일이 아니라, 원문 보유 작품에서 `project_pitch.md`를 추출하고 한 작품을 골라 실제 3~5화를 쓰는 P9 파일럿이다.
+P0 상업 편집 정본과 P1~P8의 실행 계약을 만들었고, 원문 보유 15편의 `project_pitch.md`를 확보했다. 신규 재벌물 《부도난 회사만 삽니다》의 P9 프리프로덕션 팩도 작성했다. 다음 단계는 작품 가설을 owner lock한 뒤 InkOS에서 첫 3화를 써서 수동 라우팅의 효용을 판정하는 일이다.
 
 | 단계 | 상태 | 정본 |
 | --- | --- | --- |
@@ -21,6 +21,7 @@ P0 상업 편집 정본과 P1~P8의 실행 계약을 만들었다. 다음 단계
 | P7 Character Utility | 완료 | `templates/writing-system/07-character-utility-card.md` |
 | P8 Gold Router | 완료 | `templates/writing-system/gold-reference-card.md`, `templates/writing-system/08-gold-router.md` |
 | 작품소개 포함 피치 | 완료 | `templates/writing-system/project-pitch.md` |
+| P9 프리프로덕션 | owner lock 대기 | `inkos_handoffs/p9-pilot-distressed-company-buyer/` |
 
 ## 1. 목적
 
@@ -242,6 +243,8 @@ P9는 문서 작성이 아니라 실제 작품으로 집필 루프를 검증하�
 - 주요 조연 Character Utility Card
 - Gold Router 선택과 복제 금지선
 
+2026-08-16 현재 《부도난 회사만 삽니다》 팩이 위 자료를 갖췄다. 아직 InkOS 작품과 원고를 만들지 않았으며, 가제·회귀 장치·관계선·후반 산업·목표 분량의 owner lock을 기다린다.
+
 ### 단계 A: 수동 라우팅 실험
 
 하나의 신작 또는 기존 InkOS 작품에서 한 개 NarrativeArc만 골라 수동으로 시험한다. Lead Writer가 문제를 적고, 두 골드를 역할별로 배정한 뒤 세 가지 후보 아크를 비교한다.
@@ -287,4 +290,4 @@ P9는 문서 작성이 아니라 실제 작품으로 집필 루프를 검증하�
 - 원문 또는 중국 자료 열람
 - 커밋·푸시
 
-P0~P8의 문서 계약은 준비됐다. P9부터는 사용자와 작품을 고른 뒤 실제 원고와 개작 결과로 계약의 효용을 판정한다.
+P0~P8 계약과 P9 프리프로덕션 가설은 준비됐다. owner lock 뒤 실제 원고와 개작 결과로 계약의 효용을 판정한다.

@@ -1,5 +1,7 @@
 # InkOS Reverse Lab 다음 세션 인계서
 
+> 이 인계서는 작품 피치 확장 이전 기록이다. 현재 재개 정본은 `docs/2026-08-16-p9-pilot-preproduction-handoff.md`다.
+
 작성 시각: 2026-08-16 11:13 KST  
 저장소: `/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab`  
 브랜치·HEAD: `main` / `c46f153`  

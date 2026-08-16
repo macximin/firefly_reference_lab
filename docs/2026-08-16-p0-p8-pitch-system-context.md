@@ -1,5 +1,7 @@
 # 웹소설 피치 시스템 P0~P8 재개 컨텍스트
 
+> 이 문서는 P9 프리프로덕션 이전 기록이다. 현재 재개 정본은 `docs/2026-08-16-p9-pilot-preproduction-handoff.md`다.
+
 작성일: 2026-08-16 KST  
 저장소: `/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab`  
 현재 단계: P0~P8 완료, P9 실제 작품 파일럿 시작 전
