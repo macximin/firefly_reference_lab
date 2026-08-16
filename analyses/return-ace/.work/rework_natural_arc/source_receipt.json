@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "return-ace",
+  "title": "리턴 에이스",
+  "penName": "흑곰작가",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/흑곰작가/리턴 에이스_흑곰작가_합본.txt",
+  "sourceSha256": "d1dd84aebe77ece8f17e4b4448b739c3106931ccec5f2008933b385b74b8ba45",
+  "markerPattern": "^ⓚ",
+  "markerCount": 310,
+  "firstMarker": "ⓚ리턴 에이스 1화",
+  "lastMarker": "ⓚ리턴 에이스 310화",
+  "numberingNotes": [
+    "파일 순서와 표시 번호가 1화부터 310화까지 연속하며, 중복·건너뜀·역전이 없다."
+  ],
+  "analysisCoverage": "full"
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "divorce-chaebol-awakening",
+  "title": "이혼 후 재벌 각성!",
+  "penName": "흑곰작가",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/흑곰작가/이혼 후 재벌 각성!_흑곰작가_합본.txt",
+  "sourceSha256": "09ca4bb08e88f7791e38bc33c393ee1732af32823d7ed39a1c7026f4b7e37908",
+  "markerPattern": "^ⓚ",
+  "markerCount": 220,
+  "firstMarker": "ⓚ이혼 후 재벌 각성(개정판) 1화",
+  "lastMarker": "ⓚ이혼 후 재벌 각성(개정판) 220화(완결화)",
+  "numberingNotes": [
+    "파일 순서상 표시 번호는 1화부터 220화까지 누락과 중복 없이 연속한다.",
+    "모든 표식에는 작품명 뒤에 '(개정판)'이 붙고 마지막 표식에만 '(완결화)'가 추가된다."
+  ],
+  "analysisCoverage": "full"
+}

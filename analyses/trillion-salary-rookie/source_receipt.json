@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "trillion-salary-rookie",
+  "title": "연봉 1조 신입사원",
+  "penName": "서오",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/서오/연봉 1조 신입사원_서오_합본.txt",
+  "sourceSha256": "72353f790d8ee488a7832ee08008bd96a1681af7438a21ba7811a790223bc7b7",
+  "markerPattern": "^ⓚ",
+  "markerCount": 485,
+  "firstMarker": "ⓚ1화. 신입사원 (1)",
+  "lastMarker": "ⓚ502화. 재편 (2)",
+  "numberingNotes": [
+    "파일 순서 sequence 250의 ⓚ250화 다음은 sequence 251의 ⓚ262화이며 visible label 251~261 표식 11개가 원문에 없다.",
+    "파일 순서 sequence 303의 ⓚ314화 다음은 sequence 304의 ⓚ317화이며 visible label 315~316 표식 2개가 원문에 없다.",
+    "파일 순서 sequence 403의 ⓚ416화 다음은 sequence 404의 ⓚ421화이며 visible label 417~420 표식 4개가 원문에 없다.",
+    "중복 표식은 없으며 1~502의 visible label 중 위 17개가 빠져 실제 표식 수는 485개다. 누락 회차의 사건은 보간하지 않는다."
+  ],
+  "analysisCoverage": "full"
+}

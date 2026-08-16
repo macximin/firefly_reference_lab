@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "doksik-chaebol3",
+  "title": "독식하는 재벌 3세",
+  "penName": "서오",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/서오/독식하는 재벌 3세_서오_합본.txt",
+  "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+  "markerPattern": "^ⓚ",
+  "markerCount": 751,
+  "firstMarker": "ⓚ1화. 돌아오다.",
+  "lastMarker": "ⓚ751. 완벽한 선물",
+  "numberingNotes": [
+    "파일 순서의 751개 표식은 표시 번호 1~751과 일치하며 누락·중복·역전이 없다.",
+    "표시 번호의 '화' 접미사는 1~209에서 일관되다가 210화 이후 일부 구간에서 붙거나 빠지고 363~751에서는 빠진다. 숫자 자체는 연속이며 visible label에는 이 표기 차이도 원문대로 보존한다.",
+    "369화 표식은 이웃 표식과 달리 마침표 없이 'ⓚ369 독사과 (4)'로 적혀 있다. 번호와 경계는 모호하지 않으며 visible label은 원문의 '369'를 보존한다.",
+    "356·357화 표식 제목 끝에는 비가시 U+00A0 공백이 하나씩 있다. 줄 경계와 표식 원문은 수령증에 기록하고 chapter_map의 title은 보이는 제목만 남기도록 끝 공백을 정규화했다."
+  ],
+  "analysisCoverage": "full"
+}

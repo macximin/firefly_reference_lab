@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "fist-above-law",
+  "title": "법보다 주먹(개정판)",
+  "penName": "흑곰작가",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/흑곰작가/법보다 주먹(개정판)_흑곰작가_합본.txt",
+  "sourceSha256": "994b205ffc22ff9a51633c8b71db89207716c64cae3ff97f9b02d4122e27078e",
+  "markerPattern": "^ⓚ",
+  "markerCount": 830,
+  "sourceLineCount": 255328,
+  "sourceByteCount": 10878293,
+  "firstMarker": "ⓚ법보다 주먹(완전판)! 1화",
+  "lastMarker": "ⓚ법보다 주먹! 2부 – 100화",
+  "numberingNotes": [
+    "발주·파일명 작품명은 법보다 주먹(개정판)이지만 원문 표식은 법보다 주먹(완전판) 및 법보다 주먹! 2부를 사용하므로 둘을 임의로 통일하지 않는다.",
+    "파일 순번 1~680은 본편 표시 1~680화이며 번호 자체는 연속이다.",
+    "파일 순번 681~730은 외전 표시 1~50화이며, 730번째 표식에 외전 1 완결 회차 문구가 붙는다.",
+    "파일 순번 731~830은 2부 표시 1~100화이며 번호 자체는 연속이다.",
+    "본편 328화부터 표식의 느낌표가 빠지고 외전 2화부터 다시 붙는다. 2부 표식은 하이픈, en dash, 공백 유무와 일부 이중 느낌표가 섞여 있으나 원문 문자열을 그대로 보존한다.",
+    "본편·외전·2부에서 표시 번호가 다시 시작되므로 visible_label은 중복될 수 있고 sequence가 유일한 권위다."
+  ],
+  "analysisCoverage": "full"
+}

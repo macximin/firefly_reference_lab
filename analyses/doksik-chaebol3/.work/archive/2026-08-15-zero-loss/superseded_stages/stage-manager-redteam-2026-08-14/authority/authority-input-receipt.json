@@ -1,0 +1,23 @@
+{
+  "status": "STAGE_BUILD_INPUTS_VERIFIED",
+  "generatedAt": "2026-08-14T19:37:27+09:00",
+  "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+  "approvedLedgerSha256": "52bbd904efd4483aa999d2062f301ec548ea2cc433bca0565c77d4f1fd418fa2",
+  "decisionCsvSha256": "85ebcd4437e44f2c821d010a8e6de512dd81018cea3164aee093fbc50905a547",
+  "authoritySha256": "f47480af0d03f36f2e514bcff4d83d816cb068c636f779efda3b06897e4aa2c2",
+  "validatorSha256": "3df8d6a46fdba37d3d41bf665168ec0eec8e965f32f8aba4a6f1d2709733169c",
+  "canonicalStartSha256": {
+    "arc_atlas.md": "e278073eb02e1bdd970bd5bcec9126b5d5aa97816a0daada32c2117127ccd35b",
+    "arc_map.csv": "413750cf567baf268453327b0833da6167c2a7c0ab9e1e794a43a3a2bc7d2c68",
+    "arc_pacing.csv": "f32f7572f64e16ec47e3a911788c8a987dbd74aee4b5c0aba65a440cacd1204e",
+    "chapter_map.csv": "16e91900a6dd3ea800ac535846888f6454d60038c605ad36a5849fea145678af",
+    "completion_receipt.md": "97c1a5d8081719489c8e3f2576249a358af2f7373ca0bd2632f99a42bbe8aed6",
+    "free_improvements_report.md": "62aef345b4c2c9f4d2d948927825d9ba30c204792bd33da62d618e0a09aa41b4",
+    "inkos_usage_and_gap_report.md": "b54701135365bbd5db5e7d0ac0b52478745a1b08af93dff68891d75ba1e7b0c3",
+    "project_bible.md": "8406a06574fd4853f145ee32c6cc70e4162ba96f8521db217731c42c5f7ef37b",
+    "source_receipt.json": "5aad05680d9c6a4a6712a79900fce98efc6c4995e22eee98126497e61b2b019d"
+  },
+  "decisionRows": 131,
+  "coverage": "1-751",
+  "canonicalWriteAllowed": false
+}

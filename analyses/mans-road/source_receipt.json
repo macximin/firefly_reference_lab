@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "mans-road",
+  "title": "남자의 길",
+  "penName": "강동호",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/남자의 길_강동호_합본.txt",
+  "sourceSha256": "b74c0e66d22a50a1f9f9442013f2818ba952c1f8e00fbebddfe6a46c09d371b2",
+  "markerPattern": "^ⓚ",
+  "markerCount": 325,
+  "firstMarker": "ⓚ남자의 길 1화",
+  "lastMarker": "ⓚ남자의 길 325화",
+  "numberingNotes": [
+    "표식의 표시 번호는 파일 순서와 일치하며 1화부터 325화까지 연속된다."
+  ],
+  "analysisCoverage": "full"
+}

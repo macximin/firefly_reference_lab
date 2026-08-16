@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "goldspoon-investment-manual",
+  "title": "금수저 투자백서",
+  "penName": "강동호",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/금수저 투자백서_강동호_합본.txt",
+  "sourceSha256": "1ac62315ac08181c712154e480d6cd6951fb61b8825ab6bb28af88d4fdb534af",
+  "markerPattern": "^ⓚ",
+  "markerCount": 686,
+  "firstMarker": "ⓚ1. 아, 안돼!",
+  "lastMarker": "ⓚ708. 소버린 하나만으로도 골치가 아파 죽겠는데 이것들은 또 뭐야",
+  "numberingNotes": [
+    "파일 순서 686개를 권위로 사용",
+    "표시 번호 누락·중복을 임의 보정하지 않음"
+  ],
+  "analysisCoverage": "full"
+}

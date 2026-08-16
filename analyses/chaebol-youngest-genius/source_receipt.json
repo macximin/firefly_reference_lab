@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "chaebol-youngest-genius",
+  "title": "재벌가 막둥이는 만능 천재(개정판)",
+  "penName": "흑곰작가",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/흑곰작가/재벌가 막둥이는 만능 천재(개정판)_흑곰작가_합본.txt",
+  "sourceSha256": "e00881820810cd27f1efbe72a0a514aa4a0a9b1a08a77a747444766a84892c7f",
+  "markerPattern": "^ⓚ",
+  "markerCount": 380,
+  "firstMarker": "ⓚ재벌가 막둥이는 만능 천재! 1화",
+  "lastMarker": "ⓚ재벌가 막둥이는 만능 천재! 380화 (2부 30화)",
+  "numberingNotes": [
+    "파일 순서와 표시 번호가 1화부터 380화까지 연속한다.",
+    "351화부터 괄호 안에 2부 회차가 병기되며 351~356화는 공백 없는 표기, 357~380화는 공백 있는 표기를 원문 그대로 보존한다."
+  ],
+  "analysisCoverage": "full"
+}

@@ -1,0 +1,3 @@
+PASS stage-validator: arcs=131 chapters=751 pacing=751 evidence=751 high=355
+PASS coverage=1..751 gap=0 overlap=0 ribbons=ratio-sum1 template-count=0
+PASS semantic-fixed=15,50,192,194,246,259,264,335,380,382,482,488,495,513-516,654,660-662,745,749,751

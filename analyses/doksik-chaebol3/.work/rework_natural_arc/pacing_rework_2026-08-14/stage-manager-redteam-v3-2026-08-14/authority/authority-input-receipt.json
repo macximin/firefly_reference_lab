@@ -1,0 +1,56 @@
+{
+  "status": "V3_STAGE_BUILD_INPUTS_VERIFIED",
+  "generatedAt": "2026-08-14T22:44:05+09:00",
+  "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+  "approvedLedgerSha256": "52bbd904efd4483aa999d2062f301ec548ea2cc433bca0565c77d4f1fd418fa2",
+  "decisionCsvSha256": "85ebcd4437e44f2c821d010a8e6de512dd81018cea3164aee093fbc50905a547",
+  "effectiveDecisionCsvSha256": "c810641c349aa0db3bc10733e4ac88c263a12a70f5abea5f4fc13831a15a16cf",
+  "boundaryAmendmentSha256": "19a931bb451affd772e7ff548d7f94b46e88393fd95fba8d0401f21dd70e67c8",
+  "boundaryAmendmentSourceLines": "L111872~L112240",
+  "surfaceAmendmentSha256": "5a7b2baf49d6038b1e72c8f15d81bd7dc29d82b978acb5200524accccfeb1953",
+  "surfaceAmendmentSourceLines": "L119442~L119593",
+  "surfaceEvidenceSha256": "717a3517c86aa15e6f7b51f61386be48a3200b08621d7469322252db81808d61",
+  "endpointAuditSha256": "70474186bc438041970cefa9096f28ebf733e5660533eb1768510f2f688b4163",
+  "endpointAuditRows": 131,
+  "endpointAuditStatus": "ENDPOINT_AUDIT_COMPLETE_131_OF_131",
+  "endpointAuditResultCounts": {
+    "EDIT": 77,
+    "KEEP": 54
+  },
+  "extraSampleAuditSha256": "b6711ddac75e1869ffb0fe8edd86a3a97e945a13396ceab447f7aacfbe6b6bc7",
+  "extraSampleAuditRows": 4,
+  "extraSampleAuditSequences": [
+    466,
+    468,
+    471,
+    721
+  ],
+  "authoritySha256": "0057ffe04283cdec7cf707cd72737e0a3c6f0679566268e9a6efa07a3f3d458a",
+  "validatorSha256": "852b0143f1a5a08409a703817f71780fa37e8741dac454d91123c0cabd30dcc8",
+  "canonicalStartSha256": {
+    "arc_atlas.md": "e278073eb02e1bdd970bd5bcec9126b5d5aa97816a0daada32c2117127ccd35b",
+    "arc_map.csv": "413750cf567baf268453327b0833da6167c2a7c0ab9e1e794a43a3a2bc7d2c68",
+    "arc_pacing.csv": "f32f7572f64e16ec47e3a911788c8a987dbd74aee4b5c0aba65a440cacd1204e",
+    "chapter_map.csv": "16e91900a6dd3ea800ac535846888f6454d60038c605ad36a5849fea145678af",
+    "completion_receipt.md": "97c1a5d8081719489c8e3f2576249a358af2f7373ca0bd2632f99a42bbe8aed6",
+    "free_improvements_report.md": "62aef345b4c2c9f4d2d948927825d9ba30c204792bd33da62d618e0a09aa41b4",
+    "inkos_usage_and_gap_report.md": "b54701135365bbd5db5e7d0ac0b52478745a1b08af93dff68891d75ba1e7b0c3",
+    "project_bible.md": "8406a06574fd4853f145ee32c6cc70e4162ba96f8521db217731c42c5f7ef37b",
+    "source_receipt.json": "5aad05680d9c6a4a6712a79900fce98efc6c4995e22eee98126497e61b2b019d"
+  },
+  "decisionRows": 131,
+  "effectiveRangeOverrides": {
+    "DCA-N56B": [
+      642,
+      643
+    ],
+    "DCA-N57": [
+      644,
+      645
+    ]
+  },
+  "effectiveArcRows": 131,
+  "coverage": "1-751",
+  "stageTarget": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/analyses/doksik-chaebol3/.work/rework_natural_arc/pacing_rework_2026-08-14/stage-manager-redteam-v3-2026-08-14",
+  "canonicalWriteAllowed": false
+}

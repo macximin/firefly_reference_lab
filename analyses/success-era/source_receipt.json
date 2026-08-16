@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "success-era",
+  "title": "성공시대",
+  "penName": "강동호",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/성공시대_강동호_합본.txt",
+  "sourceSha256": "6aa081f0c9039e25bfec93ffbc2e2fe9f10175e8d302d794e454263200257a79",
+  "markerPattern": "^ⓚ",
+  "markerCount": 1006,
+  "firstMarker": "ⓚ성공시대 001화",
+  "lastMarker": "ⓚ성공시대 1006화",
+  "numberingNotes": [
+    "파일 순서의 1~1006번째 표식이 표시 번호 001~1006과 일치하며 누락·중복·역전이 없다.",
+    "원문 내 # 소제목은 회차 중간에도 나타나므로 경계 회차는 앞 사건의 결산과 다음 사건의 발단을 함께 담는 전이 회차로 판정한다."
+  ],
+  "analysisCoverage": "full"
+}

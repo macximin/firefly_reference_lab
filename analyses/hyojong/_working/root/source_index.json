@@ -1,0 +1,5008 @@
+{
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/효종_강동호_합본.txt",
+  "lineCount": 65930,
+  "markerCount": 500,
+  "numberingMismatches": [],
+  "chapters": [
+    {
+      "sequence": 1,
+      "visibleLabel": "ⓚ효종 1화",
+      "visibleNumber": 1,
+      "title": "시간을 뛰어넘어",
+      "startLine": 1,
+      "endLine": 121,
+      "characterCount": 5553,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 2,
+      "visibleLabel": "ⓚ효종 2화",
+      "visibleNumber": 2,
+      "title": "",
+      "startLine": 122,
+      "endLine": 225,
+      "characterCount": 4752,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 3,
+      "visibleLabel": "ⓚ효종 3화",
+      "visibleNumber": 3,
+      "title": "여긴 어디?",
+      "startLine": 226,
+      "endLine": 398,
+      "characterCount": 6285,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 4,
+      "visibleLabel": "ⓚ효종 4화",
+      "visibleNumber": 4,
+      "title": "",
+      "startLine": 399,
+      "endLine": 517,
+      "characterCount": 5504,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 5,
+      "visibleLabel": "ⓚ효종 5화",
+      "visibleNumber": 5,
+      "title": "",
+      "startLine": 518,
+      "endLine": 673,
+      "characterCount": 5925,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 6,
+      "visibleLabel": "ⓚ효종 6화",
+      "visibleNumber": 6,
+      "title": "첫 출정",
+      "startLine": 674,
+      "endLine": 773,
+      "characterCount": 5150,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 7,
+      "visibleLabel": "ⓚ효종 7화",
+      "visibleNumber": 7,
+      "title": "",
+      "startLine": 774,
+      "endLine": 900,
+      "characterCount": 5500,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 8,
+      "visibleLabel": "ⓚ효종 8화",
+      "visibleNumber": 8,
+      "title": "",
+      "startLine": 901,
+      "endLine": 1037,
+      "characterCount": 5550,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 9,
+      "visibleLabel": "ⓚ효종 9화",
+      "visibleNumber": 9,
+      "title": "",
+      "startLine": 1038,
+      "endLine": 1168,
+      "characterCount": 5515,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 10,
+      "visibleLabel": "ⓚ효종 10화",
+      "visibleNumber": 10,
+      "title": "",
+      "startLine": 1169,
+      "endLine": 1285,
+      "characterCount": 5527,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 11,
+      "visibleLabel": "ⓚ효종 11화",
+      "visibleNumber": 11,
+      "title": "",
+      "startLine": 1286,
+      "endLine": 1394,
+      "characterCount": 5169,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 12,
+      "visibleLabel": "ⓚ효종 12화",
+      "visibleNumber": 12,
+      "title": "",
+      "startLine": 1395,
+      "endLine": 1498,
+      "characterCount": 5172,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 13,
+      "visibleLabel": "ⓚ효종 13화",
+      "visibleNumber": 13,
+      "title": "",
+      "startLine": 1499,
+      "endLine": 1610,
+      "characterCount": 5531,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 14,
+      "visibleLabel": "ⓚ효종 14화",
+      "visibleNumber": 14,
+      "title": "정명수",
+      "startLine": 1611,
+      "endLine": 1745,
+      "characterCount": 6146,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 15,
+      "visibleLabel": "ⓚ효종 15화",
+      "visibleNumber": 15,
+      "title": "",
+      "startLine": 1746,
+      "endLine": 1874,
+      "characterCount": 5505,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 16,
+      "visibleLabel": "ⓚ효종 16화",
+      "visibleNumber": 16,
+      "title": "",
+      "startLine": 1875,
+      "endLine": 2024,
+      "characterCount": 5528,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 17,
+      "visibleLabel": "ⓚ효종 17화",
+      "visibleNumber": 17,
+      "title": "",
+      "startLine": 2025,
+      "endLine": 2154,
+      "characterCount": 5559,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 18,
+      "visibleLabel": "ⓚ효종 18화",
+      "visibleNumber": 18,
+      "title": "",
+      "startLine": 2155,
+      "endLine": 2247,
+      "characterCount": 4956,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 19,
+      "visibleLabel": "ⓚ효종 19화",
+      "visibleNumber": 19,
+      "title": "기반 닦기 1",
+      "startLine": 2248,
+      "endLine": 2387,
+      "characterCount": 6063,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 20,
+      "visibleLabel": "ⓚ효종 20화",
+      "visibleNumber": 20,
+      "title": "",
+      "startLine": 2388,
+      "endLine": 2500,
+      "characterCount": 5586,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 21,
+      "visibleLabel": "ⓚ효종 21화",
+      "visibleNumber": 21,
+      "title": "",
+      "startLine": 2501,
+      "endLine": 2622,
+      "characterCount": 5500,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 22,
+      "visibleLabel": "ⓚ효종 22화",
+      "visibleNumber": 22,
+      "title": "",
+      "startLine": 2623,
+      "endLine": 2734,
+      "characterCount": 5523,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 23,
+      "visibleLabel": "ⓚ효종 23화",
+      "visibleNumber": 23,
+      "title": "",
+      "startLine": 2735,
+      "endLine": 2863,
+      "characterCount": 5948,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 24,
+      "visibleLabel": "ⓚ효종 24화",
+      "visibleNumber": 24,
+      "title": "기반 닦기2",
+      "startLine": 2864,
+      "endLine": 2975,
+      "characterCount": 5115,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 25,
+      "visibleLabel": "ⓚ효종 25화",
+      "visibleNumber": 25,
+      "title": "",
+      "startLine": 2976,
+      "endLine": 3102,
+      "characterCount": 6636,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 26,
+      "visibleLabel": "ⓚ효종 26화",
+      "visibleNumber": 26,
+      "title": "해적 토벌 1",
+      "startLine": 3103,
+      "endLine": 3219,
+      "characterCount": 5128,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 27,
+      "visibleLabel": "ⓚ효종 27화",
+      "visibleNumber": 27,
+      "title": "",
+      "startLine": 3220,
+      "endLine": 3331,
+      "characterCount": 5107,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 28,
+      "visibleLabel": "ⓚ효종 28화",
+      "visibleNumber": 28,
+      "title": "",
+      "startLine": 3332,
+      "endLine": 3427,
+      "characterCount": 5262,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 29,
+      "visibleLabel": "ⓚ효종 29화",
+      "visibleNumber": 29,
+      "title": "",
+      "startLine": 3428,
+      "endLine": 3545,
+      "characterCount": 5531,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 30,
+      "visibleLabel": "ⓚ효종 30화",
+      "visibleNumber": 30,
+      "title": "",
+      "startLine": 3546,
+      "endLine": 3654,
+      "characterCount": 5504,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 31,
+      "visibleLabel": "ⓚ효종 31화",
+      "visibleNumber": 31,
+      "title": "",
+      "startLine": 3655,
+      "endLine": 3786,
+      "characterCount": 6392,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 32,
+      "visibleLabel": "ⓚ효종 32화",
+      "visibleNumber": 32,
+      "title": "해적 토벌 2",
+      "startLine": 3787,
+      "endLine": 3921,
+      "characterCount": 5172,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 33,
+      "visibleLabel": "ⓚ효종 33화",
+      "visibleNumber": 33,
+      "title": "",
+      "startLine": 3922,
+      "endLine": 4032,
+      "characterCount": 5209,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 34,
+      "visibleLabel": "ⓚ효종 34화",
+      "visibleNumber": 34,
+      "title": "",
+      "startLine": 4033,
+      "endLine": 4160,
+      "characterCount": 5264,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 35,
+      "visibleLabel": "ⓚ효종 35화",
+      "visibleNumber": 35,
+      "title": "",
+      "startLine": 4161,
+      "endLine": 4301,
+      "characterCount": 5494,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 36,
+      "visibleLabel": "ⓚ효종 36화",
+      "visibleNumber": 36,
+      "title": "농장",
+      "startLine": 4302,
+      "endLine": 4425,
+      "characterCount": 5561,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 37,
+      "visibleLabel": "ⓚ효종 37화",
+      "visibleNumber": 37,
+      "title": "",
+      "startLine": 4426,
+      "endLine": 4540,
+      "characterCount": 5518,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 38,
+      "visibleLabel": "ⓚ효종 38화",
+      "visibleNumber": 38,
+      "title": "",
+      "startLine": 4541,
+      "endLine": 4658,
+      "characterCount": 5533,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 39,
+      "visibleLabel": "ⓚ효종 39화",
+      "visibleNumber": 39,
+      "title": "",
+      "startLine": 4659,
+      "endLine": 4774,
+      "characterCount": 5511,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 40,
+      "visibleLabel": "ⓚ효종 40화",
+      "visibleNumber": 40,
+      "title": "",
+      "startLine": 4775,
+      "endLine": 4894,
+      "characterCount": 5334,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 41,
+      "visibleLabel": "ⓚ효종 41화",
+      "visibleNumber": 41,
+      "title": "",
+      "startLine": 4895,
+      "endLine": 4993,
+      "characterCount": 5082,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 42,
+      "visibleLabel": "ⓚ효종 42화",
+      "visibleNumber": 42,
+      "title": "마부대",
+      "startLine": 4994,
+      "endLine": 5148,
+      "characterCount": 6217,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 43,
+      "visibleLabel": "ⓚ효종 43화",
+      "visibleNumber": 43,
+      "title": "",
+      "startLine": 5149,
+      "endLine": 5306,
+      "characterCount": 5526,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 44,
+      "visibleLabel": "ⓚ효종 44화",
+      "visibleNumber": 44,
+      "title": "",
+      "startLine": 5307,
+      "endLine": 5461,
+      "characterCount": 5500,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 45,
+      "visibleLabel": "ⓚ효종 45화",
+      "visibleNumber": 45,
+      "title": "",
+      "startLine": 5462,
+      "endLine": 5584,
+      "characterCount": 5505,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 46,
+      "visibleLabel": "ⓚ효종 46화",
+      "visibleNumber": 46,
+      "title": "영원성 함락",
+      "startLine": 5585,
+      "endLine": 5711,
+      "characterCount": 5514,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 47,
+      "visibleLabel": "ⓚ효종 47화",
+      "visibleNumber": 47,
+      "title": "",
+      "startLine": 5712,
+      "endLine": 5837,
+      "characterCount": 5527,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 48,
+      "visibleLabel": "ⓚ효종 48화",
+      "visibleNumber": 48,
+      "title": "",
+      "startLine": 5838,
+      "endLine": 5986,
+      "characterCount": 5548,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 49,
+      "visibleLabel": "ⓚ효종 49화",
+      "visibleNumber": 49,
+      "title": "",
+      "startLine": 5987,
+      "endLine": 6116,
+      "characterCount": 5527,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 50,
+      "visibleLabel": "ⓚ효종 50화",
+      "visibleNumber": 50,
+      "title": "",
+      "startLine": 6117,
+      "endLine": 6230,
+      "characterCount": 5539,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 51,
+      "visibleLabel": "ⓚ효종 51화",
+      "visibleNumber": 51,
+      "title": "새로운 시작",
+      "startLine": 6231,
+      "endLine": 6364,
+      "characterCount": 5528,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 52,
+      "visibleLabel": "ⓚ효종 52화",
+      "visibleNumber": 52,
+      "title": "",
+      "startLine": 6365,
+      "endLine": 6487,
+      "characterCount": 5639,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 53,
+      "visibleLabel": "ⓚ효종 53화",
+      "visibleNumber": 53,
+      "title": "",
+      "startLine": 6488,
+      "endLine": 6580,
+      "characterCount": 5517,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 54,
+      "visibleLabel": "ⓚ효종 54화",
+      "visibleNumber": 54,
+      "title": "",
+      "startLine": 6581,
+      "endLine": 6710,
+      "characterCount": 5622,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 55,
+      "visibleLabel": "ⓚ효종 55화",
+      "visibleNumber": 55,
+      "title": "산해관 전투",
+      "startLine": 6711,
+      "endLine": 6823,
+      "characterCount": 5550,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 56,
+      "visibleLabel": "ⓚ효종 56화",
+      "visibleNumber": 56,
+      "title": "",
+      "startLine": 6824,
+      "endLine": 6967,
+      "characterCount": 5495,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 57,
+      "visibleLabel": "ⓚ효종 57화",
+      "visibleNumber": 57,
+      "title": "",
+      "startLine": 6968,
+      "endLine": 7115,
+      "characterCount": 5493,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 58,
+      "visibleLabel": "ⓚ효종 58화",
+      "visibleNumber": 58,
+      "title": "",
+      "startLine": 7116,
+      "endLine": 7249,
+      "characterCount": 5553,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 59,
+      "visibleLabel": "ⓚ효종 59화",
+      "visibleNumber": 59,
+      "title": "",
+      "startLine": 7250,
+      "endLine": 7377,
+      "characterCount": 5564,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 60,
+      "visibleLabel": "ⓚ효종 60화",
+      "visibleNumber": 60,
+      "title": "",
+      "startLine": 7378,
+      "endLine": 7520,
+      "characterCount": 5539,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 61,
+      "visibleLabel": "ⓚ효종 61화",
+      "visibleNumber": 61,
+      "title": "산동반도",
+      "startLine": 7521,
+      "endLine": 7666,
+      "characterCount": 5549,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 62,
+      "visibleLabel": "ⓚ효종 62화",
+      "visibleNumber": 62,
+      "title": "",
+      "startLine": 7667,
+      "endLine": 7774,
+      "characterCount": 5515,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 63,
+      "visibleLabel": "ⓚ효종 63화",
+      "visibleNumber": 63,
+      "title": "",
+      "startLine": 7775,
+      "endLine": 7907,
+      "characterCount": 5520,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 64,
+      "visibleLabel": "ⓚ효종 64화",
+      "visibleNumber": 64,
+      "title": "",
+      "startLine": 7908,
+      "endLine": 8046,
+      "characterCount": 5512,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 65,
+      "visibleLabel": "ⓚ효종 65화",
+      "visibleNumber": 65,
+      "title": "",
+      "startLine": 8047,
+      "endLine": 8190,
+      "characterCount": 5522,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 66,
+      "visibleLabel": "ⓚ효종 66화",
+      "visibleNumber": 66,
+      "title": "흑치영",
+      "startLine": 8191,
+      "endLine": 8346,
+      "characterCount": 5538,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 67,
+      "visibleLabel": "ⓚ효종 67화",
+      "visibleNumber": 67,
+      "title": "",
+      "startLine": 8347,
+      "endLine": 8469,
+      "characterCount": 5622,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 68,
+      "visibleLabel": "ⓚ효종 68화",
+      "visibleNumber": 68,
+      "title": "",
+      "startLine": 8470,
+      "endLine": 8616,
+      "characterCount": 5517,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 69,
+      "visibleLabel": "ⓚ효종 69화",
+      "visibleNumber": 69,
+      "title": "",
+      "startLine": 8617,
+      "endLine": 8774,
+      "characterCount": 5513,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 70,
+      "visibleLabel": "ⓚ효종 70화",
+      "visibleNumber": 70,
+      "title": "암투 1",
+      "startLine": 8775,
+      "endLine": 8893,
+      "characterCount": 5550,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 71,
+      "visibleLabel": "ⓚ효종 71화",
+      "visibleNumber": 71,
+      "title": "",
+      "startLine": 8894,
+      "endLine": 9031,
+      "characterCount": 5519,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 72,
+      "visibleLabel": "ⓚ효종 72화",
+      "visibleNumber": 72,
+      "title": "",
+      "startLine": 9032,
+      "endLine": 9140,
+      "characterCount": 5507,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 73,
+      "visibleLabel": "ⓚ효종 73화",
+      "visibleNumber": 73,
+      "title": "",
+      "startLine": 9141,
+      "endLine": 9275,
+      "characterCount": 5500,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 74,
+      "visibleLabel": "ⓚ효종 74화",
+      "visibleNumber": 74,
+      "title": "",
+      "startLine": 9276,
+      "endLine": 9429,
+      "characterCount": 5499,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 75,
+      "visibleLabel": "ⓚ효종 75화",
+      "visibleNumber": 75,
+      "title": "암투 2",
+      "startLine": 9430,
+      "endLine": 9580,
+      "characterCount": 5538,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 76,
+      "visibleLabel": "ⓚ효종 76화",
+      "visibleNumber": 76,
+      "title": "",
+      "startLine": 9581,
+      "endLine": 9738,
+      "characterCount": 5528,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 77,
+      "visibleLabel": "ⓚ효종 77화",
+      "visibleNumber": 77,
+      "title": "",
+      "startLine": 9739,
+      "endLine": 9886,
+      "characterCount": 5776,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 78,
+      "visibleLabel": "ⓚ효종 78화",
+      "visibleNumber": 78,
+      "title": "",
+      "startLine": 9887,
+      "endLine": 10010,
+      "characterCount": 5679,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 79,
+      "visibleLabel": "ⓚ효종 79화",
+      "visibleNumber": 79,
+      "title": "담뱃잎",
+      "startLine": 10011,
+      "endLine": 10135,
+      "characterCount": 5174,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 80,
+      "visibleLabel": "ⓚ효종 80화",
+      "visibleNumber": 80,
+      "title": "",
+      "startLine": 10136,
+      "endLine": 10291,
+      "characterCount": 6329,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 81,
+      "visibleLabel": "ⓚ효종 81화",
+      "visibleNumber": 81,
+      "title": "",
+      "startLine": 10292,
+      "endLine": 10446,
+      "characterCount": 6005,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 82,
+      "visibleLabel": "ⓚ효종 82화",
+      "visibleNumber": 82,
+      "title": "일시 귀국",
+      "startLine": 10447,
+      "endLine": 10572,
+      "characterCount": 4924,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 83,
+      "visibleLabel": "ⓚ효종 83화",
+      "visibleNumber": 83,
+      "title": "",
+      "startLine": 10573,
+      "endLine": 10686,
+      "characterCount": 5197,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 84,
+      "visibleLabel": "ⓚ효종 84화",
+      "visibleNumber": 84,
+      "title": "",
+      "startLine": 10687,
+      "endLine": 10791,
+      "characterCount": 5139,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 85,
+      "visibleLabel": "ⓚ효종 85화",
+      "visibleNumber": 85,
+      "title": "",
+      "startLine": 10792,
+      "endLine": 10916,
+      "characterCount": 5354,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 86,
+      "visibleLabel": "ⓚ효종 86화",
+      "visibleNumber": 86,
+      "title": "",
+      "startLine": 10917,
+      "endLine": 11033,
+      "characterCount": 5086,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 87,
+      "visibleLabel": "ⓚ효종 87화",
+      "visibleNumber": 87,
+      "title": "",
+      "startLine": 11034,
+      "endLine": 11161,
+      "characterCount": 5102,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 88,
+      "visibleLabel": "ⓚ효종 88화",
+      "visibleNumber": 88,
+      "title": "",
+      "startLine": 11162,
+      "endLine": 11255,
+      "characterCount": 5091,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 89,
+      "visibleLabel": "ⓚ효종 89화",
+      "visibleNumber": 89,
+      "title": "불타는 자금성",
+      "startLine": 11256,
+      "endLine": 11411,
+      "characterCount": 7127,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 90,
+      "visibleLabel": "ⓚ효종 90화",
+      "visibleNumber": 90,
+      "title": "",
+      "startLine": 11412,
+      "endLine": 11535,
+      "characterCount": 5543,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 91,
+      "visibleLabel": "ⓚ효종 91화",
+      "visibleNumber": 91,
+      "title": "",
+      "startLine": 11536,
+      "endLine": 11669,
+      "characterCount": 5522,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 92,
+      "visibleLabel": "ⓚ효종 92화",
+      "visibleNumber": 92,
+      "title": "",
+      "startLine": 11670,
+      "endLine": 11795,
+      "characterCount": 5638,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 93,
+      "visibleLabel": "ⓚ효종 93화",
+      "visibleNumber": 93,
+      "title": "북경 입성",
+      "startLine": 11796,
+      "endLine": 11941,
+      "characterCount": 5411,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 94,
+      "visibleLabel": "ⓚ효종 94화",
+      "visibleNumber": 94,
+      "title": "",
+      "startLine": 11942,
+      "endLine": 12078,
+      "characterCount": 5496,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 95,
+      "visibleLabel": "ⓚ효종 95화",
+      "visibleNumber": 95,
+      "title": "",
+      "startLine": 12079,
+      "endLine": 12189,
+      "characterCount": 5527,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 96,
+      "visibleLabel": "ⓚ효종 96화",
+      "visibleNumber": 96,
+      "title": "",
+      "startLine": 12190,
+      "endLine": 12300,
+      "characterCount": 5523,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 97,
+      "visibleLabel": "ⓚ효종 97화",
+      "visibleNumber": 97,
+      "title": "",
+      "startLine": 12301,
+      "endLine": 12429,
+      "characterCount": 5564,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 98,
+      "visibleLabel": "ⓚ효종 98화",
+      "visibleNumber": 98,
+      "title": "",
+      "startLine": 12430,
+      "endLine": 12578,
+      "characterCount": 5534,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 99,
+      "visibleLabel": "ⓚ효종 99화",
+      "visibleNumber": 99,
+      "title": "",
+      "startLine": 12579,
+      "endLine": 12707,
+      "characterCount": 5513,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 100,
+      "visibleLabel": "ⓚ효종 100화",
+      "visibleNumber": 100,
+      "title": "일그러지는 부자 관계",
+      "startLine": 12708,
+      "endLine": 12819,
+      "characterCount": 5547,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 101,
+      "visibleLabel": "ⓚ효종 101화",
+      "visibleNumber": 101,
+      "title": "",
+      "startLine": 12820,
+      "endLine": 12950,
+      "characterCount": 5499,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 102,
+      "visibleLabel": "ⓚ효종 102화",
+      "visibleNumber": 102,
+      "title": "",
+      "startLine": 12951,
+      "endLine": 13082,
+      "characterCount": 5955,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 103,
+      "visibleLabel": "ⓚ효종 103화",
+      "visibleNumber": 103,
+      "title": "",
+      "startLine": 13083,
+      "endLine": 13196,
+      "characterCount": 5375,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 104,
+      "visibleLabel": "ⓚ효종 104화",
+      "visibleNumber": 104,
+      "title": "",
+      "startLine": 13197,
+      "endLine": 13333,
+      "characterCount": 5697,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 105,
+      "visibleLabel": "ⓚ효종 105화",
+      "visibleNumber": 105,
+      "title": "로사리오",
+      "startLine": 13334,
+      "endLine": 13467,
+      "characterCount": 5107,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 106,
+      "visibleLabel": "ⓚ효종 106화",
+      "visibleNumber": 106,
+      "title": "",
+      "startLine": 13468,
+      "endLine": 13604,
+      "characterCount": 5568,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 107,
+      "visibleLabel": "ⓚ효종 107화",
+      "visibleNumber": 107,
+      "title": "하늘에서 떨어진 별",
+      "startLine": 13605,
+      "endLine": 13746,
+      "characterCount": 5517,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 108,
+      "visibleLabel": "ⓚ효종 108화",
+      "visibleNumber": 108,
+      "title": "",
+      "startLine": 13747,
+      "endLine": 13873,
+      "characterCount": 5362,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 109,
+      "visibleLabel": "ⓚ효종 109화",
+      "visibleNumber": 109,
+      "title": "",
+      "startLine": 13874,
+      "endLine": 14014,
+      "characterCount": 5687,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 110,
+      "visibleLabel": "ⓚ효종 110화",
+      "visibleNumber": 110,
+      "title": "",
+      "startLine": 14015,
+      "endLine": 14141,
+      "characterCount": 5535,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 111,
+      "visibleLabel": "ⓚ효종 111화",
+      "visibleNumber": 111,
+      "title": "",
+      "startLine": 14142,
+      "endLine": 14299,
+      "characterCount": 6317,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 112,
+      "visibleLabel": "ⓚ효종 112화",
+      "visibleNumber": 112,
+      "title": "뒤통수치기",
+      "startLine": 14300,
+      "endLine": 14412,
+      "characterCount": 5031,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 113,
+      "visibleLabel": "ⓚ효종 113화",
+      "visibleNumber": 113,
+      "title": "",
+      "startLine": 14413,
+      "endLine": 14526,
+      "characterCount": 5060,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 114,
+      "visibleLabel": "ⓚ효종 114화",
+      "visibleNumber": 114,
+      "title": "",
+      "startLine": 14527,
+      "endLine": 14650,
+      "characterCount": 5257,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 115,
+      "visibleLabel": "ⓚ효종 115화",
+      "visibleNumber": 115,
+      "title": "",
+      "startLine": 14651,
+      "endLine": 14789,
+      "characterCount": 5160,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 116,
+      "visibleLabel": "ⓚ효종 116화",
+      "visibleNumber": 116,
+      "title": "",
+      "startLine": 14790,
+      "endLine": 14926,
+      "characterCount": 5229,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 117,
+      "visibleLabel": "ⓚ효종 117화",
+      "visibleNumber": 117,
+      "title": "",
+      "startLine": 14927,
+      "endLine": 15044,
+      "characterCount": 5565,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 118,
+      "visibleLabel": "ⓚ효종 118화",
+      "visibleNumber": 118,
+      "title": "한양",
+      "startLine": 15045,
+      "endLine": 15192,
+      "characterCount": 6527,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 119,
+      "visibleLabel": "ⓚ효종 119화",
+      "visibleNumber": 119,
+      "title": "",
+      "startLine": 15193,
+      "endLine": 15302,
+      "characterCount": 5510,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 120,
+      "visibleLabel": "ⓚ효종 120화",
+      "visibleNumber": 120,
+      "title": "",
+      "startLine": 15303,
+      "endLine": 15421,
+      "characterCount": 5495,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 121,
+      "visibleLabel": "ⓚ효종 121화",
+      "visibleNumber": 121,
+      "title": "조태징",
+      "startLine": 15422,
+      "endLine": 15553,
+      "characterCount": 5513,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 122,
+      "visibleLabel": "ⓚ효종 122화",
+      "visibleNumber": 122,
+      "title": "",
+      "startLine": 15554,
+      "endLine": 15684,
+      "characterCount": 5539,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 123,
+      "visibleLabel": "ⓚ효종 123화",
+      "visibleNumber": 123,
+      "title": "",
+      "startLine": 15685,
+      "endLine": 15803,
+      "characterCount": 5546,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 124,
+      "visibleLabel": "ⓚ효종 124화",
+      "visibleNumber": 124,
+      "title": "",
+      "startLine": 15804,
+      "endLine": 15921,
+      "characterCount": 5076,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 125,
+      "visibleLabel": "ⓚ효종 125화",
+      "visibleNumber": 125,
+      "title": "",
+      "startLine": 15922,
+      "endLine": 16028,
+      "characterCount": 5105,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 126,
+      "visibleLabel": "ⓚ효종 126화",
+      "visibleNumber": 126,
+      "title": "폭풍전야",
+      "startLine": 16029,
+      "endLine": 16150,
+      "characterCount": 5805,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 127,
+      "visibleLabel": "ⓚ효종 127화",
+      "visibleNumber": 127,
+      "title": "",
+      "startLine": 16151,
+      "endLine": 16289,
+      "characterCount": 6252,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 128,
+      "visibleLabel": "ⓚ효종 128화",
+      "visibleNumber": 128,
+      "title": "",
+      "startLine": 16290,
+      "endLine": 16395,
+      "characterCount": 5497,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 129,
+      "visibleLabel": "ⓚ효종 129화",
+      "visibleNumber": 129,
+      "title": "",
+      "startLine": 16396,
+      "endLine": 16522,
+      "characterCount": 5540,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 130,
+      "visibleLabel": "ⓚ효종 130화",
+      "visibleNumber": 130,
+      "title": "",
+      "startLine": 16523,
+      "endLine": 16673,
+      "characterCount": 5682,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 131,
+      "visibleLabel": "ⓚ효종 131화",
+      "visibleNumber": 131,
+      "title": "피로 물든 밤 1",
+      "startLine": 16674,
+      "endLine": 16832,
+      "characterCount": 5405,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 132,
+      "visibleLabel": "ⓚ효종 132화",
+      "visibleNumber": 132,
+      "title": "",
+      "startLine": 16833,
+      "endLine": 16980,
+      "characterCount": 5449,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 133,
+      "visibleLabel": "ⓚ효종 133화",
+      "visibleNumber": 133,
+      "title": "",
+      "startLine": 16981,
+      "endLine": 17129,
+      "characterCount": 5309,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 134,
+      "visibleLabel": "ⓚ효종 134화",
+      "visibleNumber": 134,
+      "title": "",
+      "startLine": 17130,
+      "endLine": 17245,
+      "characterCount": 5092,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 135,
+      "visibleLabel": "ⓚ효종 135화",
+      "visibleNumber": 135,
+      "title": "피로 물든 밤 2",
+      "startLine": 17246,
+      "endLine": 17403,
+      "characterCount": 6139,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 136,
+      "visibleLabel": "ⓚ효종 136화",
+      "visibleNumber": 136,
+      "title": "",
+      "startLine": 17404,
+      "endLine": 17537,
+      "characterCount": 5502,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 137,
+      "visibleLabel": "ⓚ효종 137화",
+      "visibleNumber": 137,
+      "title": "",
+      "startLine": 17538,
+      "endLine": 17665,
+      "characterCount": 5528,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 138,
+      "visibleLabel": "ⓚ효종 138화",
+      "visibleNumber": 138,
+      "title": "",
+      "startLine": 17666,
+      "endLine": 17816,
+      "characterCount": 5519,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 139,
+      "visibleLabel": "ⓚ효종 139화",
+      "visibleNumber": 139,
+      "title": "국상 그리고 즉위",
+      "startLine": 17817,
+      "endLine": 17939,
+      "characterCount": 5535,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 140,
+      "visibleLabel": "ⓚ효종 140화",
+      "visibleNumber": 140,
+      "title": "",
+      "startLine": 17940,
+      "endLine": 18064,
+      "characterCount": 5523,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 141,
+      "visibleLabel": "ⓚ효종 141화",
+      "visibleNumber": 141,
+      "title": "",
+      "startLine": 18065,
+      "endLine": 18178,
+      "characterCount": 5497,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 142,
+      "visibleLabel": "ⓚ효종 142화",
+      "visibleNumber": 142,
+      "title": "",
+      "startLine": 18179,
+      "endLine": 18311,
+      "characterCount": 5525,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 143,
+      "visibleLabel": "ⓚ효종 143화",
+      "visibleNumber": 143,
+      "title": "",
+      "startLine": 18312,
+      "endLine": 18435,
+      "characterCount": 5524,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 144,
+      "visibleLabel": "ⓚ효종 144화",
+      "visibleNumber": 144,
+      "title": "",
+      "startLine": 18436,
+      "endLine": 18551,
+      "characterCount": 5351,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 145,
+      "visibleLabel": "ⓚ효종 145화",
+      "visibleNumber": 145,
+      "title": "군제 개편",
+      "startLine": 18552,
+      "endLine": 18685,
+      "characterCount": 5712,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 146,
+      "visibleLabel": "ⓚ효종 146화",
+      "visibleNumber": 146,
+      "title": "",
+      "startLine": 18686,
+      "endLine": 18825,
+      "characterCount": 5566,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 147,
+      "visibleLabel": "ⓚ효종 147화",
+      "visibleNumber": 147,
+      "title": "",
+      "startLine": 18826,
+      "endLine": 18967,
+      "characterCount": 5569,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 148,
+      "visibleLabel": "ⓚ효종 148화",
+      "visibleNumber": 148,
+      "title": "",
+      "startLine": 18968,
+      "endLine": 19133,
+      "characterCount": 5516,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 149,
+      "visibleLabel": "ⓚ효종 149화",
+      "visibleNumber": 149,
+      "title": "",
+      "startLine": 19134,
+      "endLine": 19254,
+      "characterCount": 5507,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 150,
+      "visibleLabel": "ⓚ효종 150화",
+      "visibleNumber": 150,
+      "title": "대동법大同法",
+      "startLine": 19255,
+      "endLine": 19359,
+      "characterCount": 5517,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 151,
+      "visibleLabel": "ⓚ효종 151화",
+      "visibleNumber": 151,
+      "title": "",
+      "startLine": 19360,
+      "endLine": 19479,
+      "characterCount": 5503,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 152,
+      "visibleLabel": "ⓚ효종 152화",
+      "visibleNumber": 152,
+      "title": "",
+      "startLine": 19480,
+      "endLine": 19603,
+      "characterCount": 5517,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 153,
+      "visibleLabel": "ⓚ효종 153화",
+      "visibleNumber": 153,
+      "title": "",
+      "startLine": 19604,
+      "endLine": 19717,
+      "characterCount": 5507,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 154,
+      "visibleLabel": "ⓚ효종 154화",
+      "visibleNumber": 154,
+      "title": "하삼도 반란",
+      "startLine": 19718,
+      "endLine": 19861,
+      "characterCount": 5627,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 155,
+      "visibleLabel": "ⓚ효종 155화",
+      "visibleNumber": 155,
+      "title": "",
+      "startLine": 19862,
+      "endLine": 19987,
+      "characterCount": 5476,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 156,
+      "visibleLabel": "ⓚ효종 156화",
+      "visibleNumber": 156,
+      "title": "",
+      "startLine": 19988,
+      "endLine": 20111,
+      "characterCount": 5559,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 157,
+      "visibleLabel": "ⓚ효종 157화",
+      "visibleNumber": 157,
+      "title": "",
+      "startLine": 20112,
+      "endLine": 20218,
+      "characterCount": 5533,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 158,
+      "visibleLabel": "ⓚ효종 158화",
+      "visibleNumber": 158,
+      "title": "",
+      "startLine": 20219,
+      "endLine": 20351,
+      "characterCount": 5499,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 159,
+      "visibleLabel": "ⓚ효종 159화",
+      "visibleNumber": 159,
+      "title": "",
+      "startLine": 20352,
+      "endLine": 20491,
+      "characterCount": 5498,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 160,
+      "visibleLabel": "ⓚ효종 160화",
+      "visibleNumber": 160,
+      "title": "",
+      "startLine": 20492,
+      "endLine": 20629,
+      "characterCount": 6028,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 161,
+      "visibleLabel": "ⓚ효종 161화",
+      "visibleNumber": 161,
+      "title": "내부 정리",
+      "startLine": 20630,
+      "endLine": 20765,
+      "characterCount": 5012,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 162,
+      "visibleLabel": "ⓚ효종 162화",
+      "visibleNumber": 162,
+      "title": "",
+      "startLine": 20766,
+      "endLine": 20891,
+      "characterCount": 5511,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 163,
+      "visibleLabel": "ⓚ효종 163화",
+      "visibleNumber": 163,
+      "title": "",
+      "startLine": 20892,
+      "endLine": 21030,
+      "characterCount": 5527,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 164,
+      "visibleLabel": "ⓚ효종 164화",
+      "visibleNumber": 164,
+      "title": "",
+      "startLine": 21031,
+      "endLine": 21137,
+      "characterCount": 5519,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 165,
+      "visibleLabel": "ⓚ효종 165화",
+      "visibleNumber": 165,
+      "title": "",
+      "startLine": 21138,
+      "endLine": 21255,
+      "characterCount": 5545,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 166,
+      "visibleLabel": "ⓚ효종 166화",
+      "visibleNumber": 166,
+      "title": "밀수 1",
+      "startLine": 21256,
+      "endLine": 21371,
+      "characterCount": 5523,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 167,
+      "visibleLabel": "ⓚ효종 167화",
+      "visibleNumber": 167,
+      "title": "",
+      "startLine": 21372,
+      "endLine": 21490,
+      "characterCount": 5517,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 168,
+      "visibleLabel": "ⓚ효종 168화",
+      "visibleNumber": 168,
+      "title": "",
+      "startLine": 21491,
+      "endLine": 21620,
+      "characterCount": 5544,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 169,
+      "visibleLabel": "ⓚ효종 169화",
+      "visibleNumber": 169,
+      "title": "",
+      "startLine": 21621,
+      "endLine": 21738,
+      "characterCount": 5532,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 170,
+      "visibleLabel": "ⓚ효종 170화",
+      "visibleNumber": 170,
+      "title": "",
+      "startLine": 21739,
+      "endLine": 21832,
+      "characterCount": 5583,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 171,
+      "visibleLabel": "ⓚ효종 171화",
+      "visibleNumber": 171,
+      "title": "밀수 2",
+      "startLine": 21833,
+      "endLine": 21961,
+      "characterCount": 5560,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 172,
+      "visibleLabel": "ⓚ효종 172화",
+      "visibleNumber": 172,
+      "title": "",
+      "startLine": 21962,
+      "endLine": 22113,
+      "characterCount": 5572,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 173,
+      "visibleLabel": "ⓚ효종 173화",
+      "visibleNumber": 173,
+      "title": "",
+      "startLine": 22114,
+      "endLine": 22275,
+      "characterCount": 5437,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 174,
+      "visibleLabel": "ⓚ효종 174화",
+      "visibleNumber": 174,
+      "title": "",
+      "startLine": 22276,
+      "endLine": 22433,
+      "characterCount": 5828,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 175,
+      "visibleLabel": "ⓚ효종 175화",
+      "visibleNumber": 175,
+      "title": "대마도 정벌 (1)",
+      "startLine": 22434,
+      "endLine": 22545,
+      "characterCount": 5160,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 176,
+      "visibleLabel": "ⓚ효종 176화",
+      "visibleNumber": 176,
+      "title": "대마도 정벌對馬島 征伐 (2)",
+      "startLine": 22546,
+      "endLine": 22674,
+      "characterCount": 5609,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 177,
+      "visibleLabel": "ⓚ효종 177화",
+      "visibleNumber": 177,
+      "title": "",
+      "startLine": 22675,
+      "endLine": 22791,
+      "characterCount": 5518,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 178,
+      "visibleLabel": "ⓚ효종 178화",
+      "visibleNumber": 178,
+      "title": "",
+      "startLine": 22792,
+      "endLine": 22922,
+      "characterCount": 5561,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 179,
+      "visibleLabel": "ⓚ효종 179화",
+      "visibleNumber": 179,
+      "title": "",
+      "startLine": 22923,
+      "endLine": 23026,
+      "characterCount": 5066,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 180,
+      "visibleLabel": "ⓚ효종 180화",
+      "visibleNumber": 180,
+      "title": "상륙",
+      "startLine": 23027,
+      "endLine": 23158,
+      "characterCount": 6004,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 181,
+      "visibleLabel": "ⓚ효종 181화",
+      "visibleNumber": 181,
+      "title": "",
+      "startLine": 23159,
+      "endLine": 23299,
+      "characterCount": 5512,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 182,
+      "visibleLabel": "ⓚ효종 182화",
+      "visibleNumber": 182,
+      "title": "",
+      "startLine": 23300,
+      "endLine": 23432,
+      "characterCount": 5446,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 183,
+      "visibleLabel": "ⓚ효종 183화",
+      "visibleNumber": 183,
+      "title": "",
+      "startLine": 23433,
+      "endLine": 23567,
+      "characterCount": 5698,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 184,
+      "visibleLabel": "ⓚ효종 184화",
+      "visibleNumber": 184,
+      "title": "",
+      "startLine": 23568,
+      "endLine": 23688,
+      "characterCount": 5538,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 185,
+      "visibleLabel": "ⓚ효종 185화",
+      "visibleNumber": 185,
+      "title": "",
+      "startLine": 23689,
+      "endLine": 23837,
+      "characterCount": 5828,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 186,
+      "visibleLabel": "ⓚ효종 186화",
+      "visibleNumber": 186,
+      "title": "협상",
+      "startLine": 23838,
+      "endLine": 23987,
+      "characterCount": 5778,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 187,
+      "visibleLabel": "ⓚ효종 187화",
+      "visibleNumber": 187,
+      "title": "",
+      "startLine": 23988,
+      "endLine": 24105,
+      "characterCount": 5135,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 188,
+      "visibleLabel": "ⓚ효종 188화",
+      "visibleNumber": 188,
+      "title": "",
+      "startLine": 24106,
+      "endLine": 24225,
+      "characterCount": 5315,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 189,
+      "visibleLabel": "ⓚ효종 189화",
+      "visibleNumber": 189,
+      "title": "철은 곧 국력이다",
+      "startLine": 24226,
+      "endLine": 24342,
+      "characterCount": 5517,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 190,
+      "visibleLabel": "ⓚ효종 190화",
+      "visibleNumber": 190,
+      "title": "",
+      "startLine": 24343,
+      "endLine": 24457,
+      "characterCount": 5535,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 191,
+      "visibleLabel": "ⓚ효종 191화",
+      "visibleNumber": 191,
+      "title": "",
+      "startLine": 24458,
+      "endLine": 24571,
+      "characterCount": 5519,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 192,
+      "visibleLabel": "ⓚ효종 192화",
+      "visibleNumber": 192,
+      "title": "",
+      "startLine": 24572,
+      "endLine": 24701,
+      "characterCount": 5508,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 193,
+      "visibleLabel": "ⓚ효종 193화",
+      "visibleNumber": 193,
+      "title": "",
+      "startLine": 24702,
+      "endLine": 24836,
+      "characterCount": 5536,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 194,
+      "visibleLabel": "ⓚ효종 194화",
+      "visibleNumber": 194,
+      "title": "대륙의 혼란",
+      "startLine": 24837,
+      "endLine": 24988,
+      "characterCount": 5527,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 195,
+      "visibleLabel": "ⓚ효종 195화",
+      "visibleNumber": 195,
+      "title": "",
+      "startLine": 24989,
+      "endLine": 25134,
+      "characterCount": 5937,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 196,
+      "visibleLabel": "ⓚ효종 196화",
+      "visibleNumber": 196,
+      "title": "",
+      "startLine": 25135,
+      "endLine": 25257,
+      "characterCount": 5154,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 197,
+      "visibleLabel": "ⓚ효종 197화",
+      "visibleNumber": 197,
+      "title": "",
+      "startLine": 25258,
+      "endLine": 25381,
+      "characterCount": 5866,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 198,
+      "visibleLabel": "ⓚ효종 198화",
+      "visibleNumber": 198,
+      "title": "",
+      "startLine": 25382,
+      "endLine": 25520,
+      "characterCount": 5218,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 199,
+      "visibleLabel": "ⓚ효종 199화",
+      "visibleNumber": 199,
+      "title": "",
+      "startLine": 25521,
+      "endLine": 25652,
+      "characterCount": 5519,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 200,
+      "visibleLabel": "ⓚ효종 200화",
+      "visibleNumber": 200,
+      "title": "",
+      "startLine": 25653,
+      "endLine": 25823,
+      "characterCount": 6130,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 201,
+      "visibleLabel": "ⓚ효종 201화",
+      "visibleNumber": 201,
+      "title": "동북 진출 1",
+      "startLine": 25824,
+      "endLine": 25930,
+      "characterCount": 5108,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 202,
+      "visibleLabel": "ⓚ효종 202화",
+      "visibleNumber": 202,
+      "title": "",
+      "startLine": 25931,
+      "endLine": 26052,
+      "characterCount": 5396,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 203,
+      "visibleLabel": "ⓚ효종 203화",
+      "visibleNumber": 203,
+      "title": "",
+      "startLine": 26053,
+      "endLine": 26198,
+      "characterCount": 5557,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 204,
+      "visibleLabel": "ⓚ효종 204화",
+      "visibleNumber": 204,
+      "title": "",
+      "startLine": 26199,
+      "endLine": 26332,
+      "characterCount": 5530,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 205,
+      "visibleLabel": "ⓚ효종 205화",
+      "visibleNumber": 205,
+      "title": "",
+      "startLine": 26333,
+      "endLine": 26457,
+      "characterCount": 5509,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 206,
+      "visibleLabel": "ⓚ효종 206화",
+      "visibleNumber": 206,
+      "title": "",
+      "startLine": 26458,
+      "endLine": 26579,
+      "characterCount": 5499,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 207,
+      "visibleLabel": "ⓚ효종 207화",
+      "visibleNumber": 207,
+      "title": "",
+      "startLine": 26580,
+      "endLine": 26712,
+      "characterCount": 5558,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 208,
+      "visibleLabel": "ⓚ효종 208화",
+      "visibleNumber": 208,
+      "title": "",
+      "startLine": 26713,
+      "endLine": 26854,
+      "characterCount": 5534,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 209,
+      "visibleLabel": "ⓚ효종 209화",
+      "visibleNumber": 209,
+      "title": "",
+      "startLine": 26855,
+      "endLine": 26996,
+      "characterCount": 5500,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 210,
+      "visibleLabel": "ⓚ효종 210화",
+      "visibleNumber": 210,
+      "title": "",
+      "startLine": 26997,
+      "endLine": 27135,
+      "characterCount": 5582,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 211,
+      "visibleLabel": "ⓚ효종 211화",
+      "visibleNumber": 211,
+      "title": "",
+      "startLine": 27136,
+      "endLine": 27269,
+      "characterCount": 5521,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 212,
+      "visibleLabel": "ⓚ효종 212화",
+      "visibleNumber": 212,
+      "title": "",
+      "startLine": 27270,
+      "endLine": 27383,
+      "characterCount": 5522,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 213,
+      "visibleLabel": "ⓚ효종 213화",
+      "visibleNumber": 213,
+      "title": "",
+      "startLine": 27384,
+      "endLine": 27492,
+      "characterCount": 5368,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 214,
+      "visibleLabel": "ⓚ효종 214화",
+      "visibleNumber": 214,
+      "title": "",
+      "startLine": 27493,
+      "endLine": 27615,
+      "characterCount": 5742,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 215,
+      "visibleLabel": "ⓚ효종 215화",
+      "visibleNumber": 215,
+      "title": "",
+      "startLine": 27616,
+      "endLine": 27746,
+      "characterCount": 5536,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 216,
+      "visibleLabel": "ⓚ효종 216화",
+      "visibleNumber": 216,
+      "title": "",
+      "startLine": 27747,
+      "endLine": 27857,
+      "characterCount": 5500,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 217,
+      "visibleLabel": "ⓚ효종 217화",
+      "visibleNumber": 217,
+      "title": "",
+      "startLine": 27858,
+      "endLine": 28001,
+      "characterCount": 5530,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 218,
+      "visibleLabel": "ⓚ효종 218화",
+      "visibleNumber": 218,
+      "title": "",
+      "startLine": 28002,
+      "endLine": 28116,
+      "characterCount": 5494,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 219,
+      "visibleLabel": "ⓚ효종 219화",
+      "visibleNumber": 219,
+      "title": "",
+      "startLine": 28117,
+      "endLine": 28232,
+      "characterCount": 5530,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 220,
+      "visibleLabel": "ⓚ효종 220화",
+      "visibleNumber": 220,
+      "title": "",
+      "startLine": 28233,
+      "endLine": 28349,
+      "characterCount": 5505,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 221,
+      "visibleLabel": "ⓚ효종 221화",
+      "visibleNumber": 221,
+      "title": "",
+      "startLine": 28350,
+      "endLine": 28469,
+      "characterCount": 5547,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 222,
+      "visibleLabel": "ⓚ효종 222화",
+      "visibleNumber": 222,
+      "title": "",
+      "startLine": 28470,
+      "endLine": 28594,
+      "characterCount": 5575,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 223,
+      "visibleLabel": "ⓚ효종 223화",
+      "visibleNumber": 223,
+      "title": "",
+      "startLine": 28595,
+      "endLine": 28714,
+      "characterCount": 5183,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 224,
+      "visibleLabel": "ⓚ효종 224화",
+      "visibleNumber": 224,
+      "title": "",
+      "startLine": 28715,
+      "endLine": 28850,
+      "characterCount": 5861,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 225,
+      "visibleLabel": "ⓚ효종 225화",
+      "visibleNumber": 225,
+      "title": "",
+      "startLine": 28851,
+      "endLine": 28961,
+      "characterCount": 5495,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 226,
+      "visibleLabel": "ⓚ효종 226화",
+      "visibleNumber": 226,
+      "title": "",
+      "startLine": 28962,
+      "endLine": 29084,
+      "characterCount": 5498,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 227,
+      "visibleLabel": "ⓚ효종 227화",
+      "visibleNumber": 227,
+      "title": "",
+      "startLine": 29085,
+      "endLine": 29204,
+      "characterCount": 5563,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 228,
+      "visibleLabel": "ⓚ효종 228화",
+      "visibleNumber": 228,
+      "title": "",
+      "startLine": 29205,
+      "endLine": 29319,
+      "characterCount": 5530,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 229,
+      "visibleLabel": "ⓚ효종 229화",
+      "visibleNumber": 229,
+      "title": "",
+      "startLine": 29320,
+      "endLine": 29448,
+      "characterCount": 5498,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 230,
+      "visibleLabel": "ⓚ효종 230화",
+      "visibleNumber": 230,
+      "title": "",
+      "startLine": 29449,
+      "endLine": 29563,
+      "characterCount": 5508,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 231,
+      "visibleLabel": "ⓚ효종 231화",
+      "visibleNumber": 231,
+      "title": "심양공략",
+      "startLine": 29564,
+      "endLine": 29706,
+      "characterCount": 5555,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 232,
+      "visibleLabel": "ⓚ효종 232화",
+      "visibleNumber": 232,
+      "title": "",
+      "startLine": 29707,
+      "endLine": 29848,
+      "characterCount": 5563,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 233,
+      "visibleLabel": "ⓚ효종 233화",
+      "visibleNumber": 233,
+      "title": "",
+      "startLine": 29849,
+      "endLine": 29972,
+      "characterCount": 5507,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 234,
+      "visibleLabel": "ⓚ효종 234화",
+      "visibleNumber": 234,
+      "title": "",
+      "startLine": 29973,
+      "endLine": 30119,
+      "characterCount": 5513,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 235,
+      "visibleLabel": "ⓚ효종 235화",
+      "visibleNumber": 235,
+      "title": "2차 심양 전투 1",
+      "startLine": 30120,
+      "endLine": 30224,
+      "characterCount": 5551,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 236,
+      "visibleLabel": "ⓚ효종 236화",
+      "visibleNumber": 236,
+      "title": "",
+      "startLine": 30225,
+      "endLine": 30331,
+      "characterCount": 5610,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 237,
+      "visibleLabel": "ⓚ효종 237화",
+      "visibleNumber": 237,
+      "title": "",
+      "startLine": 30332,
+      "endLine": 30466,
+      "characterCount": 5514,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 238,
+      "visibleLabel": "ⓚ효종 238화",
+      "visibleNumber": 238,
+      "title": "",
+      "startLine": 30467,
+      "endLine": 30573,
+      "characterCount": 5552,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 239,
+      "visibleLabel": "ⓚ효종 239화",
+      "visibleNumber": 239,
+      "title": "",
+      "startLine": 30574,
+      "endLine": 30708,
+      "characterCount": 5510,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 240,
+      "visibleLabel": "ⓚ효종 240화",
+      "visibleNumber": 240,
+      "title": "",
+      "startLine": 30709,
+      "endLine": 30834,
+      "characterCount": 5507,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 241,
+      "visibleLabel": "ⓚ효종 241화",
+      "visibleNumber": 241,
+      "title": "2차 심양 전투 2",
+      "startLine": 30835,
+      "endLine": 30972,
+      "characterCount": 5503,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 242,
+      "visibleLabel": "ⓚ효종 242화",
+      "visibleNumber": 242,
+      "title": "",
+      "startLine": 30973,
+      "endLine": 31109,
+      "characterCount": 5577,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 243,
+      "visibleLabel": "ⓚ효종 243화",
+      "visibleNumber": 243,
+      "title": "",
+      "startLine": 31110,
+      "endLine": 31232,
+      "characterCount": 5534,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 244,
+      "visibleLabel": "ⓚ효종 244화",
+      "visibleNumber": 244,
+      "title": "",
+      "startLine": 31233,
+      "endLine": 31366,
+      "characterCount": 5503,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 245,
+      "visibleLabel": "ⓚ효종 245화",
+      "visibleNumber": 245,
+      "title": "철군",
+      "startLine": 31367,
+      "endLine": 31502,
+      "characterCount": 5627,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 246,
+      "visibleLabel": "ⓚ효종 246화",
+      "visibleNumber": 246,
+      "title": "",
+      "startLine": 31503,
+      "endLine": 31639,
+      "characterCount": 5506,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 247,
+      "visibleLabel": "ⓚ효종 247화",
+      "visibleNumber": 247,
+      "title": "",
+      "startLine": 31640,
+      "endLine": 31780,
+      "characterCount": 5524,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 248,
+      "visibleLabel": "ⓚ효종 248화",
+      "visibleNumber": 248,
+      "title": "",
+      "startLine": 31781,
+      "endLine": 31909,
+      "characterCount": 5495,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 249,
+      "visibleLabel": "ⓚ효종 249화",
+      "visibleNumber": 249,
+      "title": "",
+      "startLine": 31910,
+      "endLine": 32015,
+      "characterCount": 5542,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 250,
+      "visibleLabel": "ⓚ효종 250화",
+      "visibleNumber": 250,
+      "title": "",
+      "startLine": 32016,
+      "endLine": 32145,
+      "characterCount": 5496,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 251,
+      "visibleLabel": "ⓚ효종 251화",
+      "visibleNumber": 251,
+      "title": "커져 가는 반목",
+      "startLine": 32146,
+      "endLine": 32263,
+      "characterCount": 5519,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 252,
+      "visibleLabel": "ⓚ효종 252화",
+      "visibleNumber": 252,
+      "title": "",
+      "startLine": 32264,
+      "endLine": 32388,
+      "characterCount": 5577,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 253,
+      "visibleLabel": "ⓚ효종 253화",
+      "visibleNumber": 253,
+      "title": "",
+      "startLine": 32389,
+      "endLine": 32507,
+      "characterCount": 5506,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 254,
+      "visibleLabel": "ⓚ효종 254화",
+      "visibleNumber": 254,
+      "title": "",
+      "startLine": 32508,
+      "endLine": 32643,
+      "characterCount": 5520,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 255,
+      "visibleLabel": "ⓚ효종 255화",
+      "visibleNumber": 255,
+      "title": "재건 그리고 복속",
+      "startLine": 32644,
+      "endLine": 32760,
+      "characterCount": 5506,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 256,
+      "visibleLabel": "ⓚ효종 256화",
+      "visibleNumber": 256,
+      "title": "",
+      "startLine": 32761,
+      "endLine": 32900,
+      "characterCount": 5510,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 257,
+      "visibleLabel": "ⓚ효종 257화",
+      "visibleNumber": 257,
+      "title": "",
+      "startLine": 32901,
+      "endLine": 33020,
+      "characterCount": 5511,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 258,
+      "visibleLabel": "ⓚ효종 258화",
+      "visibleNumber": 258,
+      "title": "",
+      "startLine": 33021,
+      "endLine": 33154,
+      "characterCount": 5504,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 259,
+      "visibleLabel": "ⓚ효종 259화",
+      "visibleNumber": 259,
+      "title": "",
+      "startLine": 33155,
+      "endLine": 33270,
+      "characterCount": 5526,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 260,
+      "visibleLabel": "ⓚ효종 260화",
+      "visibleNumber": 260,
+      "title": "노비해방1",
+      "startLine": 33271,
+      "endLine": 33391,
+      "characterCount": 5541,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 261,
+      "visibleLabel": "ⓚ효종 261화",
+      "visibleNumber": 261,
+      "title": "",
+      "startLine": 33392,
+      "endLine": 33522,
+      "characterCount": 5515,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 262,
+      "visibleLabel": "ⓚ효종 262화",
+      "visibleNumber": 262,
+      "title": "",
+      "startLine": 33523,
+      "endLine": 33646,
+      "characterCount": 5566,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 263,
+      "visibleLabel": "ⓚ효종 263화",
+      "visibleNumber": 263,
+      "title": "",
+      "startLine": 33647,
+      "endLine": 33770,
+      "characterCount": 5558,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 264,
+      "visibleLabel": "ⓚ효종 264화",
+      "visibleNumber": 264,
+      "title": "",
+      "startLine": 33771,
+      "endLine": 33897,
+      "characterCount": 6106,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 265,
+      "visibleLabel": "ⓚ효종 265화",
+      "visibleNumber": 265,
+      "title": "노비해방2",
+      "startLine": 33898,
+      "endLine": 34031,
+      "characterCount": 5106,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 266,
+      "visibleLabel": "ⓚ효종 266화",
+      "visibleNumber": 266,
+      "title": "",
+      "startLine": 34032,
+      "endLine": 34155,
+      "characterCount": 5349,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 267,
+      "visibleLabel": "ⓚ효종 267화",
+      "visibleNumber": 267,
+      "title": "",
+      "startLine": 34156,
+      "endLine": 34288,
+      "characterCount": 5499,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 268,
+      "visibleLabel": "ⓚ효종 268화",
+      "visibleNumber": 268,
+      "title": "",
+      "startLine": 34289,
+      "endLine": 34434,
+      "characterCount": 5521,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 269,
+      "visibleLabel": "ⓚ효종 269화",
+      "visibleNumber": 269,
+      "title": "",
+      "startLine": 34435,
+      "endLine": 34564,
+      "characterCount": 5547,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 270,
+      "visibleLabel": "ⓚ효종 270화",
+      "visibleNumber": 270,
+      "title": "저격",
+      "startLine": 34565,
+      "endLine": 34728,
+      "characterCount": 5508,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 271,
+      "visibleLabel": "ⓚ효종 271화",
+      "visibleNumber": 271,
+      "title": "",
+      "startLine": 34729,
+      "endLine": 34872,
+      "characterCount": 5504,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 272,
+      "visibleLabel": "ⓚ효종 272화",
+      "visibleNumber": 272,
+      "title": "",
+      "startLine": 34873,
+      "endLine": 35007,
+      "characterCount": 5532,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 273,
+      "visibleLabel": "ⓚ효종 273화",
+      "visibleNumber": 273,
+      "title": "",
+      "startLine": 35008,
+      "endLine": 35133,
+      "characterCount": 5548,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 274,
+      "visibleLabel": "ⓚ효종 274화",
+      "visibleNumber": 274,
+      "title": "",
+      "startLine": 35134,
+      "endLine": 35267,
+      "characterCount": 5502,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 275,
+      "visibleLabel": "ⓚ효종 275화",
+      "visibleNumber": 275,
+      "title": "",
+      "startLine": 35268,
+      "endLine": 35410,
+      "characterCount": 5849,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 276,
+      "visibleLabel": "ⓚ효종 276화",
+      "visibleNumber": 276,
+      "title": "음모의 밤",
+      "startLine": 35411,
+      "endLine": 35548,
+      "characterCount": 5147,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 277,
+      "visibleLabel": "ⓚ효종 277화",
+      "visibleNumber": 277,
+      "title": "",
+      "startLine": 35549,
+      "endLine": 35694,
+      "characterCount": 5514,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 278,
+      "visibleLabel": "ⓚ효종 278화",
+      "visibleNumber": 278,
+      "title": "",
+      "startLine": 35695,
+      "endLine": 35818,
+      "characterCount": 5536,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 279,
+      "visibleLabel": "ⓚ효종 279화",
+      "visibleNumber": 279,
+      "title": "",
+      "startLine": 35819,
+      "endLine": 35946,
+      "characterCount": 5503,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 280,
+      "visibleLabel": "ⓚ효종 280화",
+      "visibleNumber": 280,
+      "title": "역모의 끝",
+      "startLine": 35947,
+      "endLine": 36086,
+      "characterCount": 5545,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 281,
+      "visibleLabel": "ⓚ효종 281화",
+      "visibleNumber": 281,
+      "title": "",
+      "startLine": 36087,
+      "endLine": 36245,
+      "characterCount": 5500,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 282,
+      "visibleLabel": "ⓚ효종 282화",
+      "visibleNumber": 282,
+      "title": "",
+      "startLine": 36246,
+      "endLine": 36385,
+      "characterCount": 5499,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 283,
+      "visibleLabel": "ⓚ효종 283화",
+      "visibleNumber": 283,
+      "title": "",
+      "startLine": 36386,
+      "endLine": 36528,
+      "characterCount": 5511,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 284,
+      "visibleLabel": "ⓚ효종 284화",
+      "visibleNumber": 284,
+      "title": "",
+      "startLine": 36529,
+      "endLine": 36643,
+      "characterCount": 5304,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 285,
+      "visibleLabel": "ⓚ효종 285화",
+      "visibleNumber": 285,
+      "title": "무자경장戊子更張 1",
+      "startLine": 36644,
+      "endLine": 36785,
+      "characterCount": 5705,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 286,
+      "visibleLabel": "ⓚ효종 286화",
+      "visibleNumber": 286,
+      "title": "",
+      "startLine": 36786,
+      "endLine": 36917,
+      "characterCount": 5538,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 287,
+      "visibleLabel": "ⓚ효종 287화",
+      "visibleNumber": 287,
+      "title": "",
+      "startLine": 36918,
+      "endLine": 37044,
+      "characterCount": 5508,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 288,
+      "visibleLabel": "ⓚ효종 288화",
+      "visibleNumber": 288,
+      "title": "",
+      "startLine": 37045,
+      "endLine": 37150,
+      "characterCount": 5520,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 289,
+      "visibleLabel": "ⓚ효종 289화",
+      "visibleNumber": 289,
+      "title": "",
+      "startLine": 37151,
+      "endLine": 37287,
+      "characterCount": 5576,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 290,
+      "visibleLabel": "ⓚ효종 290화",
+      "visibleNumber": 290,
+      "title": "무자경장戊子更張 2",
+      "startLine": 37288,
+      "endLine": 37413,
+      "characterCount": 5524,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 291,
+      "visibleLabel": "ⓚ효종 291화",
+      "visibleNumber": 291,
+      "title": "",
+      "startLine": 37414,
+      "endLine": 37535,
+      "characterCount": 5498,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 292,
+      "visibleLabel": "ⓚ효종 292화",
+      "visibleNumber": 292,
+      "title": "",
+      "startLine": 37536,
+      "endLine": 37654,
+      "characterCount": 5881,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 293,
+      "visibleLabel": "ⓚ효종 293화",
+      "visibleNumber": 293,
+      "title": "",
+      "startLine": 37655,
+      "endLine": 37788,
+      "characterCount": 5236,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 294,
+      "visibleLabel": "ⓚ효종 294화",
+      "visibleNumber": 294,
+      "title": "",
+      "startLine": 37789,
+      "endLine": 37901,
+      "characterCount": 5246,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 295,
+      "visibleLabel": "ⓚ효종 295화",
+      "visibleNumber": 295,
+      "title": "",
+      "startLine": 37902,
+      "endLine": 38019,
+      "characterCount": 5307,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 296,
+      "visibleLabel": "ⓚ효종 296화",
+      "visibleNumber": 296,
+      "title": "꺼지지 않은 역모의 불씨",
+      "startLine": 38020,
+      "endLine": 38170,
+      "characterCount": 6060,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 297,
+      "visibleLabel": "ⓚ효종 297화",
+      "visibleNumber": 297,
+      "title": "",
+      "startLine": 38171,
+      "endLine": 38302,
+      "characterCount": 5519,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 298,
+      "visibleLabel": "ⓚ효종 298화",
+      "visibleNumber": 298,
+      "title": "",
+      "startLine": 38303,
+      "endLine": 38417,
+      "characterCount": 5552,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 299,
+      "visibleLabel": "ⓚ효종 299화",
+      "visibleNumber": 299,
+      "title": "",
+      "startLine": 38418,
+      "endLine": 38515,
+      "characterCount": 5072,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 300,
+      "visibleLabel": "ⓚ효종 300화",
+      "visibleNumber": 300,
+      "title": "",
+      "startLine": 38516,
+      "endLine": 38624,
+      "characterCount": 5233,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 301,
+      "visibleLabel": "ⓚ효종 301화",
+      "visibleNumber": 301,
+      "title": "이간계",
+      "startLine": 38625,
+      "endLine": 38776,
+      "characterCount": 6228,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 302,
+      "visibleLabel": "ⓚ효종 302화",
+      "visibleNumber": 302,
+      "title": "",
+      "startLine": 38777,
+      "endLine": 38915,
+      "characterCount": 5717,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 303,
+      "visibleLabel": "ⓚ효종 303화",
+      "visibleNumber": 303,
+      "title": "",
+      "startLine": 38916,
+      "endLine": 39059,
+      "characterCount": 5292,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 304,
+      "visibleLabel": "ⓚ효종 304화",
+      "visibleNumber": 304,
+      "title": "",
+      "startLine": 39060,
+      "endLine": 39213,
+      "characterCount": 5515,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 305,
+      "visibleLabel": "ⓚ효종 305화",
+      "visibleNumber": 305,
+      "title": "",
+      "startLine": 39214,
+      "endLine": 39360,
+      "characterCount": 5983,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 306,
+      "visibleLabel": "ⓚ효종 306화",
+      "visibleNumber": 306,
+      "title": "야율보기의 몰락",
+      "startLine": 39361,
+      "endLine": 39481,
+      "characterCount": 5128,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 307,
+      "visibleLabel": "ⓚ효종 307화",
+      "visibleNumber": 307,
+      "title": "",
+      "startLine": 39482,
+      "endLine": 39618,
+      "characterCount": 5556,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 308,
+      "visibleLabel": "ⓚ효종 308화",
+      "visibleNumber": 308,
+      "title": "",
+      "startLine": 39619,
+      "endLine": 39754,
+      "characterCount": 5510,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 309,
+      "visibleLabel": "ⓚ효종 309화",
+      "visibleNumber": 309,
+      "title": "",
+      "startLine": 39755,
+      "endLine": 39892,
+      "characterCount": 5523,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 310,
+      "visibleLabel": "ⓚ효종 310화",
+      "visibleNumber": 310,
+      "title": "",
+      "startLine": 39893,
+      "endLine": 40017,
+      "characterCount": 5681,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 311,
+      "visibleLabel": "ⓚ효종 311화",
+      "visibleNumber": 311,
+      "title": "사신",
+      "startLine": 40018,
+      "endLine": 40159,
+      "characterCount": 5352,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 312,
+      "visibleLabel": "ⓚ효종 312화",
+      "visibleNumber": 312,
+      "title": "",
+      "startLine": 40160,
+      "endLine": 40300,
+      "characterCount": 5502,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 313,
+      "visibleLabel": "ⓚ효종 313화",
+      "visibleNumber": 313,
+      "title": "",
+      "startLine": 40301,
+      "endLine": 40440,
+      "characterCount": 5499,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 314,
+      "visibleLabel": "ⓚ효종 314화",
+      "visibleNumber": 314,
+      "title": "",
+      "startLine": 40441,
+      "endLine": 40533,
+      "characterCount": 5547,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 315,
+      "visibleLabel": "ⓚ효종 315화",
+      "visibleNumber": 315,
+      "title": "압박",
+      "startLine": 40534,
+      "endLine": 40684,
+      "characterCount": 5519,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 316,
+      "visibleLabel": "ⓚ효종 316화",
+      "visibleNumber": 316,
+      "title": "",
+      "startLine": 40685,
+      "endLine": 40842,
+      "characterCount": 5552,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 317,
+      "visibleLabel": "ⓚ효종 317화",
+      "visibleNumber": 317,
+      "title": "",
+      "startLine": 40843,
+      "endLine": 40986,
+      "characterCount": 6004,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 318,
+      "visibleLabel": "ⓚ효종 318화",
+      "visibleNumber": 318,
+      "title": "",
+      "startLine": 40987,
+      "endLine": 41119,
+      "characterCount": 5335,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 319,
+      "visibleLabel": "ⓚ효종 319화",
+      "visibleNumber": 319,
+      "title": "위조화폐",
+      "startLine": 41120,
+      "endLine": 41243,
+      "characterCount": 5215,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 320,
+      "visibleLabel": "ⓚ효종 320화",
+      "visibleNumber": 320,
+      "title": "",
+      "startLine": 41244,
+      "endLine": 41354,
+      "characterCount": 5039,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 321,
+      "visibleLabel": "ⓚ효종 321화",
+      "visibleNumber": 321,
+      "title": "",
+      "startLine": 41355,
+      "endLine": 41492,
+      "characterCount": 5993,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 322,
+      "visibleLabel": "ⓚ효종 322화",
+      "visibleNumber": 322,
+      "title": "",
+      "startLine": 41493,
+      "endLine": 41618,
+      "characterCount": 5258,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 323,
+      "visibleLabel": "ⓚ효종 323화",
+      "visibleNumber": 323,
+      "title": "",
+      "startLine": 41619,
+      "endLine": 41784,
+      "characterCount": 5839,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 324,
+      "visibleLabel": "ⓚ효종 324화",
+      "visibleNumber": 324,
+      "title": "",
+      "startLine": 41785,
+      "endLine": 41922,
+      "characterCount": 5148,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 325,
+      "visibleLabel": "ⓚ효종 325화",
+      "visibleNumber": 325,
+      "title": "위조화폐(2)",
+      "startLine": 41923,
+      "endLine": 42108,
+      "characterCount": 5866,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 326,
+      "visibleLabel": "ⓚ효종 326화",
+      "visibleNumber": 326,
+      "title": "",
+      "startLine": 42109,
+      "endLine": 42264,
+      "characterCount": 5527,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 327,
+      "visibleLabel": "ⓚ효종 327화",
+      "visibleNumber": 327,
+      "title": "",
+      "startLine": 42265,
+      "endLine": 42417,
+      "characterCount": 5497,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 328,
+      "visibleLabel": "ⓚ효종 328화",
+      "visibleNumber": 328,
+      "title": "",
+      "startLine": 42418,
+      "endLine": 42563,
+      "characterCount": 5541,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 329,
+      "visibleLabel": "ⓚ효종 329화",
+      "visibleNumber": 329,
+      "title": "",
+      "startLine": 42564,
+      "endLine": 42714,
+      "characterCount": 5496,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 330,
+      "visibleLabel": "ⓚ효종 330화",
+      "visibleNumber": 330,
+      "title": "",
+      "startLine": 42715,
+      "endLine": 42853,
+      "characterCount": 5378,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 331,
+      "visibleLabel": "ⓚ효종 331화",
+      "visibleNumber": 331,
+      "title": "네덜란드 동인도회사",
+      "startLine": 42854,
+      "endLine": 42967,
+      "characterCount": 5697,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 332,
+      "visibleLabel": "ⓚ효종 332화",
+      "visibleNumber": 332,
+      "title": "",
+      "startLine": 42968,
+      "endLine": 43089,
+      "characterCount": 5508,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 333,
+      "visibleLabel": "ⓚ효종 333화",
+      "visibleNumber": 333,
+      "title": "",
+      "startLine": 43090,
+      "endLine": 43194,
+      "characterCount": 5499,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 334,
+      "visibleLabel": "ⓚ효종 334화",
+      "visibleNumber": 334,
+      "title": "",
+      "startLine": 43195,
+      "endLine": 43314,
+      "characterCount": 5548,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 335,
+      "visibleLabel": "ⓚ효종 335화",
+      "visibleNumber": 335,
+      "title": "수석총",
+      "startLine": 43315,
+      "endLine": 43449,
+      "characterCount": 5531,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 336,
+      "visibleLabel": "ⓚ효종 336화",
+      "visibleNumber": 336,
+      "title": "",
+      "startLine": 43450,
+      "endLine": 43576,
+      "characterCount": 5523,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 337,
+      "visibleLabel": "ⓚ효종 337화",
+      "visibleNumber": 337,
+      "title": "",
+      "startLine": 43577,
+      "endLine": 43712,
+      "characterCount": 5523,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 338,
+      "visibleLabel": "ⓚ효종 338화",
+      "visibleNumber": 338,
+      "title": "",
+      "startLine": 43713,
+      "endLine": 43875,
+      "characterCount": 5496,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 339,
+      "visibleLabel": "ⓚ효종 339화",
+      "visibleNumber": 339,
+      "title": "해적",
+      "startLine": 43876,
+      "endLine": 44022,
+      "characterCount": 5542,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 340,
+      "visibleLabel": "ⓚ효종 340화",
+      "visibleNumber": 340,
+      "title": "",
+      "startLine": 44023,
+      "endLine": 44173,
+      "characterCount": 5845,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 341,
+      "visibleLabel": "ⓚ효종 341화",
+      "visibleNumber": 341,
+      "title": "",
+      "startLine": 44174,
+      "endLine": 44295,
+      "characterCount": 5046,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 342,
+      "visibleLabel": "ⓚ효종 342화",
+      "visibleNumber": 342,
+      "title": "",
+      "startLine": 44296,
+      "endLine": 44446,
+      "characterCount": 5708,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 343,
+      "visibleLabel": "ⓚ효종 343화",
+      "visibleNumber": 343,
+      "title": "",
+      "startLine": 44447,
+      "endLine": 44574,
+      "characterCount": 5069,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 344,
+      "visibleLabel": "ⓚ효종 344화",
+      "visibleNumber": 344,
+      "title": "",
+      "startLine": 44575,
+      "endLine": 44753,
+      "characterCount": 5997,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 345,
+      "visibleLabel": "ⓚ효종 345화",
+      "visibleNumber": 345,
+      "title": "",
+      "startLine": 44754,
+      "endLine": 44922,
+      "characterCount": 5650,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 346,
+      "visibleLabel": "ⓚ효종 346화",
+      "visibleNumber": 346,
+      "title": "남벌",
+      "startLine": 44923,
+      "endLine": 45037,
+      "characterCount": 5130,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 347,
+      "visibleLabel": "ⓚ효종 347화",
+      "visibleNumber": 347,
+      "title": "",
+      "startLine": 45038,
+      "endLine": 45149,
+      "characterCount": 5259,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 348,
+      "visibleLabel": "ⓚ효종 348화",
+      "visibleNumber": 348,
+      "title": "",
+      "startLine": 45150,
+      "endLine": 45285,
+      "characterCount": 6107,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 349,
+      "visibleLabel": "ⓚ효종 349화",
+      "visibleNumber": 349,
+      "title": "",
+      "startLine": 45286,
+      "endLine": 45413,
+      "characterCount": 5487,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 350,
+      "visibleLabel": "ⓚ효종 350화",
+      "visibleNumber": 350,
+      "title": "충격",
+      "startLine": 45414,
+      "endLine": 45546,
+      "characterCount": 5573,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 351,
+      "visibleLabel": "ⓚ효종 351화",
+      "visibleNumber": 351,
+      "title": "",
+      "startLine": 45547,
+      "endLine": 45679,
+      "characterCount": 5476,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 352,
+      "visibleLabel": "ⓚ효종 352화",
+      "visibleNumber": 352,
+      "title": "",
+      "startLine": 45680,
+      "endLine": 45809,
+      "characterCount": 5579,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 353,
+      "visibleLabel": "ⓚ효종 353화",
+      "visibleNumber": 353,
+      "title": "신풍은 없다(1)",
+      "startLine": 45810,
+      "endLine": 45920,
+      "characterCount": 5536,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 354,
+      "visibleLabel": "ⓚ효종 354화",
+      "visibleNumber": 354,
+      "title": "",
+      "startLine": 45921,
+      "endLine": 46054,
+      "characterCount": 5556,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 355,
+      "visibleLabel": "ⓚ효종 355화",
+      "visibleNumber": 355,
+      "title": "",
+      "startLine": 46055,
+      "endLine": 46199,
+      "characterCount": 5548,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 356,
+      "visibleLabel": "ⓚ효종 356화",
+      "visibleNumber": 356,
+      "title": "",
+      "startLine": 46200,
+      "endLine": 46349,
+      "characterCount": 5731,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 357,
+      "visibleLabel": "ⓚ효종 357화",
+      "visibleNumber": 357,
+      "title": "신풍은 없다 (2)",
+      "startLine": 46350,
+      "endLine": 46494,
+      "characterCount": 5319,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 358,
+      "visibleLabel": "ⓚ효종 358화",
+      "visibleNumber": 358,
+      "title": "",
+      "startLine": 46495,
+      "endLine": 46637,
+      "characterCount": 5516,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 359,
+      "visibleLabel": "ⓚ효종 359화",
+      "visibleNumber": 359,
+      "title": "",
+      "startLine": 46638,
+      "endLine": 46765,
+      "characterCount": 5413,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 360,
+      "visibleLabel": "ⓚ효종 360화",
+      "visibleNumber": 360,
+      "title": "",
+      "startLine": 46766,
+      "endLine": 46872,
+      "characterCount": 5652,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 361,
+      "visibleLabel": "ⓚ효종 361화",
+      "visibleNumber": 361,
+      "title": "불타는 에도 (1)",
+      "startLine": 46873,
+      "endLine": 46995,
+      "characterCount": 5518,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 362,
+      "visibleLabel": "ⓚ효종 362화",
+      "visibleNumber": 362,
+      "title": "",
+      "startLine": 46996,
+      "endLine": 47134,
+      "characterCount": 5516,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 363,
+      "visibleLabel": "ⓚ효종 363화",
+      "visibleNumber": 363,
+      "title": "",
+      "startLine": 47135,
+      "endLine": 47259,
+      "characterCount": 5036,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 364,
+      "visibleLabel": "ⓚ효종 364화",
+      "visibleNumber": 364,
+      "title": "",
+      "startLine": 47260,
+      "endLine": 47402,
+      "characterCount": 5985,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 365,
+      "visibleLabel": "ⓚ효종 365화",
+      "visibleNumber": 365,
+      "title": "",
+      "startLine": 47403,
+      "endLine": 47537,
+      "characterCount": 5506,
+      "sceneBreakCount": 3
+    },
+    {
+      "sequence": 366,
+      "visibleLabel": "ⓚ효종 366화",
+      "visibleNumber": 366,
+      "title": "",
+      "startLine": 47538,
+      "endLine": 47675,
+      "characterCount": 5500,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 367,
+      "visibleLabel": "ⓚ효종 367화",
+      "visibleNumber": 367,
+      "title": "불타는 에도(2)",
+      "startLine": 47676,
+      "endLine": 47821,
+      "characterCount": 5512,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 368,
+      "visibleLabel": "ⓚ효종 368화",
+      "visibleNumber": 368,
+      "title": "",
+      "startLine": 47822,
+      "endLine": 47949,
+      "characterCount": 5004,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 369,
+      "visibleLabel": "ⓚ효종 369화",
+      "visibleNumber": 369,
+      "title": "",
+      "startLine": 47950,
+      "endLine": 48113,
+      "characterCount": 6445,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 370,
+      "visibleLabel": "ⓚ효종 370화",
+      "visibleNumber": 370,
+      "title": "",
+      "startLine": 48114,
+      "endLine": 48249,
+      "characterCount": 5166,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 371,
+      "visibleLabel": "ⓚ효종 371화",
+      "visibleNumber": 371,
+      "title": "",
+      "startLine": 48250,
+      "endLine": 48389,
+      "characterCount": 5511,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 372,
+      "visibleLabel": "ⓚ효종 372화",
+      "visibleNumber": 372,
+      "title": "",
+      "startLine": 48390,
+      "endLine": 48533,
+      "characterCount": 5532,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 373,
+      "visibleLabel": "ⓚ효종 373화",
+      "visibleNumber": 373,
+      "title": "",
+      "startLine": 48534,
+      "endLine": 48642,
+      "characterCount": 5021,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 374,
+      "visibleLabel": "ⓚ효종 374화",
+      "visibleNumber": 374,
+      "title": "전후 처리",
+      "startLine": 48643,
+      "endLine": 48789,
+      "characterCount": 6000,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 375,
+      "visibleLabel": "ⓚ효종 375화",
+      "visibleNumber": 375,
+      "title": "신묘辛卯조약",
+      "startLine": 48790,
+      "endLine": 48915,
+      "characterCount": 5508,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 376,
+      "visibleLabel": "ⓚ효종 376화",
+      "visibleNumber": 376,
+      "title": "",
+      "startLine": 48916,
+      "endLine": 49035,
+      "characterCount": 5550,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 377,
+      "visibleLabel": "ⓚ효종 377화",
+      "visibleNumber": 377,
+      "title": "",
+      "startLine": 49036,
+      "endLine": 49158,
+      "characterCount": 5507,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 378,
+      "visibleLabel": "ⓚ효종 378화",
+      "visibleNumber": 378,
+      "title": "",
+      "startLine": 49159,
+      "endLine": 49275,
+      "characterCount": 5570,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 379,
+      "visibleLabel": "ⓚ효종 379화",
+      "visibleNumber": 379,
+      "title": "",
+      "startLine": 49276,
+      "endLine": 49400,
+      "characterCount": 5500,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 380,
+      "visibleLabel": "ⓚ효종 380화",
+      "visibleNumber": 380,
+      "title": "도사 번",
+      "startLine": 49401,
+      "endLine": 49533,
+      "characterCount": 5482,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 381,
+      "visibleLabel": "ⓚ효종 381화",
+      "visibleNumber": 381,
+      "title": "",
+      "startLine": 49534,
+      "endLine": 49657,
+      "characterCount": 5626,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 382,
+      "visibleLabel": "ⓚ효종 382화",
+      "visibleNumber": 382,
+      "title": "",
+      "startLine": 49658,
+      "endLine": 49789,
+      "characterCount": 5528,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 383,
+      "visibleLabel": "ⓚ효종 383화",
+      "visibleNumber": 383,
+      "title": "",
+      "startLine": 49790,
+      "endLine": 49925,
+      "characterCount": 5523,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 384,
+      "visibleLabel": "ⓚ효종 384화",
+      "visibleNumber": 384,
+      "title": "",
+      "startLine": 49926,
+      "endLine": 50079,
+      "characterCount": 5832,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 385,
+      "visibleLabel": "ⓚ효종 385화",
+      "visibleNumber": 385,
+      "title": "북경 풍운(1)",
+      "startLine": 50080,
+      "endLine": 50191,
+      "characterCount": 5206,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 386,
+      "visibleLabel": "ⓚ효종 386화",
+      "visibleNumber": 386,
+      "title": "",
+      "startLine": 50192,
+      "endLine": 50306,
+      "characterCount": 5512,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 387,
+      "visibleLabel": "ⓚ효종 387화",
+      "visibleNumber": 387,
+      "title": "",
+      "startLine": 50307,
+      "endLine": 50416,
+      "characterCount": 5498,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 388,
+      "visibleLabel": "ⓚ효종 388화",
+      "visibleNumber": 388,
+      "title": "",
+      "startLine": 50417,
+      "endLine": 50547,
+      "characterCount": 5511,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 389,
+      "visibleLabel": "ⓚ효종 389화",
+      "visibleNumber": 389,
+      "title": "",
+      "startLine": 50548,
+      "endLine": 50692,
+      "characterCount": 5530,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 390,
+      "visibleLabel": "ⓚ효종 390화",
+      "visibleNumber": 390,
+      "title": "",
+      "startLine": 50693,
+      "endLine": 50844,
+      "characterCount": 5504,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 391,
+      "visibleLabel": "ⓚ효종 391화",
+      "visibleNumber": 391,
+      "title": "북경 풍운(2)",
+      "startLine": 50845,
+      "endLine": 51011,
+      "characterCount": 5519,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 392,
+      "visibleLabel": "ⓚ효종 392화",
+      "visibleNumber": 392,
+      "title": "",
+      "startLine": 51012,
+      "endLine": 51140,
+      "characterCount": 5535,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 393,
+      "visibleLabel": "ⓚ효종 393화",
+      "visibleNumber": 393,
+      "title": "",
+      "startLine": 51141,
+      "endLine": 51261,
+      "characterCount": 5062,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 394,
+      "visibleLabel": "ⓚ효종 394화",
+      "visibleNumber": 394,
+      "title": "",
+      "startLine": 51262,
+      "endLine": 51390,
+      "characterCount": 5338,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 395,
+      "visibleLabel": "ⓚ효종 395화",
+      "visibleNumber": 395,
+      "title": "요서 공략",
+      "startLine": 51391,
+      "endLine": 51563,
+      "characterCount": 6691,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 396,
+      "visibleLabel": "ⓚ효종 396화",
+      "visibleNumber": 396,
+      "title": "",
+      "startLine": 51564,
+      "endLine": 51711,
+      "characterCount": 6089,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 397,
+      "visibleLabel": "ⓚ효종 397화",
+      "visibleNumber": 397,
+      "title": "",
+      "startLine": 51712,
+      "endLine": 51840,
+      "characterCount": 5033,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 398,
+      "visibleLabel": "ⓚ효종 398화",
+      "visibleNumber": 398,
+      "title": "",
+      "startLine": 51841,
+      "endLine": 51983,
+      "characterCount": 6198,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 399,
+      "visibleLabel": "ⓚ효종 399화",
+      "visibleNumber": 399,
+      "title": "",
+      "startLine": 51984,
+      "endLine": 52110,
+      "characterCount": 5085,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 400,
+      "visibleLabel": "ⓚ효종 400화",
+      "visibleNumber": 400,
+      "title": "",
+      "startLine": 52111,
+      "endLine": 52248,
+      "characterCount": 5393,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 401,
+      "visibleLabel": "ⓚ효종 401화",
+      "visibleNumber": 401,
+      "title": "요서 공략",
+      "startLine": 52249,
+      "endLine": 52398,
+      "characterCount": 5530,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 402,
+      "visibleLabel": "ⓚ효종 402화",
+      "visibleNumber": 402,
+      "title": "",
+      "startLine": 52399,
+      "endLine": 52522,
+      "characterCount": 5539,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 403,
+      "visibleLabel": "ⓚ효종 403화",
+      "visibleNumber": 403,
+      "title": "",
+      "startLine": 52523,
+      "endLine": 52646,
+      "characterCount": 5813,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 404,
+      "visibleLabel": "ⓚ효종 404화",
+      "visibleNumber": 404,
+      "title": "",
+      "startLine": 52647,
+      "endLine": 52791,
+      "characterCount": 5305,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 405,
+      "visibleLabel": "ⓚ효종 405화",
+      "visibleNumber": 405,
+      "title": "함락",
+      "startLine": 52792,
+      "endLine": 52949,
+      "characterCount": 5549,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 406,
+      "visibleLabel": "ⓚ효종 406화",
+      "visibleNumber": 406,
+      "title": "",
+      "startLine": 52950,
+      "endLine": 53091,
+      "characterCount": 5472,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 407,
+      "visibleLabel": "ⓚ효종 407화",
+      "visibleNumber": 407,
+      "title": "",
+      "startLine": 53092,
+      "endLine": 53247,
+      "characterCount": 5627,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 408,
+      "visibleLabel": "ⓚ효종 408화",
+      "visibleNumber": 408,
+      "title": "",
+      "startLine": 53248,
+      "endLine": 53402,
+      "characterCount": 5504,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 409,
+      "visibleLabel": "ⓚ효종 409화",
+      "visibleNumber": 409,
+      "title": "",
+      "startLine": 53403,
+      "endLine": 53555,
+      "characterCount": 5510,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 410,
+      "visibleLabel": "ⓚ효종 410화",
+      "visibleNumber": 410,
+      "title": "요동치는 정세",
+      "startLine": 53556,
+      "endLine": 53702,
+      "characterCount": 5536,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 411,
+      "visibleLabel": "ⓚ효종 411화",
+      "visibleNumber": 411,
+      "title": "",
+      "startLine": 53703,
+      "endLine": 53821,
+      "characterCount": 5528,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 412,
+      "visibleLabel": "ⓚ효종 412화",
+      "visibleNumber": 412,
+      "title": "",
+      "startLine": 53822,
+      "endLine": 53951,
+      "characterCount": 5545,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 413,
+      "visibleLabel": "ⓚ효종 413화",
+      "visibleNumber": 413,
+      "title": "",
+      "startLine": 53952,
+      "endLine": 54077,
+      "characterCount": 5515,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 414,
+      "visibleLabel": "ⓚ효종 414화",
+      "visibleNumber": 414,
+      "title": "전권대사",
+      "startLine": 54078,
+      "endLine": 54219,
+      "characterCount": 5523,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 415,
+      "visibleLabel": "ⓚ효종 415화",
+      "visibleNumber": 415,
+      "title": "",
+      "startLine": 54220,
+      "endLine": 54363,
+      "characterCount": 5536,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 416,
+      "visibleLabel": "ⓚ효종 416화",
+      "visibleNumber": 416,
+      "title": "",
+      "startLine": 54364,
+      "endLine": 54463,
+      "characterCount": 5554,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 417,
+      "visibleLabel": "ⓚ효종 417화",
+      "visibleNumber": 417,
+      "title": "",
+      "startLine": 54464,
+      "endLine": 54585,
+      "characterCount": 5507,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 418,
+      "visibleLabel": "ⓚ효종 418화",
+      "visibleNumber": 418,
+      "title": "",
+      "startLine": 54586,
+      "endLine": 54734,
+      "characterCount": 5501,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 419,
+      "visibleLabel": "ⓚ효종 419화",
+      "visibleNumber": 419,
+      "title": "대만 진출",
+      "startLine": 54735,
+      "endLine": 54863,
+      "characterCount": 5510,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 420,
+      "visibleLabel": "ⓚ효종 420화",
+      "visibleNumber": 420,
+      "title": "",
+      "startLine": 54864,
+      "endLine": 54991,
+      "characterCount": 5495,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 421,
+      "visibleLabel": "ⓚ효종 421화",
+      "visibleNumber": 421,
+      "title": "",
+      "startLine": 54992,
+      "endLine": 55103,
+      "characterCount": 5506,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 422,
+      "visibleLabel": "ⓚ효종 422화",
+      "visibleNumber": 422,
+      "title": "",
+      "startLine": 55104,
+      "endLine": 55218,
+      "characterCount": 5514,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 423,
+      "visibleLabel": "ⓚ효종 423화",
+      "visibleNumber": 423,
+      "title": "",
+      "startLine": 55219,
+      "endLine": 55354,
+      "characterCount": 5534,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 424,
+      "visibleLabel": "ⓚ효종 424화",
+      "visibleNumber": 424,
+      "title": "",
+      "startLine": 55355,
+      "endLine": 55482,
+      "characterCount": 5518,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 425,
+      "visibleLabel": "ⓚ효종 425화",
+      "visibleNumber": 425,
+      "title": "",
+      "startLine": 55483,
+      "endLine": 55608,
+      "characterCount": 5514,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 426,
+      "visibleLabel": "ⓚ효종 426화",
+      "visibleNumber": 426,
+      "title": "거점 확보",
+      "startLine": 55609,
+      "endLine": 55739,
+      "characterCount": 5611,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 427,
+      "visibleLabel": "ⓚ효종 427화",
+      "visibleNumber": 427,
+      "title": "",
+      "startLine": 55740,
+      "endLine": 55873,
+      "characterCount": 5539,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 428,
+      "visibleLabel": "ⓚ효종 428화",
+      "visibleNumber": 428,
+      "title": "",
+      "startLine": 55874,
+      "endLine": 55994,
+      "characterCount": 5511,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 429,
+      "visibleLabel": "ⓚ효종 429화",
+      "visibleNumber": 429,
+      "title": "",
+      "startLine": 55995,
+      "endLine": 56130,
+      "characterCount": 5522,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 430,
+      "visibleLabel": "ⓚ효종 430화",
+      "visibleNumber": 430,
+      "title": "",
+      "startLine": 56131,
+      "endLine": 56260,
+      "characterCount": 5747,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 431,
+      "visibleLabel": "ⓚ효종 431화",
+      "visibleNumber": 431,
+      "title": "네덜란드의 몰락",
+      "startLine": 56261,
+      "endLine": 56412,
+      "characterCount": 5875,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 432,
+      "visibleLabel": "ⓚ효종 432화",
+      "visibleNumber": 432,
+      "title": "",
+      "startLine": 56413,
+      "endLine": 56536,
+      "characterCount": 5430,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 433,
+      "visibleLabel": "ⓚ효종 433화",
+      "visibleNumber": 433,
+      "title": "",
+      "startLine": 56537,
+      "endLine": 56649,
+      "characterCount": 5442,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 434,
+      "visibleLabel": "ⓚ효종 434화",
+      "visibleNumber": 434,
+      "title": "역동하는 조선",
+      "startLine": 56650,
+      "endLine": 56762,
+      "characterCount": 5103,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 435,
+      "visibleLabel": "ⓚ효종 435화",
+      "visibleNumber": 435,
+      "title": "",
+      "startLine": 56763,
+      "endLine": 56893,
+      "characterCount": 5507,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 436,
+      "visibleLabel": "ⓚ효종 436화",
+      "visibleNumber": 436,
+      "title": "",
+      "startLine": 56894,
+      "endLine": 57010,
+      "characterCount": 5515,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 437,
+      "visibleLabel": "ⓚ효종 437화",
+      "visibleNumber": 437,
+      "title": "",
+      "startLine": 57011,
+      "endLine": 57136,
+      "characterCount": 5560,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 438,
+      "visibleLabel": "ⓚ효종 438화",
+      "visibleNumber": 438,
+      "title": "인삼 씨앗을 지켜라",
+      "startLine": 57137,
+      "endLine": 57307,
+      "characterCount": 5507,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 439,
+      "visibleLabel": "ⓚ효종 439화",
+      "visibleNumber": 439,
+      "title": "",
+      "startLine": 57308,
+      "endLine": 57479,
+      "characterCount": 5418,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 440,
+      "visibleLabel": "ⓚ효종 440화",
+      "visibleNumber": 440,
+      "title": "",
+      "startLine": 57480,
+      "endLine": 57607,
+      "characterCount": 5053,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 441,
+      "visibleLabel": "ⓚ효종 441화",
+      "visibleNumber": 441,
+      "title": "",
+      "startLine": 57608,
+      "endLine": 57755,
+      "characterCount": 6084,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 442,
+      "visibleLabel": "ⓚ효종 442화",
+      "visibleNumber": 442,
+      "title": "추궁",
+      "startLine": 57756,
+      "endLine": 57892,
+      "characterCount": 5457,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 443,
+      "visibleLabel": "ⓚ효종 443화",
+      "visibleNumber": 443,
+      "title": "",
+      "startLine": 57893,
+      "endLine": 58029,
+      "characterCount": 5479,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 444,
+      "visibleLabel": "ⓚ효종 444화",
+      "visibleNumber": 444,
+      "title": "",
+      "startLine": 58030,
+      "endLine": 58167,
+      "characterCount": 5594,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 445,
+      "visibleLabel": "ⓚ효종 445화",
+      "visibleNumber": 445,
+      "title": "",
+      "startLine": 58168,
+      "endLine": 58283,
+      "characterCount": 5572,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 446,
+      "visibleLabel": "ⓚ효종 446화",
+      "visibleNumber": 446,
+      "title": "",
+      "startLine": 58284,
+      "endLine": 58408,
+      "characterCount": 5894,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 447,
+      "visibleLabel": "ⓚ효종 447화",
+      "visibleNumber": 447,
+      "title": "",
+      "startLine": 58409,
+      "endLine": 58541,
+      "characterCount": 5916,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 448,
+      "visibleLabel": "ⓚ효종 448화",
+      "visibleNumber": 448,
+      "title": "합의",
+      "startLine": 58542,
+      "endLine": 58661,
+      "characterCount": 5281,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 449,
+      "visibleLabel": "ⓚ효종 449화",
+      "visibleNumber": 449,
+      "title": "",
+      "startLine": 58662,
+      "endLine": 58787,
+      "characterCount": 6036,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 450,
+      "visibleLabel": "ⓚ효종 450화",
+      "visibleNumber": 450,
+      "title": "",
+      "startLine": 58788,
+      "endLine": 58905,
+      "characterCount": 5133,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 451,
+      "visibleLabel": "ⓚ효종 451화",
+      "visibleNumber": 451,
+      "title": "",
+      "startLine": 58906,
+      "endLine": 59037,
+      "characterCount": 5081,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 452,
+      "visibleLabel": "ⓚ효종 452화",
+      "visibleNumber": 452,
+      "title": "다시 몰려오는 먹구름",
+      "startLine": 59038,
+      "endLine": 59155,
+      "characterCount": 5579,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 453,
+      "visibleLabel": "ⓚ효종 453화",
+      "visibleNumber": 453,
+      "title": "",
+      "startLine": 59156,
+      "endLine": 59265,
+      "characterCount": 5555,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 454,
+      "visibleLabel": "ⓚ효종 454화",
+      "visibleNumber": 454,
+      "title": "",
+      "startLine": 59266,
+      "endLine": 59395,
+      "characterCount": 5498,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 455,
+      "visibleLabel": "ⓚ효종 455화",
+      "visibleNumber": 455,
+      "title": "",
+      "startLine": 59396,
+      "endLine": 59511,
+      "characterCount": 5546,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 456,
+      "visibleLabel": "ⓚ효종 456화",
+      "visibleNumber": 456,
+      "title": "",
+      "startLine": 59512,
+      "endLine": 59653,
+      "characterCount": 5541,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 457,
+      "visibleLabel": "ⓚ효종 457화",
+      "visibleNumber": 457,
+      "title": "제국 선포",
+      "startLine": 59654,
+      "endLine": 59778,
+      "characterCount": 5566,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 458,
+      "visibleLabel": "ⓚ효종 458화",
+      "visibleNumber": 458,
+      "title": "",
+      "startLine": 59779,
+      "endLine": 59907,
+      "characterCount": 5551,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 459,
+      "visibleLabel": "ⓚ효종 459화",
+      "visibleNumber": 459,
+      "title": "",
+      "startLine": 59908,
+      "endLine": 60016,
+      "characterCount": 5528,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 460,
+      "visibleLabel": "ⓚ효종 460화",
+      "visibleNumber": 460,
+      "title": "",
+      "startLine": 60017,
+      "endLine": 60139,
+      "characterCount": 5523,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 461,
+      "visibleLabel": "ⓚ효종 461화",
+      "visibleNumber": 461,
+      "title": "",
+      "startLine": 60140,
+      "endLine": 60265,
+      "characterCount": 5554,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 462,
+      "visibleLabel": "ⓚ효종 462화",
+      "visibleNumber": 462,
+      "title": "",
+      "startLine": 60266,
+      "endLine": 60400,
+      "characterCount": 5505,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 463,
+      "visibleLabel": "ⓚ효종 463화",
+      "visibleNumber": 463,
+      "title": "",
+      "startLine": 60401,
+      "endLine": 60549,
+      "characterCount": 5817,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 464,
+      "visibleLabel": "ⓚ효종 464화",
+      "visibleNumber": 464,
+      "title": "개전",
+      "startLine": 60550,
+      "endLine": 60683,
+      "characterCount": 5186,
+      "sceneBreakCount": 3
+    },
+    {
+      "sequence": 465,
+      "visibleLabel": "ⓚ효종 465화",
+      "visibleNumber": 465,
+      "title": "",
+      "startLine": 60684,
+      "endLine": 60829,
+      "characterCount": 5548,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 466,
+      "visibleLabel": "ⓚ효종 466화",
+      "visibleNumber": 466,
+      "title": "",
+      "startLine": 60830,
+      "endLine": 60966,
+      "characterCount": 5543,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 467,
+      "visibleLabel": "ⓚ효종 467화",
+      "visibleNumber": 467,
+      "title": "",
+      "startLine": 60967,
+      "endLine": 61122,
+      "characterCount": 5522,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 468,
+      "visibleLabel": "ⓚ효종 468화",
+      "visibleNumber": 468,
+      "title": "고부리성",
+      "startLine": 61123,
+      "endLine": 61277,
+      "characterCount": 5535,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 469,
+      "visibleLabel": "ⓚ효종 469화",
+      "visibleNumber": 469,
+      "title": "",
+      "startLine": 61278,
+      "endLine": 61429,
+      "characterCount": 5503,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 470,
+      "visibleLabel": "ⓚ효종 470화",
+      "visibleNumber": 470,
+      "title": "",
+      "startLine": 61430,
+      "endLine": 61581,
+      "characterCount": 5627,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 471,
+      "visibleLabel": "ⓚ효종 471화",
+      "visibleNumber": 471,
+      "title": "",
+      "startLine": 61582,
+      "endLine": 61725,
+      "characterCount": 5443,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 472,
+      "visibleLabel": "ⓚ효종 472화",
+      "visibleNumber": 472,
+      "title": "",
+      "startLine": 61726,
+      "endLine": 61868,
+      "characterCount": 5551,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 473,
+      "visibleLabel": "ⓚ효종 473화",
+      "visibleNumber": 473,
+      "title": "",
+      "startLine": 61869,
+      "endLine": 62027,
+      "characterCount": 5535,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 474,
+      "visibleLabel": "ⓚ효종 474화",
+      "visibleNumber": 474,
+      "title": "",
+      "startLine": 62028,
+      "endLine": 62164,
+      "characterCount": 5249,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 475,
+      "visibleLabel": "ⓚ효종 475화",
+      "visibleNumber": 475,
+      "title": "일격을 당하다",
+      "startLine": 62165,
+      "endLine": 62333,
+      "characterCount": 5777,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 476,
+      "visibleLabel": "ⓚ효종 476화",
+      "visibleNumber": 476,
+      "title": "",
+      "startLine": 62334,
+      "endLine": 62469,
+      "characterCount": 5172,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 477,
+      "visibleLabel": "ⓚ효종 477화",
+      "visibleNumber": 477,
+      "title": "",
+      "startLine": 62470,
+      "endLine": 62595,
+      "characterCount": 5067,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 478,
+      "visibleLabel": "ⓚ효종 478화",
+      "visibleNumber": 478,
+      "title": "고부리성 함락",
+      "startLine": 62596,
+      "endLine": 62763,
+      "characterCount": 6309,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 479,
+      "visibleLabel": "ⓚ효종 479화",
+      "visibleNumber": 479,
+      "title": "",
+      "startLine": 62764,
+      "endLine": 62918,
+      "characterCount": 5326,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 480,
+      "visibleLabel": "ⓚ효종 480화",
+      "visibleNumber": 480,
+      "title": "",
+      "startLine": 62919,
+      "endLine": 63069,
+      "characterCount": 5675,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 481,
+      "visibleLabel": "ⓚ효종 481화",
+      "visibleNumber": 481,
+      "title": "",
+      "startLine": 63070,
+      "endLine": 63210,
+      "characterCount": 5756,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 482,
+      "visibleLabel": "ⓚ효종 482화",
+      "visibleNumber": 482,
+      "title": "상륙",
+      "startLine": 63211,
+      "endLine": 63357,
+      "characterCount": 5388,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 483,
+      "visibleLabel": "ⓚ효종 483화",
+      "visibleNumber": 483,
+      "title": "",
+      "startLine": 63358,
+      "endLine": 63510,
+      "characterCount": 5526,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 484,
+      "visibleLabel": "ⓚ효종 484화",
+      "visibleNumber": 484,
+      "title": "",
+      "startLine": 63511,
+      "endLine": 63641,
+      "characterCount": 5506,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 485,
+      "visibleLabel": "ⓚ효종 485화",
+      "visibleNumber": 485,
+      "title": "",
+      "startLine": 63642,
+      "endLine": 63778,
+      "characterCount": 5512,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 486,
+      "visibleLabel": "ⓚ효종 486화",
+      "visibleNumber": 486,
+      "title": "퇴각",
+      "startLine": 63779,
+      "endLine": 63942,
+      "characterCount": 5550,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 487,
+      "visibleLabel": "ⓚ효종 487화",
+      "visibleNumber": 487,
+      "title": "",
+      "startLine": 63943,
+      "endLine": 64075,
+      "characterCount": 5519,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 488,
+      "visibleLabel": "ⓚ효종 488화",
+      "visibleNumber": 488,
+      "title": "",
+      "startLine": 64076,
+      "endLine": 64212,
+      "characterCount": 5517,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 489,
+      "visibleLabel": "ⓚ효종 489화",
+      "visibleNumber": 489,
+      "title": "",
+      "startLine": 64213,
+      "endLine": 64357,
+      "characterCount": 5517,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 490,
+      "visibleLabel": "ⓚ효종 490화",
+      "visibleNumber": 490,
+      "title": "요서회전(1)",
+      "startLine": 64358,
+      "endLine": 64496,
+      "characterCount": 5546,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 491,
+      "visibleLabel": "ⓚ효종 491화",
+      "visibleNumber": 491,
+      "title": "",
+      "startLine": 64497,
+      "endLine": 64649,
+      "characterCount": 5498,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 492,
+      "visibleLabel": "ⓚ효종 492화",
+      "visibleNumber": 492,
+      "title": "",
+      "startLine": 64650,
+      "endLine": 64788,
+      "characterCount": 5498,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 493,
+      "visibleLabel": "ⓚ효종 493화",
+      "visibleNumber": 493,
+      "title": "",
+      "startLine": 64789,
+      "endLine": 64963,
+      "characterCount": 6015,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 494,
+      "visibleLabel": "ⓚ효종 494화",
+      "visibleNumber": 494,
+      "title": "요서회전(2)",
+      "startLine": 64964,
+      "endLine": 65122,
+      "characterCount": 5017,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 495,
+      "visibleLabel": "ⓚ효종 495화",
+      "visibleNumber": 495,
+      "title": "",
+      "startLine": 65123,
+      "endLine": 65278,
+      "characterCount": 5506,
+      "sceneBreakCount": 0
+    },
+    {
+      "sequence": 496,
+      "visibleLabel": "ⓚ효종 496화",
+      "visibleNumber": 496,
+      "title": "",
+      "startLine": 65279,
+      "endLine": 65428,
+      "characterCount": 5511,
+      "sceneBreakCount": 1
+    },
+    {
+      "sequence": 497,
+      "visibleLabel": "ⓚ효종 497화",
+      "visibleNumber": 497,
+      "title": "",
+      "startLine": 65429,
+      "endLine": 65571,
+      "characterCount": 6532,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 498,
+      "visibleLabel": "ⓚ효종 498화",
+      "visibleNumber": 498,
+      "title": "종장",
+      "startLine": 65572,
+      "endLine": 65655,
+      "characterCount": 4978,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 499,
+      "visibleLabel": "ⓚ효종 499화",
+      "visibleNumber": 499,
+      "title": "",
+      "startLine": 65656,
+      "endLine": 65772,
+      "characterCount": 5047,
+      "sceneBreakCount": 2
+    },
+    {
+      "sequence": 500,
+      "visibleLabel": "ⓚ효종 500화",
+      "visibleNumber": 500,
+      "title": "",
+      "startLine": 65773,
+      "endLine": 65930,
+      "characterCount": 5391,
+      "sceneBreakCount": 1
+    }
+  ]
+}

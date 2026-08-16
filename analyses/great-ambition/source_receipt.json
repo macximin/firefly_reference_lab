@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "great-ambition",
+  "title": "대망",
+  "penName": "강동호",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/대망_강동호_합본.txt",
+  "sourceSha256": "60a91d7a4f95fb3f808dfd0c2dd1967a4f2e72d71f70e4b713d32766669b918e",
+  "markerPattern": "^ⓚ",
+  "markerCount": 1002,
+  "firstMarker": "ⓚ대망 001화",
+  "lastMarker": "ⓚ대망 1002화",
+  "numberingNotes": [
+    "파일 순서의 표시 번호가 001화부터 1002화까지 연속이며 누락·중복·역전이 없다.",
+    "943화 표식은 원문 그대로 'ⓚ1대망 943화'이며 작품명 앞에 숫자 1이 끼어 있는 표기 이상을 visible_label에 보존한다."
+  ],
+  "analysisCoverage": "full"
+}

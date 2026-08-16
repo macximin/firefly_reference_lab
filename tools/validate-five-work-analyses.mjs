@@ -135,6 +135,42 @@ const forbiddenOutputPatterns = [
   [/자폐증/gu, "금지된 진단명·비하 표현"],
 ];
 
+const projectPitchMarkers = [
+  "## 기본 정보",
+  "## 판매 문구",
+  "### 한 줄 카피",
+  "### 로그라인",
+  "### 플랫폼 작품소개",
+  "## 내부 기획 피치",
+  "### 왜 이 작품을 읽는가",
+  "### 초반 약속",
+  "### 전체 성장선",
+  "### 주요 인물과 관계 보상",
+  "### 장르 라우팅",
+  "## 사실 검증",
+];
+
+export function validateProjectPitchText(text, label = "project_pitch.md") {
+  const errors = [];
+  if (Buffer.byteLength(text, "utf8") < 2_500) {
+    errors.push(`${label}: 작품소개 포함 기획서가 2500 bytes 미만이라 근거 해상도가 부족함`);
+  }
+  for (const marker of projectPitchMarkers) {
+    if (!text.includes(marker)) errors.push(`${label}: 필수 구획 누락 (${marker})`);
+  }
+
+  const introduction = text.match(/### 플랫폼 작품소개\s+([\s\S]*?)(?=\n##\s|\n###\s|$)/u)?.[1]?.trim() ?? "";
+  const introductionLength = [...introduction].length;
+  if (introductionLength < 400 || introductionLength > 700) {
+    errors.push(`${label}: 플랫폼 작품소개가 ${introductionLength}자로 400~700자 범위를 벗어남`);
+  }
+  if (/<[^>\n]{1,100}>/u.test(text) || /\[(?:작성|입력|미정|TODO)[^\]]*\]/iu.test(text)) {
+    errors.push(`${label}: 채우지 않은 템플릿 표식이 남아 있음`);
+  }
+  checkForbidden(text, label, errors);
+  return errors;
+}
+
 export function parseCsv(text) {
   const rows = [];
   let row = [];
@@ -339,7 +375,7 @@ function checkForbidden(text, label, errors) {
   }
 }
 
-async function validateWork(work) {
+async function validateWork(work, options = {}) {
   const errors = [];
   const warnings = [];
   const analysisDir = join(repoRoot, "analyses", work.slug);
@@ -374,6 +410,15 @@ async function validateWork(work) {
       checkForbidden(contents, name, errors);
     } catch (error) {
       errors.push(`${name} 누락 또는 읽기 실패: ${error.message}`);
+    }
+  }
+
+  if (options.requirePitch) {
+    try {
+      const pitch = await readFile(join(analysisDir, "project_pitch.md"), "utf8");
+      errors.push(...validateProjectPitchText(pitch));
+    } catch (error) {
+      errors.push(`project_pitch.md 누락 또는 읽기 실패: ${error.message}`);
     }
   }
 
@@ -452,13 +497,15 @@ async function validateWork(work) {
 }
 
 async function main() {
-  const requestedSlugs = process.argv.slice(2).filter((value) => value !== "--strict");
+  const flags = new Set(["--strict", "--require-pitch"]);
+  const requestedSlugs = process.argv.slice(2).filter((value) => !flags.has(value));
   const strict = process.argv.includes("--strict");
+  const requirePitch = process.argv.includes("--require-pitch");
   const selected = requestedSlugs.length ? works.filter((work) => requestedSlugs.includes(work.slug)) : works;
   if (selected.length === 0) throw new Error(`알 수 없는 work slug: ${requestedSlugs.join(", ")}`);
 
   const results = [];
-  for (const work of selected) results.push(await validateWork(work));
+  for (const work of selected) results.push(await validateWork(work, { requirePitch }));
 
   for (const result of results) {
     const failed = result.errors.length > 0 || (strict && result.warnings.length > 0);

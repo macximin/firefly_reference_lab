@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "goldspoon-life-manual",
+  "title": "금수저생활백서",
+  "penName": "강동호",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/금수저생활백서_강동호_합본.txt",
+  "sourceSha256": "0b3542d640338c504cf7fd7c26c559e753357244dfcd451ddd7d4c75a920f93f",
+  "markerPattern": "^ⓚ",
+  "markerCount": 703,
+  "firstMarker": "ⓚ1. 뉴 라이프??",
+  "lastMarker": "ⓚ703. 아직 남은 일이 있는데 한번 시작한 건 끝을 봐야지.",
+  "numberingNotes": [
+    "파일 순서 193번째 표식은 ⓚ*안녕하세요, 독자님들.이며 작가 공지 뒤에 본편 제목 193. 이런 큰 판을 놓칠 수는 없죠.가 이어진다.",
+    "숫자형 본편 표시는 1~192와 194~703으로 이어지며, 전수 지도는 계약대로 ^ⓚ 표식의 파일 순서 703개를 sequence 1~703으로 보존한다."
+  ],
+  "analysisCoverage": "full"
+}

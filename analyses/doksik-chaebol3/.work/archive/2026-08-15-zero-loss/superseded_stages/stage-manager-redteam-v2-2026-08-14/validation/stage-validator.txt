@@ -1,0 +1,6 @@
+PASS stage-validator: arcs=131 chapters=751 pacing=751 evidence=751 high=354
+PASS coverage=1..751 gap=0 overlap=0 ribbons=ratio-sum1 pacing-template-count=0 arc-prose-template-count=0
+PASS ranges=N56B:642-643,N57:644-645
+PASS surface-scope=131 N63:688 aliases+source-grounded
+PASS endpoint-audit=131 sha=70474186bc438041970cefa9096f28ebf733e5660533eb1768510f2f688b4163 edit=77 keep=54 boundary=0
+PASS semantic-fixed=15,50,154,156,192,194,246,259,264,335,380,382,482,488,495,500,513-516,590,595,598,600,603,605,608,614,625,630,633,636,642-645,648,654,660-662,664,668,672,681,687,688,690,693,710,715,720,731,735,739,744,745,748-751

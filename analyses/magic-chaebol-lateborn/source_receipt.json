@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "magic-chaebol-lateborn",
+  "title": "마법 배운 재벌집 늦둥이",
+  "penName": "서오",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/서오/마법 배운 재벌집 늦둥이_서오_합본.txt",
+  "sourceSha256": "f6517541f1be4d1ed108613687fb024a4745258927669447898b914a0578e0f3",
+  "markerPattern": "^ⓚ",
+  "markerCount": 304,
+  "firstMarker": "ⓚ1화",
+  "lastMarker": "ⓚ304화. 9서클(2)",
+  "numberingNotes": [
+    "표식의 가시 회차 번호는 파일 순서대로 1화부터 304화까지 연속된다.",
+    "원문의 부제 표기는 그대로 보존한다. 100화와 101화는 모두 '기술이전(2)', 116화와 117화는 모두 '이동통신사(2)', 244화와 245화는 모두 '천연가스(2)'로 적혀 있다.",
+    "26~32화의 표식에는 제목 없이 마침표만 있고, 246화 표식은 회차 번호 뒤 마침표가 없다. 분석에서 임의 교정하지 않는다."
+  ],
+  "analysisCoverage": "full"
+}

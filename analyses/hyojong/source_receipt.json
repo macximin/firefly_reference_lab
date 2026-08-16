@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "hyojong",
+  "title": "효종",
+  "penName": "강동호",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/효종_강동호_합본.txt",
+  "sourceSha256": "f0b4459d33253c389d9bf6a9c6b648ec3b461eeb327e44822be719d4a179e334",
+  "markerPattern": "^ⓚ",
+  "markerCount": 500,
+  "firstMarker": "ⓚ효종 1화",
+  "lastMarker": "ⓚ효종 500화",
+  "numberingNotes": [
+    "파일 순서와 표시 번호가 1화부터 500화까지 연속하며 중복·누락이 없다."
+  ],
+  "analysisCoverage": "full"
+}

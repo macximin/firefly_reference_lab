@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "goryeo-superpower",
+  "title": "고려는 천조국이 되기로 하였습니다",
+  "penName": "강동호",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/강동호/고려는 천조국이 되기로 하였습니다_강동호_합본.txt",
+  "sourceSha256": "bd90732f0ae6fa2a8d83631c5d48364ecf87106230cc7b73ab128c146510fd5f",
+  "markerPattern": "^ⓚ",
+  "markerCount": 280,
+  "firstMarker": "ⓚ1화. 전생을 기억하는 아이",
+  "lastMarker": "ⓚ280화. 전쟁 이후",
+  "numberingNotes": [
+    "파일 내 표식 순서는 1화부터 280화까지 연속이다.",
+    "51~53화, 55~58화, 60화, 71~75화, 77~81화, 83~86화, 89화, 122화 표식에는 제목이 없다.",
+    "100화의 묶음 표기는 원문 그대로 '북쪽으로 진군하라 (2)'이며 99화와 부제가 중복된다.",
+    "208화 표식은 원문 그대로 'ⓚ@208화. 두 도시 이야기 (1)'처럼 회차 번호 앞에 @가 붙는다.",
+    "108화, 109화, 135화, 137~140화 표식 일부에는 마침표 뒤 비분리 공백이 있으나 표면을 임의 보정하지 않는다."
+  ],
+  "analysisCoverage": "full"
+}

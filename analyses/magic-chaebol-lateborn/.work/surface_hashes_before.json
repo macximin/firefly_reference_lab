@@ -1,0 +1,7 @@
+{
+  "description": "100개 Arc 초안에서 자연 NarrativeArc로 재구축하기 직전, arc_id 열만 제외한 실제 표면 행의 정규화 SHA-256",
+  "chapter_map_without_arc_id": "b425b7f13729ea149b17673404125e71cf3934dfd84ab61f228c187701958106",
+  "arc_pacing_without_arc_id": "85d039f66ab38eab437def156cd9fc71f80bf6dbd7375e029b738f06fa62edd0",
+  "chapter_rows": 304,
+  "pacing_rows": 304
+}

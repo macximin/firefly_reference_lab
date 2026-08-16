@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "workSlug": "nouveau-riche-rascal",
+  "title": "졸부집 망나니(개정판)",
+  "penName": "흑곰작가",
+  "sourcePath": "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/흑곰작가/졸부집 망나니(개정판)_흑곰작가_합본.txt",
+  "sourceSha256": "67997af4a5922c21e2852545c958c3f71ec6b1a30a679271d0a7d41c87a947a8",
+  "markerPattern": "^ⓚ",
+  "markerCount": 450,
+  "firstMarker": "ⓚ졸부집 망나니(개정판) 1화",
+  "lastMarker": "ⓚ졸부집 망나니(개정판) 450화",
+  "numberingNotes": [
+    "파일 순서의 450개 표식이 표시 회차 1화부터 450화까지 중복·누락 없이 연속한다.",
+    "첫 표식은 1행, 마지막 표식은 104361행에서 시작하며 원문은 총 104556행이다."
+  ],
+  "analysisCoverage": "full"
+}

@@ -15,7 +15,7 @@ InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 
 
 1. 원문은 `private_sources/korean_webnovel_corpus/<필명>/`에 둔다. 이 경로는 커밋되지 않는다.
 2. `docs/session-briefs/`에서 담당 작품 발주를 읽고 `templates/work-arc-analysis-contract.md`를 따른다.
-3. `analyses/<work-slug>/`에 전 회차 지도, 전체 기획서, Arc Atlas·페이싱, InkOS 적용·간극 보고서, 자유 개선 보고서와 완료 영수증을 만든다.
+3. `analyses/<work-slug>/`에 전 회차 지도, 전체 분석 기획서, 작품소개 포함 피치, Arc Atlas·페이싱, InkOS 적용·간극 보고서, 자유 개선 보고서와 완료 영수증을 만든다.
 4. 관리자 검수를 통과한 작품만 `comparisons/`에서 비교하고, InkOS 적용 계약은 `inkos_handoffs/`에 남긴다.
 
 검증:
@@ -23,6 +23,7 @@ InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 
 ```bash
 node tools/validate-source-manifest.mjs
 node tools/validate-five-work-analyses.mjs --strict
+node tools/validate-writing-system-contracts.mjs
 ```
 
 ## 폴더
@@ -43,11 +44,12 @@ node tools/validate-five-work-analyses.mjs --strict
 
 ## 작품별 필수 산출물
 
-각 작품은 다음 9개 파일을 최소로 갖는다.
+새로 분석하거나 갱신하는 작품은 다음 10개 파일을 최소로 갖는다. 기존 분석은 `--require-pitch`를 지정했을 때만 피치를 필수로 검사한다.
 
 - `source_receipt.json`
 - `chapter_map.csv`
 - `project_bible.md`
+- `project_pitch.md`
 - `arc_map.csv`
 - `arc_pacing.csv`
 - `arc_atlas.md`
@@ -55,4 +57,4 @@ node tools/validate-five-work-analyses.mjs --strict
 - `free_improvements_report.md`
 - `completion_receipt.md`
 
-전체 필드와 완료 조건은 `templates/work-arc-analysis-contract.md`가 권위다. 전 회차를 한 행씩 포함하고, 모든 Arc에 실제 사건형 이름·구체 인물·장소·결산·다음 훅과 회차별 페이싱을 남긴다.
+전체 필드와 완료 조건은 `templates/work-arc-analysis-contract.md`가 권위다. 전 회차를 한 행씩 포함하고, 모든 Arc에 실제 사건형 이름·구체 인물·장소·결산·다음 훅과 회차별 페이싱을 남긴다. `project_pitch.md`는 공식 소개 복원이 아니라는 사실과 근거 범위를 밝힌다.
