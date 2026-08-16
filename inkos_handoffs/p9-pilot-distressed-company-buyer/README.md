@@ -1,7 +1,7 @@
 # P9 파일럿 · 《부도난 회사만 삽니다》
 
 작성일: 2026-08-16 KST
-상태: 프리프로덕션 초안 완료, 원고 집필 전 owner lock 대기
+상태: owner lock 및 InkOS 승격 완료, B001 1화 `ready-for-review`
 범위: 신규 재벌물의 첫 NarrativeArc 수동 라우팅과 1~3화 제작 준비
 
 ## 제작 가설
@@ -43,6 +43,7 @@
 ## 현재 경계
 
 - 이번 팩은 새 작품의 가설이다. 기존 작품 사건 순서와 고유 물건을 가져오지 않는다.
-- A/B Rail은 InkOS에 아직 저장하지 않은 `draft`다. B001도 런타임 Arc에 연결하지 않았다.
-- 작품명, 인명, 기업명, 로맨스 여부는 원고 전에 사용자가 바꿀 수 있다.
-- 실제 3~5화 집필과 InkOS 제품 코드 변경은 다음 owner lock 뒤에 진행한다.
+- A/B Rail은 InkOS `books/부도난-회사만-삽니다/story/rails/plan.json`에 `draft`로 승격했다.
+- B001 `p9-b001-copper-wall`만 active/ready이며 B002·B003은 draft다.
+- 제목, 12년 회귀, 첫 30화 로맨스 미가동, A01만 locked라는 owner lock을 반영했다.
+- 200화는 제품 용량용 임시 스냅샷이다. 실제 완결 회차와 A02 이후 산업·사건은 확정하지 않았다.

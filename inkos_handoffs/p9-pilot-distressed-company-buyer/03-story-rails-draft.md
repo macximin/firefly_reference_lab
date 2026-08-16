@@ -4,9 +4,9 @@
 
 - A-Rail: `draft`
 - B-Rail: `draft`
-- InkOS book_id: 미생성
-- targetChaptersSnapshot: 미확정
-- 런타임 Arc 연결: 없음
+- InkOS book_id: `부도난-회사만-삽니다`
+- targetChaptersSnapshot: `200` — 제품 용량용 임시 스냅샷, 실제 완결 회차 미확정
+- 런타임 Arc 연결: B001 -> `p9-b001-copper-wall` active
 
 이 문서는 미래 계획이다. 사용자 의도, 확정 캐논, 실제 집필 원고가 더 높은 권위를 가진다. 4분할 줄거리는 작품 전체를 싸게 읽는 지도이고, A-Rail은 비가역 목적지, B-Rail은 가까운 사건 경로를 맡는다.
 
@@ -28,7 +28,7 @@
 ### A02 · 남의 도장이 아닌 자기 회사
 
 - routeOrder: 2
-- detailLevel: compound
+- detailLevel: sparse
 - state: planned
 - entryState: 태겸은 회사마다 성공보수를 따로 받아 지분이 흩어져 있다.
 - trigger: 두 번째 회생 회사의 채권단이 태겸 개인에게 연대보증을 요구한다.
@@ -83,9 +83,9 @@
 ### B001 · 창고 벽 뒤의 구리
 
 - routeOrder: 1
-- status: provisional
+- status: active
 - targetAnchorId: A01
-- arcId: 미연결
+- arcId: `p9-b001-copper-wall`
 - narrativeFunction: 1~3화에서 태겸의 HOW를 물증으로 증명하고 첫 지급 정지 권한을 잡는다.
 - payoffAxis: 구리 재고 발견, 창고 봉인, 조건부 지급 정지
 - carriedReaderDebt: 회수 가능한 재고를 실제 급여와 자기 지분으로 바꿔야 한다.
