@@ -10,7 +10,7 @@
 
 ## 확인한 현재 구현 표면
 
-2026-08-13에 `/Users/a2501/Desktop/inkos`를 읽기 전용으로 확인했다. 구현 변경은 하지 않았다.
+2026-08-13에 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`를 읽기 전용으로 확인했다. 구현 변경은 하지 않았다.
 
 - `packages/core/src/arc/schema.ts`: `ArcPacket`은 정확히 1~3개의 연속 회차만 허용한다. `openingState`, `promise`, `goal`, `obstacle`, `pressure`, `turn`, `payoff`, `irreversibleChange`, `nextHook`, 인물·관계·세계 변화, `mustKeep`, `mustAvoid`, `styleEmphasis`는 이 작품을 가까운 회차 단위로 쓰기에 유용하다.
 - `packages/core/src/arc/rail-schema.ts`: A-Rail은 장기 불가역 목적지와 `humanAftermath`, `readerDebt`, `payoffAxis`, `nextPressure`를 가진다. B-Rail은 가까운 Arc 경로와 `payoffAxis`, `carriedReaderDebt`, `contrastRequirement`를 가진다. 장기 보상과 다음 압력을 잇는 뼈대로 사용할 수 있다.

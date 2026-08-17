@@ -1,7 +1,7 @@
 # 15작품 Reverse Lab 안전 정지 체크포인트
 
 - 정지 시각: 2026-08-13 02:03 KST
-- Lab Git 루트: `/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab`
+- Lab Git 루트: `/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab`
 - 체크포인트 이전 HEAD: `044b1b5331d5c85daa81fab6cc27a21677f6c954`
 - 공통 작품 세션 설정: `gpt-5.6-sol` / reasoning `ultra` / service tier `fast` / Fast mode enabled
 - 정지 확인: Lab 관련 `codex exec` 0개, 별도 ephemeral 실행 0개

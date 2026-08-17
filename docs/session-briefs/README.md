@@ -4,8 +4,8 @@
 
 먼저 아래 두 문서를 처음부터 끝까지 읽고 그대로 따른다.
 
-- `/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/docs/five-work-webnovel-arc-research-plan.md`
-- `/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/templates/work-arc-analysis-contract.md`
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/docs/five-work-webnovel-arc-research-plan.md`
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/templates/work-arc-analysis-contract.md`
 
 ## 네 가지 Goal
 
@@ -23,7 +23,7 @@
 - 중국 숏드라마 보고서와 다른 작품 분석은 열지 않는다. 독립 분석이어야 한다.
 - Codex memory와 기존 작품 유래 메모도 1차 분석 근거로 사용하지 않는다. 담당 원문과 현재 InkOS 구현만 근거로 삼고, 이미 읽은 선행 메모가 있다면 그 주장·경계·평가를 폐기하고 원문에서 다시 확인한다.
 - 데이터 크기에 상한은 없다. 몇 개 거시 블록으로 접지 말고 모든 Arc를 충분히 펼친다.
-- `/Users/a2501/Desktop/inkos`의 현재 구현, `WEBNOVEL_KO_IMPLEMENTATION_CONTEXT.md`, Arc/Rail/Forecast 관련 코드는 Goal 3을 위해 읽기 전용으로 확인한다. InkOS 본체는 수정하지 않는다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`의 현재 구현, `WEBNOVEL_KO_IMPLEMENTATION_CONTEXT.md`, Arc/Rail/Forecast 관련 코드는 Goal 3을 위해 읽기 전용으로 확인한다. InkOS 본체는 수정하지 않는다.
 - 지정된 전용 출력 폴더 밖을 수정하지 않는다. Git commit/push도 하지 않는다.
 - 완료 전에 해시, 표식/CSV 행 수, Arc 전수 포함 여부, 네 Goal 파일을 자체 검증하고 `completion_receipt.md`에 남긴다.
 - 관리자의 확인이 꼭 필요한 blocker가 아니면 질문으로 멈추지 말고 합리적으로 판단해 계속 진행한다.

@@ -2,7 +2,7 @@
 
 ## 확인 범위
 
-2026년 8월 13일의 `/Users/a2501/Desktop/inkos` 작업 트리를 읽기 전용으로 확인했다. 미커밋 구현을 포함한 현재 코드가 기준이며 InkOS 본체는 수정하지 않았다.
+2026년 8월 13일의 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos` 작업 트리를 읽기 전용으로 확인했다. 미커밋 구현을 포함한 현재 코드가 기준이며 InkOS 본체는 수정하지 않았다.
 
 계약과 저장 동작은 `packages/core/src/arc/schema.ts`, `store.ts`, `rail-schema.ts`, `rail-store.ts`, `rail-context.ts`, `forecast.ts`, `reflow-schema.ts`, `reflow-store.ts`에서 확인했다. 생성 연결은 `packages/core/src/pipeline/runner.ts`, 구조화 상태는 `packages/core/src/models/runtime-state.ts`, 현재 화면은 `packages/studio/src/components/chat/NarrativeForecastPreview.tsx`와 `StoryRailsPreview.tsx`, API 연결은 `packages/studio/src/api/server.ts`를 대조했다.
 

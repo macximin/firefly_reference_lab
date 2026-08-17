@@ -10,7 +10,7 @@
 
 ## 2. 확인한 현재 구현
 
-이번 판단은 `/Users/a2501/Desktop/inkos`를 수정하지 않고 다음 구현을 직접 읽어 내렸다.
+이번 판단은 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`를 수정하지 않고 다음 구현을 직접 읽어 내렸다.
 
 - `packages/core/src/arc/schema.ts`: Arc는 1~3개의 연속 회차만 소유한다. 회차 역할은 `promise`, `pressure`, `turn`, `payoff` 중 하나이고, 인물·관계·세계 변화와 훅·유지·금지·문체 강조를 문자열 배열로 가진다.
 - `packages/core/src/arc/forecast.ts`: Forecast의 첫 연속 1~3개 비트를 Arc 초안으로 바꾸며, 선택만으로 원고나 정본 상태를 덮어쓰지 않는다. Writer에 주입되는 Arc 문맥과 회차 메타데이터용 provenance도 여기서 만든다.

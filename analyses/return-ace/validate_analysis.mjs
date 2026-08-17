@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const outputDir = dirname(fileURLToPath(import.meta.url));
-const sourcePath = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/흑곰작가/리턴 에이스_흑곰작가_합본.txt";
+const sourcePath = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/private_sources/korean_webnovel_corpus/흑곰작가/리턴 에이스_흑곰작가_합본.txt";
 const expectedHash = "d1dd84aebe77ece8f17e4b4448b739c3106931ccec5f2008933b385b74b8ba45";
 const expectedChapters = 310;
 const manualReviewPaths = [

@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { SpreadsheetFile, Workbook } from "@oai/artifact-tool";
 
-const workDir = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/.work/market_collection";
-const outputDir = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/outputs/019ff69d-4e2d-7230-ad52-0aebaaa527b1";
+const workDir = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/.work/market_collection";
+const outputDir = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/outputs/019ff69d-4e2d-7230-ad52-0aebaaa527b1";
 const outputPath = path.join(outputDir, "webnovel-male-platform-200.xlsx");
 const previewDir = path.join(workDir, "male-200-previews");
 

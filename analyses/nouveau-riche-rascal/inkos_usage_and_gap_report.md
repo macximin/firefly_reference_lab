@@ -10,7 +10,7 @@
 
 ## 확인한 현재 구현
 
-이 절은 2026-08-13에 `/Users/a2501/Desktop/inkos`의 미커밋 작업 트리를 읽기 전용으로 확인한 결과다. 구현을 수정하거나 테스트 결과를 새로 주장하지 않는다.
+이 절은 2026-08-13에 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`의 미커밋 작업 트리를 읽기 전용으로 확인한 결과다. 구현을 수정하거나 테스트 결과를 새로 주장하지 않는다.
 
 - `packages/core/src/arc/schema.ts`의 `ArcPacket`은 1·2·3화 중 하나이며, 회차 번호는 중복 없는 연속 번호여야 한다. `episodeBeats`도 같은 회차에 같은 순서로 대응해야 한다.
 - 패킷에는 `openingState`, `promise`, `goal`, `obstacle`, `pressure`, `turn`, `payoff`, `irreversibleChange`, `nextHook`가 있다. 인물·관계·세계 변화, 훅 운용, `mustKeep`, `mustAvoid`, `styleEmphasis`도 배열로 보존한다.

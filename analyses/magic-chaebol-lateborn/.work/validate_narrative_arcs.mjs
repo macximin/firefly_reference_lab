@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-const outputDir = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/analyses/magic-chaebol-lateborn";
+const outputDir = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/analyses/magic-chaebol-lateborn";
 const workDir = path.join(outputDir, ".work");
 
 const chapterHeader = [

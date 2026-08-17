@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const workDir = dirname(fileURLToPath(import.meta.url));
-const sourcePath = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/흑곰작가/리턴 에이스_흑곰작가_합본.txt";
+const sourcePath = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/private_sources/korean_webnovel_corpus/흑곰작가/리턴 에이스_흑곰작가_합본.txt";
 const reviewPaths = [
   "manual_review_001_025.md",
   "manual_review_026_103.md",

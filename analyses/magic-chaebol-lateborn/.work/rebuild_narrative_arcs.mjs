@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-const root = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab";
+const root = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab";
 const outputDir = path.join(root, "analyses/magic-chaebol-lateborn");
 const workDir = path.join(outputDir, ".work");
 

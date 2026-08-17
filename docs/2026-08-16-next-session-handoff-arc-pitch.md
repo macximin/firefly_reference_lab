@@ -3,7 +3,7 @@
 > 이 인계서는 작품 피치 확장 이전 기록이다. 현재 재개 정본은 `docs/2026-08-16-p9-pilot-preproduction-handoff.md`다.
 
 작성 시각: 2026-08-16 11:13 KST  
-저장소: `/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab`  
+저장소: `/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab`
 브랜치·HEAD: `main` / `c46f153`  
 현재 단계: 작품 Arc 연구 2편 골드 승인, P0~P8 완료, 작품 피치 확장 전, P9 미착수
 
@@ -161,7 +161,7 @@ Reverse Lab 작업트리는 dirty다. 이는 사용자 작업과 승인된 연�
 - 다수 분석 폴더, P0~P8 문서·템플릿·출력은 untracked 상태
 - 기존 작업을 reset, checkout, 일괄 stage, 일괄 삭제하지 않는다
 - 커밋·푸시는 사용자의 새 지시 전까지 하지 않는다
-- 부모 `/Users/a2501/Desktop/inkos`의 제품 코드와 중국 자료는 건드리지 않는다
+- 부모 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`의 제품 코드와 중국 자료는 건드리지 않는다
 
 관리자 세션만 공통 문서·검증 도구·비교 자료를 수정한다. 작품 전담 세션은 담당 원문과 `analyses/<assigned-slug>/`만 다룬다. 별도 CLI `codex exec` 하위 프로세스를 만들지 않는다.
 

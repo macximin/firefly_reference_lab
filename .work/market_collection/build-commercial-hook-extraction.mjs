@@ -3,8 +3,8 @@ import path from "node:path";
 import { SpreadsheetFile, Workbook } from "@oai/artifact-tool";
 import { commercialHookAnnotations } from "./commercial-hook-annotations.mjs";
 
-const workDir = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/.work/market_collection";
-const outputDir = "/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/outputs/019ff69d-4e2d-7230-ad52-0aebaaa527b1";
+const workDir = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/.work/market_collection";
+const outputDir = "/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/outputs/019ff69d-4e2d-7230-ad52-0aebaaa527b1";
 const outputPath = path.join(outputDir, "webnovel-commercial-hook-extraction-100.xlsx");
 const previewDir = path.join(workDir, "commercial-hook-previews");
 const payload = JSON.parse(await fs.readFile(path.join(workDir, "platform-sample-100.json"), "utf8"));

@@ -12,13 +12,13 @@
 
 읽기 전용으로 다음 현재 파일을 확인했다. InkOS 작업트리는 기존 대규모 미커밋 변경을 가진 상태였고 이 보고서 작성 중에는 전혀 수정하지 않았다.
 
-- `/Users/a2501/Desktop/inkos/packages/core/src/arc/schema.ts`: `ArcPacket`은 1~3개의 연속 회차와 정렬된 `episodeBeats`, `draft|ready|completed`를 강제한다.
-- `/Users/a2501/Desktop/inkos/packages/core/src/arc/store.ts`: `story/arcs/`에 원자적으로 저장하고 `active.json`을 유일한 활성 Arc 포인터로 둔다.
-- `/Users/a2501/Desktop/inkos/packages/core/src/arc/forecast.ts`: Forecast 분기의 첫 연속 1~3개 비트를 편집 가능한 Arc 초안으로 만들며 정본과 Chapter를 즉시 덮어쓰지 않는다. 활성 Arc와 선택적 Rail 문맥은 Writer 입력과 Chapter provenance에 들어간다.
-- `/Users/a2501/Desktop/inkos/packages/core/src/arc/rail-schema.ts`: A-Rail은 ready 상태에서 6~12개 장기 Anchor를 요구하고, B-Rail은 `closed → active → provisional → hypothesis` 순서와 최대 3화 용량을 검증한다.
-- `/Users/a2501/Desktop/inkos/packages/core/src/arc/rail-context.ts`: A/B Rail이 ready이고 Book 목표 회차 스냅샷이 현재값과 맞으며 active B가 active Arc와 정확히 연결될 때만 런타임 문맥을 만든다.
-- `/Users/a2501/Desktop/inkos/packages/studio/src/components/chat/StoryRailsPreview.tsx`: 장기 Anchor의 진입·촉발·비가역 변화·인물 여진·독자 약속·보상 방향·다음 압력과 B-Rail의 이전 Arc 대비 차이를 한국어로 보여 준다.
-- `/Users/a2501/Desktop/inkos/packages/studio/src/components/chat/NarrativeForecastPreview.tsx`: stale Forecast 선택을 막고, 후보 선택이 정본이 아니라 활성 Arc 초안만 만들도록 사용자에게 명시한다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos/packages/core/src/arc/schema.ts`: `ArcPacket`은 1~3개의 연속 회차와 정렬된 `episodeBeats`, `draft|ready|completed`를 강제한다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos/packages/core/src/arc/store.ts`: `story/arcs/`에 원자적으로 저장하고 `active.json`을 유일한 활성 Arc 포인터로 둔다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos/packages/core/src/arc/forecast.ts`: Forecast 분기의 첫 연속 1~3개 비트를 편집 가능한 Arc 초안으로 만들며 정본과 Chapter를 즉시 덮어쓰지 않는다. 활성 Arc와 선택적 Rail 문맥은 Writer 입력과 Chapter provenance에 들어간다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos/packages/core/src/arc/rail-schema.ts`: A-Rail은 ready 상태에서 6~12개 장기 Anchor를 요구하고, B-Rail은 `closed → active → provisional → hypothesis` 순서와 최대 3화 용량을 검증한다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos/packages/core/src/arc/rail-context.ts`: A/B Rail이 ready이고 Book 목표 회차 스냅샷이 현재값과 맞으며 active B가 active Arc와 정확히 연결될 때만 런타임 문맥을 만든다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos/packages/studio/src/components/chat/StoryRailsPreview.tsx`: 장기 Anchor의 진입·촉발·비가역 변화·인물 여진·독자 약속·보상 방향·다음 압력과 B-Rail의 이전 Arc 대비 차이를 한국어로 보여 준다.
+- `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos/packages/studio/src/components/chat/NarrativeForecastPreview.tsx`: stale Forecast 선택을 막고, 후보 선택이 정본이 아니라 활성 Arc 초안만 만들도록 사용자에게 명시한다.
 
 이 평가는 현재 소스 구조를 읽은 결과다. InkOS 코드를 수정하거나 테스트를 새로 실행하는 일은 이 작품 분석의 범위가 아니므로, 런타임 전체가 현재 통과한다고 주장하지 않는다.
 

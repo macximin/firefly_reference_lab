@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const sourcePath = '/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/private_sources/korean_webnovel_corpus/서오/연봉 1조 신입사원_서오_합본.txt';
-const outDir = '/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/analyses/trillion-salary-rookie/segments';
+const sourcePath = '/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/private_sources/korean_webnovel_corpus/서오/연봉 1조 신입사원_서오_합본.txt';
+const outDir = '/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/analyses/trillion-salary-rookie/segments';
 
 const d = (arc, goal, event, resistance, turn, reward, change, hook, phase, tension, rewardScore, hookScore, axis = '세계|지위', confidence = 'high') => ({ arc, goal, event, resistance, turn, reward, change, hook, phase, tension, rewardScore, hookScore, axis, confidence });
 

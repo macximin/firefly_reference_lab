@@ -14,7 +14,7 @@
 
 ## 2026-08-13 읽기 전용 구현 확인
 
-확인한 기준은 `/Users/a2501/Desktop/inkos`의 현재 작업트리다. InkOS 본체는 수정하지 않았고, 기존 미커밋 변경도 건드리지 않았다.
+확인한 기준은 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`의 현재 작업트리다. InkOS 본체는 수정하지 않았고, 기존 미커밋 변경도 건드리지 않았다.
 
 - `packages/core/src/arc/schema.ts`: `ArcPacket`은 1~3개의 연속 회차만 허용한다. 전역 약속·목표·장애물·압력·전환·보상·비가역 변화·다음 훅, 회차별 역할과 비트, 인물·관계·세계 변화, 훅 조작, 유지·회피·문체 강조를 보관한다.
 - `packages/core/src/arc/forecast.ts`: 선택한 Forecast의 첫 연속 1~3비트를 Arc 초안으로 만든다. 이때 장거리 예상 변화는 정본으로 올리지 않지만 `turn`, `irreversibleChange`, `nextHook`은 빈 값으로 시작하므로 사람이 채우지 않으면 행동 장르의 결산이 마른다.

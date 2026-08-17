@@ -3,6 +3,15 @@
 작성일: 2026-08-16 KST
 현재 단계: P9 프리프로덕션 초안 완료, owner lock 및 InkOS 첫 3화 대기
 
+## 2026-08-17 경로 마이그레이션
+
+- 현재 저장소: `/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab`
+- InkOS: `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`
+- HQ 마이그레이션 영수증: `/Users/a2501/Desktop/firefly_studio/docs/bootstrap-status.md`
+- 2026-08-17 이전 영수증·세션 로그의 옛 절대경로는 당시 증거로 보존한다.
+- 재벌물 Reference Core 6개는 기존 material ID를 유지한 채 최신 내용과
+  `firefly-reference-core:` 논리 출처로 갱신됐다. 재실행 시 6개 모두 재사용된다.
+
 ## 먼저 읽을 경로
 
 `inkos_handoffs/p9-pilot-distressed-company-buyer/README.md`
@@ -11,7 +20,8 @@
 
 ## 완료된 일
 
-- InkOS 한국어 변경 3개를 `master`에 fast-forward 병합하고 `origin/master`에 푸시했다. 현재 HEAD는 `6b4807b1`이다.
+- InkOS 한국어 변경과 피치·Reference Core 연결 변경은 `master`에 반영돼 있다.
+  물리 이동 직전 기준 HEAD는 `4875c28a`였으며, 현재 HEAD는 새 경로에서 확인한다.
 - Firefly Studio HQ의 InkOS branch contract는 `match`로 복구됐다.
 - Firefly Market Radar가 2026-08-16 남성향 공개 목록 120개를 수집했다.
 - Market Radar 정본 커밋은 `6d50cbe`다. 보고서는 baseline-only이며 추세를 주장하지 않는다.
@@ -51,7 +61,7 @@
 
 ```text
 node --test tests/*.test.mjs
-PASS 9 / FAIL 0
+PASS 11 / FAIL 0
 
 node tools/validate-writing-system-contracts.mjs
 PASS P0~P8 계약팩: 14개 계약 + 독식하는 재벌 3세 피치
@@ -65,4 +75,4 @@ PASS 리턴 에이스: 310회 / 55 Arc / 오류 0 / 경고 0
 
 ## 다음 세션 명령
 
-> `AGENTS.md`와 `docs/2026-08-16-p9-pilot-preproduction-handoff.md`를 읽고 저장소 상태를 확인하라. `inkos_handoffs/p9-pilot-distressed-company-buyer/`의 owner lock 항목을 사용자와 확정한 뒤, 승인된 값으로 InkOS 한국어 작품을 만들고 첫 1~3화만 집필하라. 다른 작품 원문, 중국 자료, 세 번째 골드, 전체 B-Rail 확장은 열지 마라.
+> `/Users/a2501/Desktop/firefly_studio/docs/bootstrap-status.md`와 `/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/AGENTS.md`, `docs/2026-08-16-p9-pilot-preproduction-handoff.md`를 읽고 저장소 상태를 확인하라. `inkos_handoffs/p9-pilot-distressed-company-buyer/`의 owner lock 항목을 사용자와 확정한 뒤, 승인된 값으로 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`에 한국어 작품을 만들고 첫 1~3화만 집필하라. 다른 작품 원문, 중국 자료, 세 번째 골드, 전체 B-Rail 확장은 열지 마라.

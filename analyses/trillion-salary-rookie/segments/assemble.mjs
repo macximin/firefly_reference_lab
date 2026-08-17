@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const repoRoot = '/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab';
+const repoRoot = '/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab';
 const analysisDir = path.join(repoRoot, 'analyses/trillion-salary-rookie');
 const segmentDir = path.join(analysisDir, 'segments');
 const sourcePath = path.join(repoRoot, 'private_sources/korean_webnovel_corpus/서오/연봉 1조 신입사원_서오_합본.txt');

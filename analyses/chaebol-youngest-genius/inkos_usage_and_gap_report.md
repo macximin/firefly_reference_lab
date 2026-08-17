@@ -12,7 +12,7 @@
 
 ## 읽기 전용 확인 범위와 현재 사실
 
-2026-08-13에 `/Users/a2501/Desktop/inkos`의 현재 작업 트리를 수정하지 않고 확인했다. 작업 트리에는 사용자의 기존 미커밋 변경이 다수 있으므로 본 분석에서는 읽기와 테스트만 수행했다.
+2026-08-13에 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`의 현재 작업 트리를 수정하지 않고 확인했다. 작업 트리에는 사용자의 기존 미커밋 변경이 다수 있으므로 본 분석에서는 읽기와 테스트만 수행했다.
 
 - `packages/core/src/arc/schema.ts`: 1~3개 연속 Chapter를 갖는 `ArcPacketSchema`, active Arc 포인터, 회차별 `promise/pressure/turn/payoff` 역할이 있다.
 - `packages/core/src/arc/store.ts`: Book 내부 `story/arcs` 저장, 원자적 JSON 저장, 목록, 활성 Arc 지정이 있다.

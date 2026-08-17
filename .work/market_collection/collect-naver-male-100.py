@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 from lxml import html
 
 
-WORK_DIR = Path("/Users/a2501/Desktop/inkos/edge_repos/inkos_reverse_lab/.work/market_collection")
+WORK_DIR = Path("/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/.work/market_collection")
 OLD_SAMPLE = WORK_DIR / "platform-sample-100.json"
 RANKING_OUTPUT = WORK_DIR / "male-200-naver-ranking-snapshot.json"
 DETAIL_OUTPUT = WORK_DIR / "male-200-naver-details.json"
