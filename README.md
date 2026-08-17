@@ -17,6 +17,7 @@ InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 
 2. `docs/session-briefs/`에서 담당 작품 발주를 읽고 `templates/work-arc-analysis-contract.md`를 따른다.
 3. `analyses/<work-slug>/`에 전 회차 지도, 전체 분석 기획서, 작품소개 포함 피치, Arc Atlas·페이싱, InkOS 적용·간극 보고서, 자유 개선 보고서와 완료 영수증을 만든다.
 4. 관리자 검수를 통과한 작품만 `comparisons/`에서 비교하고, InkOS 적용 계약은 `inkos_handoffs/`에 남긴다.
+5. 여러 재벌물에서 선택해 쓰는 공용 기능 카드는 `inkos_handoffs/chaebol-reference-core/`에서 관리한다. 카드는 작품별 opt-in이며 문체 설정과 분리한다.
 
 검증:
 

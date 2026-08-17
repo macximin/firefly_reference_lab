@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "id": "chaebol-reference-core-v1",
+  "title": "한국 재벌 웹소설 Reference Core v1",
+  "genre": "korean-chaebol-webnovel",
+  "bindingPolicy": "opt-in-per-book",
+  "stylePolicy": "separate-style-guide-and-profile",
+  "routingPolicy": "primary-chassis-plus-secondary-event-bank",
+  "similarityPolicy": "do-not-penalize-industry-event-order-or-reward-similarity",
+  "directCopyPolicy": "forbid-verbatim-prose-fictional-proper-nouns-and-dialogue",
+  "authorityOrder": [
+    "owner-intent-and-book-canon",
+    "series-contract",
+    "current-narrative-arc",
+    "selected-primary-gold-chassis",
+    "selected-reference-core-card",
+    "general-genre-knowledge"
+  ],
+  "productionEvidence": [
+    {
+      "workSlug": "doksik-chaebol3",
+      "title": "독식하는 재벌 3세",
+      "status": "GOLD_APPROVED",
+      "qa": "15/15 PASS",
+      "referenceCard": "../../analyses/doksik-chaebol3/gold_reference_card.md"
+    },
+    {
+      "workSlug": "return-ace",
+      "title": "리턴 에이스",
+      "status": "GOLD_APPROVED",
+      "qa": "15/15 PASS",
+      "referenceCard": "../../analyses/return-ace/gold_reference_card.md"
+    }
+  ],
+  "cards": [
+    {
+      "id": "CHB-CORE-01",
+      "title": "경제 운영 정체성",
+      "path": "materials/CHB-CORE-01-economic-operating-identity.md",
+      "status": "production_ready",
+      "roles": ["Spine", "Engine"]
+    },
+    {
+      "id": "CHB-CORE-02",
+      "title": "Entry 거래와 첫 증명",
+      "path": "materials/CHB-CORE-02-entry-transaction.md",
+      "status": "production_ready",
+      "roles": ["Engine", "Payoff"]
+    },
+    {
+      "id": "CHB-CORE-03",
+      "title": "가치 환전 사건 엔진",
+      "path": "materials/CHB-CORE-03-value-conversion-engine.md",
+      "status": "production_ready",
+      "roles": ["Engine", "Spine"]
+    },
+    {
+      "id": "CHB-CORE-04",
+      "title": "실행자와 저항",
+      "path": "materials/CHB-CORE-04-execution-and-resistance.md",
+      "status": "production_ready",
+      "roles": ["Engine", "Emotion"]
+    },
+    {
+      "id": "CHB-CORE-05",
+      "title": "보상과 관계 영수증",
+      "path": "materials/CHB-CORE-05-reward-and-relation.md",
+      "status": "production_ready",
+      "roles": ["Payoff", "Emotion"]
+    },
+    {
+      "id": "CHB-CORE-06",
+      "title": "스케일·점수판·다음 압력",
+      "path": "materials/CHB-CORE-06-scale-scoreboard-hook.md",
+      "status": "production_ready",
+      "roles": ["Hook", "Spine", "Wildcard"]
+    }
+  ],
+  "candidateDeckPath": "candidate-expansion-index.md",
+  "bindingRecipesPath": "binding-recipes.md"
+}

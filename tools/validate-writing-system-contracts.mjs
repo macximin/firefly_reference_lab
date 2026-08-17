@@ -62,7 +62,7 @@ const contracts = [
   {
     path: "templates/writing-system/08-gold-router.md",
     minimumBytes: 1_000,
-    markers: ["## 현재 작품 진단", "## 골드 배정", "### 시장 안전안", "### 인물 중심안", "### 와일드카드안", "## Lead Writer 결정"],
+    markers: ["## 현재 작품 진단", "## 주축 골격", "## 보조 사건·보상 라우팅", "## 결합안", "## 직접 전사 금지", "## Lead Writer 결정"],
   },
   {
     path: "templates/writing-system/project-pitch.md",
@@ -72,12 +72,12 @@ const contracts = [
   {
     path: "templates/writing-system/gold-reference-card.md",
     minimumBytes: 800,
-    markers: ["## 식별과 승인", "## best_at", "## 역할별 사용", "## 복제 금지 표면", "## Anti-Gold 메모"],
+    markers: ["## 식별과 승인", "## best_at", "## 직접 라우팅 가능 자산", "## 역할별 사용", "## 직접 전사 금지", "## Anti-Gold 메모"],
   },
   {
     path: "analyses/doksik-chaebol3/gold_reference_card.md",
     minimumBytes: 2_000,
-    markers: ["15/15 PASS", "131개 자연 NarrativeArc", "## best_at", "## 역할별 사용", "## 복제 금지 표면"],
+    markers: ["15/15 PASS", "131개 자연 NarrativeArc", "## best_at", "## 역할별 사용", "## 직접 라우팅 가능 자산", "## 직접 전사 금지"],
   },
 ];
 
