@@ -1,5 +1,7 @@
 # P9 파일럿 · 《부도난 회사만 삽니다》
 
+> **삭제 상태 · 2026-08-17 · `INTENTIONALLY_DELETED_BY_OWNER`:** 이 문서는 owner가 거부·삭제한 외부 프리프로덕션 팩의 역사적 본문이다. 활성 InkOS 작품이나 집필 지시가 아니며, 이 작품을 다시 살린다는 새로운 명시적 owner 승인 없이는 복구·검토·집필하지 않는다. 아래 상태 표기는 삭제 전 시점의 기록이다. 최신 근거: `../../docs/2026-08-23-p9-owner-deletion-receipt.md`.
+
 작성일: 2026-08-16 KST
 상태: owner lock 및 InkOS 승격 완료, B001 1화 `ready-for-review`
 범위: 신규 재벌물의 첫 NarrativeArc 수동 라우팅과 1~3화 제작 준비

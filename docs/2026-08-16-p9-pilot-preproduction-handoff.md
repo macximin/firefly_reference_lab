@@ -1,7 +1,13 @@
 # 다음 세션 인계서 · P9 신규 재벌물 파일럿
 
 작성일: 2026-08-16 KST
-현재 단계: P9 프리프로덕션 초안 완료, owner lock 및 InkOS 첫 3화 대기
+현재 단계: `INTENTIONALLY_DELETED_BY_OWNER` · fresh owner approval 전 복구 금지
+
+## 2026-08-23 상태 정정
+
+2026-08-17 사용자는 이 외부 기획 기반 작품의 채택을 거부하고 InkOS 프로젝트 삭제를 지시했다. 현재 canonical InkOS에는 작품과 원고가 없다. 아래 프리프로덕션 내용은 삭제 전 역사이며, 재개 명령으로 사용하지 않는다.
+
+정본 삭제 영수증: `docs/2026-08-23-p9-owner-deletion-receipt.md`
 
 ## 2026-08-17 경로 마이그레이션
 
@@ -75,4 +81,4 @@ PASS 리턴 에이스: 310회 / 55 Arc / 오류 0 / 경고 0
 
 ## 다음 세션 명령
 
-> `/Users/a2501/Desktop/firefly_studio/docs/bootstrap-status.md`와 `/Users/a2501/Desktop/firefly_studio/edge_repos/firefly_reference_lab/AGENTS.md`, `docs/2026-08-16-p9-pilot-preproduction-handoff.md`를 읽고 저장소 상태를 확인하라. `inkos_handoffs/p9-pilot-distressed-company-buyer/`의 owner lock 항목을 사용자와 확정한 뒤, 승인된 값으로 `/Users/a2501/Desktop/firefly_studio/edge_repos/inkos`에 한국어 작품을 만들고 첫 1~3화만 집필하라. 다른 작품 원문, 중국 자료, 세 번째 골드, 전체 B-Rail 확장은 열지 마라.
+> `docs/2026-08-23-p9-owner-deletion-receipt.md`와 `AGENTS.md`를 먼저 읽고 삭제 경계를 유지하라. 사용자가 이 작품을 다시 살린다고 새로 명시하지 않는 한 휴지통 보존본 복구, InkOS 작품 생성, 1화 검토, 2~3화 집필을 하지 마라.
