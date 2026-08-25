@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://firefly.local/schemas/reference-transformation-v1.json",
+  "title": "Firefly reference transformation contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "kind",
+    "bookId",
+    "referencePackId",
+    "spineReference",
+    "sourceSegments"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "kind": { "const": "reference-transformation" },
+    "bookId": { "type": "string", "minLength": 1 },
+    "referencePackId": { "type": "string", "minLength": 1 },
+    "spineReference": { "type": "string", "minLength": 1 },
+    "supportingReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["referenceId", "roles"],
+        "properties": {
+          "referenceId": { "type": "string", "minLength": 1 },
+          "roles": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": ["engine", "payoff", "emotion", "hook", "wildcard"]
+            }
+          }
+        }
+      },
+      "default": []
+    },
+    "sourceSegments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "sourceArcIds",
+          "sourceChapterIds",
+          "targetRailAnchorIds",
+          "targetArcIds",
+          "retain",
+          "varySurface",
+          "linkedConsequences"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "sourceArcIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "sourceChapterIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "integer", "minimum": 1, "maximum": 751 }
+          },
+          "targetRailAnchorIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "targetArcIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "retain": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "engine",
+                "event-order",
+                "character-role",
+                "pressure",
+                "reversal",
+                "payoff",
+                "hook",
+                "scene-function"
+              ]
+            }
+          },
+          "varySurface": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "people",
+                "organization",
+                "object",
+                "location",
+                "local-cause",
+                "number",
+                "scene-dressing"
+              ]
+            }
+          },
+          "linkedConsequences": {
+            "type": "array",
+            "items": {
+              "enum": ["money", "evidence", "procedure", "role", "result"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

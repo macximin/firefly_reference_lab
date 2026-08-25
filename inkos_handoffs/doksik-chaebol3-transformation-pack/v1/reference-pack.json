@@ -1,0 +1,447 @@
+{
+  "version": 1,
+  "kind": "reference-transformation-pack",
+  "id": "doksik-chaebol3-ko-v1",
+  "language": "ko",
+  "source": {
+    "workSlug": "doksik-chaebol3",
+    "workTitle": "독식하는 재벌 3세",
+    "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+    "chapterCount": 751,
+    "naturalArcCount": 131,
+    "goldStatus": "manager-qa-15-of-15-pass"
+  },
+  "privateInputs": {
+    "storyIndexSha256": "821df0df9eb2f42dae8fac003f857c72bdcdf23cfc40c821fd19895540232043",
+    "styleExamplesSha256": "6895542335651ff5df31fe54197e5080bb5935161819347b876e37d7d97b6e9b",
+    "privateIndexSha256": "22afd55be29e71ba3499ce46858e7e4102bc2521826b4fd9f0da4cb19a454551"
+  },
+  "storyRetrieval": {
+    "indexedChapterCount": 751,
+    "defaultMappedChapterLimit": 3,
+    "authority": [
+      "reference_transformation",
+      "arc_map",
+      "chapter_map",
+      "raw_source"
+    ]
+  },
+  "styleRetrieval": {
+    "method": "five-phases-times-entry-escalation-payoff",
+    "sampleCount": 15,
+    "samples": [
+      {
+        "id": "phase-1-entry-1",
+        "phaseId": "phase-1",
+        "function": "entry",
+        "sequence": 1,
+        "arcId": "DCA-N01",
+        "rawProseSha256": "159211f2fc89773e2f6b37655be696ccffa85daded8b92bc51c5f309c231596f"
+      },
+      {
+        "id": "phase-1-escalation-75",
+        "phaseId": "phase-1",
+        "function": "escalation",
+        "sequence": 75,
+        "arcId": "DCA-N05",
+        "rawProseSha256": "231ccc1c1dc153d6fcd2a5fa29bfac4fb095be913f57ff96b1fd3cdc2023d831"
+      },
+      {
+        "id": "phase-1-payoff-150",
+        "phaseId": "phase-1",
+        "function": "payoff",
+        "sequence": 150,
+        "arcId": "DCA-N15",
+        "rawProseSha256": "ca478372b4a42cf996043ade59027beaa17fcfd7e15d0e0584178ac802fc1371"
+      },
+      {
+        "id": "phase-2-entry-151",
+        "phaseId": "phase-2",
+        "function": "entry",
+        "sequence": 151,
+        "arcId": "DCA-N15B",
+        "rawProseSha256": "d6f99a7fe406bfe874bf53577ca9fcad5e090c349eb12860cdc939de8c8bd841"
+      },
+      {
+        "id": "phase-2-escalation-225",
+        "phaseId": "phase-2",
+        "function": "escalation",
+        "sequence": 225,
+        "arcId": "DCA-N22",
+        "rawProseSha256": "74a793d8c69a8b2021920c89165dd309fbd932f7e39b300e3dda9002a362fa2d"
+      },
+      {
+        "id": "phase-2-payoff-300",
+        "phaseId": "phase-2",
+        "function": "payoff",
+        "sequence": 300,
+        "arcId": "DCA-N28B",
+        "rawProseSha256": "04e41b93ff2261efdb9334d1fc47e9636a8808a707f34b189fe2fe0136c2b88a"
+      },
+      {
+        "id": "phase-3-entry-301",
+        "phaseId": "phase-3",
+        "function": "entry",
+        "sequence": 301,
+        "arcId": "DCA-N28B",
+        "rawProseSha256": "f6cf1806254587c2d9eae8b2ab1c4e4dc87e1cde7529ad968ace8eb0b95344ea"
+      },
+      {
+        "id": "phase-3-escalation-375",
+        "phaseId": "phase-3",
+        "function": "escalation",
+        "sequence": 375,
+        "arcId": "DCA-N33C",
+        "rawProseSha256": "300b7ee66177910eeb54e32318e6366673e91c14b8399a860cfa6153d37cdffe"
+      },
+      {
+        "id": "phase-3-payoff-450",
+        "phaseId": "phase-3",
+        "function": "payoff",
+        "sequence": 450,
+        "arcId": "DCA-N38C",
+        "rawProseSha256": "dac087a9cfdcd8f91bf7a84591f24542630fc46edfdd2a25241b50a0ab46d042"
+      },
+      {
+        "id": "phase-4-entry-451",
+        "phaseId": "phase-4",
+        "function": "entry",
+        "sequence": 451,
+        "arcId": "DCA-N39",
+        "rawProseSha256": "1247b4a0d0dd2af1973331b64561df7f5cc87f1cfbc1360967ef40786367dd52"
+      },
+      {
+        "id": "phase-4-escalation-525",
+        "phaseId": "phase-4",
+        "function": "escalation",
+        "sequence": 525,
+        "arcId": "DCA-N44",
+        "rawProseSha256": "43ee0363e8b0aebf83b55035278f2f795f112c897ada0a6c6de0bb4e3d6b42ad"
+      },
+      {
+        "id": "phase-4-payoff-600",
+        "phaseId": "phase-4",
+        "function": "payoff",
+        "sequence": 600,
+        "arcId": "DCA-N51",
+        "rawProseSha256": "e0f6acc797e7ae9f19179d660b0d7efedcebc04570b8130043ba4262398cd348"
+      },
+      {
+        "id": "phase-5-entry-601",
+        "phaseId": "phase-5",
+        "function": "entry",
+        "sequence": 601,
+        "arcId": "DCA-N51B",
+        "rawProseSha256": "711cf3348b4b2b7f2e2f8ef3e53f68b5c31c3f9f9ff9f559deccbba80ca78628"
+      },
+      {
+        "id": "phase-5-escalation-676",
+        "phaseId": "phase-5",
+        "function": "escalation",
+        "sequence": 676,
+        "arcId": "DCA-N61",
+        "rawProseSha256": "99b748e0f09748ea6a1e3e719d9eb240cd7da8480145bed7aa0f50855c3506d5"
+      },
+      {
+        "id": "phase-5-payoff-751",
+        "phaseId": "phase-5",
+        "function": "payoff",
+        "sequence": 751,
+        "arcId": "DCA-N74",
+        "rawProseSha256": "53b84aa3dab07b9e807670dff34de8b744428c726697236a238c58444fe92999"
+      }
+    ],
+    "defaultSampleLimit": 3,
+    "hilRetrySampleLimit": 5
+  },
+  "transformationPolicy": {
+    "requiredSpineReference": true,
+    "reusableLayers": [
+      "event-order",
+      "character-role",
+      "pressure",
+      "reversal",
+      "payoff-ladder",
+      "scene-function",
+      "hook"
+    ],
+    "selectableSurfaceVariation": [
+      "people",
+      "organization",
+      "object",
+      "location",
+      "local-cause",
+      "number",
+      "scene-dressing"
+    ],
+    "linkedConsequences": [
+      "money",
+      "evidence",
+      "procedure",
+      "role",
+      "result"
+    ]
+  },
+  "commercialPolicy": {
+    "priority": [
+      "commerciality",
+      "reference-engine-retention",
+      "style-fidelity",
+      "noncritical-consistency"
+    ],
+    "similarityPenalty": false,
+    "minimumDistanceScore": null,
+    "automaticRewriteForOverlap": false,
+    "humanPolishDecision": true
+  },
+  "corpusMetrics": {
+    "proseCharacters": 3171736,
+    "sentenceCount": 169330,
+    "paragraphCount": 34690,
+    "sentenceLength": {
+      "mean": 18,
+      "stdDev": 14.2,
+      "p10": 1,
+      "p50": 17,
+      "p90": 37
+    },
+    "paragraphLength": {
+      "mean": 91.4,
+      "stdDev": 48.2,
+      "p10": 42,
+      "p50": 80,
+      "p90": 163
+    },
+    "shortSentenceRatio": 0.531,
+    "dialogueParagraphRatio": 0.399,
+    "dialogueCharacterRatio": 0.565,
+    "lexicalDiversityMattr200": 0.868,
+    "rhetoricalRatePer10k": {
+      "simile": 6.33,
+      "question": 48.86,
+      "exclamation": 9.03
+    }
+  },
+  "phases": [
+    {
+      "phaseId": "phase-1",
+      "progressRange": {
+        "start": 0,
+        "end": 0.2
+      },
+      "sourceChapterRange": {
+        "start": 1,
+        "end": 150
+      },
+      "metrics": {
+        "proseCharacters": 622840,
+        "sentenceCount": 35782,
+        "paragraphCount": 7342,
+        "sentenceLength": {
+          "mean": 16.7,
+          "stdDev": 13.1,
+          "p10": 1,
+          "p50": 16,
+          "p90": 34
+        },
+        "paragraphLength": {
+          "mean": 84.8,
+          "stdDev": 49,
+          "p10": 37,
+          "p50": 73,
+          "p90": 158
+        },
+        "shortSentenceRatio": 0.572,
+        "dialogueParagraphRatio": 0.381,
+        "dialogueCharacterRatio": 0.546,
+        "lexicalDiversityMattr200": 0.881,
+        "rhetoricalRatePer10k": {
+          "simile": 7.32,
+          "question": 57.51,
+          "exclamation": 10.29
+        }
+      },
+      "styleSampleIds": [
+        "phase-1-entry-1",
+        "phase-1-escalation-75",
+        "phase-1-payoff-150"
+      ]
+    },
+    {
+      "phaseId": "phase-2",
+      "progressRange": {
+        "start": 0.2,
+        "end": 0.4
+      },
+      "sourceChapterRange": {
+        "start": 151,
+        "end": 300
+      },
+      "metrics": {
+        "proseCharacters": 624137,
+        "sentenceCount": 34266,
+        "paragraphCount": 6826,
+        "sentenceLength": {
+          "mean": 17.5,
+          "stdDev": 14.1,
+          "p10": 1,
+          "p50": 17,
+          "p90": 36
+        },
+        "paragraphLength": {
+          "mean": 91.4,
+          "stdDev": 51.7,
+          "p10": 40,
+          "p50": 78,
+          "p90": 169
+        },
+        "shortSentenceRatio": 0.549,
+        "dialogueParagraphRatio": 0.4,
+        "dialogueCharacterRatio": 0.571,
+        "lexicalDiversityMattr200": 0.874,
+        "rhetoricalRatePer10k": {
+          "simile": 7.05,
+          "question": 52.23,
+          "exclamation": 16.05
+        }
+      },
+      "styleSampleIds": [
+        "phase-2-entry-151",
+        "phase-2-escalation-225",
+        "phase-2-payoff-300"
+      ]
+    },
+    {
+      "phaseId": "phase-3",
+      "progressRange": {
+        "start": 0.4,
+        "end": 0.6
+      },
+      "sourceChapterRange": {
+        "start": 301,
+        "end": 450
+      },
+      "metrics": {
+        "proseCharacters": 636191,
+        "sentenceCount": 33132,
+        "paragraphCount": 6992,
+        "sentenceLength": {
+          "mean": 18.5,
+          "stdDev": 14.2,
+          "p10": 1,
+          "p50": 18,
+          "p90": 38
+        },
+        "paragraphLength": {
+          "mean": 91,
+          "stdDev": 46.5,
+          "p10": 43,
+          "p50": 81,
+          "p90": 161
+        },
+        "shortSentenceRatio": 0.508,
+        "dialogueParagraphRatio": 0.399,
+        "dialogueCharacterRatio": 0.564,
+        "lexicalDiversityMattr200": 0.863,
+        "rhetoricalRatePer10k": {
+          "simile": 6.9,
+          "question": 43.59,
+          "exclamation": 8.11
+        }
+      },
+      "styleSampleIds": [
+        "phase-3-entry-301",
+        "phase-3-escalation-375",
+        "phase-3-payoff-450"
+      ]
+    },
+    {
+      "phaseId": "phase-4",
+      "progressRange": {
+        "start": 0.6,
+        "end": 0.8
+      },
+      "sourceChapterRange": {
+        "start": 451,
+        "end": 600
+      },
+      "metrics": {
+        "proseCharacters": 644235,
+        "sentenceCount": 33576,
+        "paragraphCount": 6862,
+        "sentenceLength": {
+          "mean": 18.4,
+          "stdDev": 14.4,
+          "p10": 1,
+          "p50": 18,
+          "p90": 38
+        },
+        "paragraphLength": {
+          "mean": 93.9,
+          "stdDev": 45.3,
+          "p10": 46,
+          "p50": 85,
+          "p90": 161
+        },
+        "shortSentenceRatio": 0.512,
+        "dialogueParagraphRatio": 0.407,
+        "dialogueCharacterRatio": 0.566,
+        "lexicalDiversityMattr200": 0.86,
+        "rhetoricalRatePer10k": {
+          "simile": 5.26,
+          "question": 47.2,
+          "exclamation": 5.68
+        }
+      },
+      "styleSampleIds": [
+        "phase-4-entry-451",
+        "phase-4-escalation-525",
+        "phase-4-payoff-600"
+      ]
+    },
+    {
+      "phaseId": "phase-5",
+      "progressRange": {
+        "start": 0.8,
+        "end": 1
+      },
+      "sourceChapterRange": {
+        "start": 601,
+        "end": 751
+      },
+      "metrics": {
+        "proseCharacters": 644333,
+        "sentenceCount": 32574,
+        "paragraphCount": 6668,
+        "sentenceLength": {
+          "mean": 19,
+          "stdDev": 15.3,
+          "p10": 1,
+          "p50": 18,
+          "p90": 40
+        },
+        "paragraphLength": {
+          "mean": 96.6,
+          "stdDev": 47.4,
+          "p10": 47,
+          "p50": 86,
+          "p90": 167
+        },
+        "shortSentenceRatio": 0.51,
+        "dialogueParagraphRatio": 0.409,
+        "dialogueCharacterRatio": 0.577,
+        "lexicalDiversityMattr200": 0.861,
+        "rhetoricalRatePer10k": {
+          "simile": 5.17,
+          "question": 44.08,
+          "exclamation": 5.26
+        }
+      },
+      "styleSampleIds": [
+        "phase-5-entry-601",
+        "phase-5-escalation-676",
+        "phase-5-payoff-751"
+      ]
+    }
+  ]
+}
