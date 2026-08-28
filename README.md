@@ -35,6 +35,14 @@ source를 대조해 398개 남성향 재고를 추적 가능한 inventory로 만
 분류는 Soul 승격 근거가 아니며, manager selection 전에는 모든 항목이
 `eligibleForSoulInput=false`다.
 
+분산 survey, 전수 deep-read, 장르 프로필, manager QA, tracked 누출 검사와
+promotion eligibility의 완료선은
+`templates/genre-soul-study-contract.md` 및
+`tools/genre-soul-study-contract.mjs`가 소유한다. 전수 byte coverage와 실제
+`gpt-5.6-sol/high` config·trace 영수증, zero-match scanner receipt가 없으면
+manager QA를 통과할 수 없다. Reference Lab의 eligibility는 HQ owner 결정을
+대신하지 않는다.
+
 ## 폴더
 
 | 경로 | 역할 |
