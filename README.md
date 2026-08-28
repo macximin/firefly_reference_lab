@@ -25,6 +25,7 @@ InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 
 node tools/validate-source-manifest.mjs
 node tools/genre-soul-source-registry.mjs
 node tools/genre-soul-survey-runner.mjs
+node tools/genre-soul-deep-read-runner.mjs --source-id <selected-source-id>
 node tools/validate-five-work-analyses.mjs --strict
 node tools/validate-writing-system-contracts.mjs
 ```
@@ -47,6 +48,11 @@ session trace의 `read_file` 응답도 line-number wrapper를 복원한 뒤 각 
 window 원본과 exact byte 일치해야 한다.
 각 survey 옆에는 전체 available 원문 코퍼스와 대조한 zero-match 누출 검사
 영수증을 함께 둔다. `needs-manager-review`는 자동 완료하지 않는다.
+
+`tools/genre-soul-deep-read-runner.mjs`는 자연 회차 파일을 bounded segment로
+묶고 모든 chapter `read_file` 응답을 exact byte 검증한다. 실패 attempt는
+삭제·덮어쓰기 없이 보존하며, 전 구간이 gap-free이고 trace에 compaction이
+없을 때만 raw 없는 work-study receipt와 zero-match 누출 영수증을 만든다.
 
 분산 survey, 전수 deep-read, 장르 프로필, manager QA, tracked 누출 검사와
 promotion eligibility의 완료선은
