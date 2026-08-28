@@ -1,7 +1,7 @@
 {
   "schemaVersion": "genre-soul-survey/v1",
   "genre": "modern-fantasy-ko",
-  "completedAt": "2026-08-28T06:52:37.103Z",
+  "completedAt": "2026-08-28T06:59:28.578Z",
   "candidateSourceIds": [
     "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
     "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
@@ -16,7 +16,7 @@
         "model": "gpt-5.6-sol",
         "reasoningEffort": "high",
         "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
-        "traceReceiptSha256": "76ce5c3c643801b34053cfd32fee9a8c36a3b6178907848e9934657773e53346"
+        "traceReceiptSha256": "2ae7109fee05872c332ffd16b73342bae98d0f0c0694362a2fc4d1048c13c2f8"
       },
       "status": "surveyed",
       "coverage": [
@@ -73,7 +73,7 @@
         "model": "gpt-5.6-sol",
         "reasoningEffort": "high",
         "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
-        "traceReceiptSha256": "3ccc772921ea388d985a0d65b46ff1079f81c5f4a1c44b6b710e13e021c77f90"
+        "traceReceiptSha256": "a5fc6d90d84ce144ee39b7d8dc50b8b929c428f526fbe854012ca7c58fa3d416"
       },
       "status": "surveyed",
       "coverage": [
@@ -115,7 +115,7 @@
         "model": "gpt-5.6-sol",
         "reasoningEffort": "high",
         "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
-        "traceReceiptSha256": "07aa21b4c4f76a973bf3156fbc036a0a461942c51f5811a5ced24630066ddff2"
+        "traceReceiptSha256": "8708863e3669dd89cd8089a02ea13fe7860e1790894893c69fa8891e7631287c"
       },
       "status": "surveyed",
       "coverage": [

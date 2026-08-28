@@ -43,6 +43,8 @@ source를 대조해 398개 남성향 재고를 추적 가능한 inventory로 만
 프로필을 `gpt-5.6-sol/high`로 실행한다. 분산 private window를 각각 읽은
 session trace, profile config, usage와 결과를 ignored `exports/`에 보존하고,
 모든 readback과 `keep` 판정이 일치할 때만 raw 없는 장르별 survey JSON을 만든다.
+session trace의 `read_file` 응답도 line-number wrapper를 복원한 뒤 각 private
+window 원본과 exact byte 일치해야 한다.
 각 survey 옆에는 전체 available 원문 코퍼스와 대조한 zero-match 누출 검사
 영수증을 함께 둔다. `needs-manager-review`는 자동 완료하지 않는다.
 

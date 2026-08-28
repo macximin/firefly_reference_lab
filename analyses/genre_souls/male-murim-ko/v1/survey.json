@@ -1,7 +1,7 @@
 {
   "schemaVersion": "genre-soul-survey/v1",
   "genre": "murim-ko",
-  "completedAt": "2026-08-28T06:53:05.245Z",
+  "completedAt": "2026-08-28T06:59:56.858Z",
   "candidateSourceIds": [
     "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
     "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
@@ -16,7 +16,7 @@
         "model": "gpt-5.6-sol",
         "reasoningEffort": "high",
         "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
-        "traceReceiptSha256": "db8b2d7ef0966889a758092099b805a51775292a17a5ff6a55eb073d261147d6"
+        "traceReceiptSha256": "ba59b01f8af24ab633800979d079acdaae0c3bb35bb8d9f9f1a5b797881da4db"
       },
       "status": "surveyed",
       "coverage": [
@@ -58,7 +58,7 @@
         "model": "gpt-5.6-sol",
         "reasoningEffort": "high",
         "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
-        "traceReceiptSha256": "800e9fe4e518d6c195be14be053a04d12af3723eb03cfa76b94c05cb892de468"
+        "traceReceiptSha256": "60e0e5ff0f2c7ddd96dd6adfee6c591542eeab6a650da0bd739f20a616c0aede"
       },
       "status": "surveyed",
       "coverage": [
@@ -100,7 +100,7 @@
         "model": "gpt-5.6-sol",
         "reasoningEffort": "high",
         "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
-        "traceReceiptSha256": "c974407cf14800cb715f36de6a009065ad1e35cfba1ac02eb006c56c9ec9a8a8"
+        "traceReceiptSha256": "1cd4a03b4947c97a72a372009a5197841d231167c1bb29ef5ad2edbd6060d767"
       },
       "status": "surveyed",
       "coverage": [
