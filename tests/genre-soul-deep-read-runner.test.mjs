@@ -46,12 +46,21 @@ test("validates derived observations only at chapter boundaries", () => {
       kind: ["commercial-engine", "protagonist-action", "pressure-resistance", "payoff-witness"][index],
       finding: "구체적인 파생 관찰",
       commercialFunction: "기능",
-      evidenceRanges: [{ startByte: segment.chapters[0].startByte, endByte: segment.chapters[0].endByte }],
+      chapterSequences: [segment.chapters[0].sequence],
     })),
     unresolvedPromises: [],
   };
   assert.equal(validatePrivateDeepReadSegment(result, expected), true);
+  const legacy = structuredClone(result);
+  for (const observation of legacy.observations) {
+    delete observation.chapterSequences;
+    observation.evidenceRanges = [{
+      startByte: segment.chapters[0].startByte,
+      endByte: segment.chapters[0].endByte,
+    }];
+  }
+  assert.equal(validatePrivateDeepReadSegment(legacy, expected), true);
   const drifted = structuredClone(result);
-  drifted.observations[0].evidenceRanges[0].startByte += 1;
-  assert.throws(() => validatePrivateDeepReadSegment(drifted, expected), /invalid evidence range/u);
+  drifted.observations[0].chapterSequences[0] = 999;
+  assert.throws(() => validatePrivateDeepReadSegment(drifted, expected), /invalid chapter sequence/u);
 });

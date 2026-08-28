@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "tracked-projection-leak-scan/v1",
+  "scanner": {
+    "version": "genre-soul-surface-scanner/v1",
+    "exactTokenCount": 12,
+    "longCommonUtf8Bytes": 120
+  },
+  "artifact": {
+    "path": "analyses/genre_souls/male-murim-ko/v1/work-studies/gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI.deep-read.json",
+    "sha256": "24edd053dea99e83d210f1f2416af4fd0c695e8e485747f17272c6f556292951",
+    "sizeBytes": 10511
+  },
+  "corpus": {
+    "privateRegistrySha256": "21dbb85ca19383c6ff7c6702e8ab1092f6d11290016496074f15a8e4fd31652b",
+    "availableSourceCount": 32
+  },
+  "matchCount": 0,
+  "matches": [],
+  "truncated": false,
+  "status": "pass",
+  "automaticRewrite": false,
+  "automaticReject": false
+}
