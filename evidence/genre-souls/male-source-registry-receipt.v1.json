@@ -3,20 +3,22 @@
   "receiptId": "male-korean-webnovel-corpus-v1",
   "generatedAt": "2026-08-28T04:34:59.279Z",
   "inventoryPath": "evidence/genre-souls/male-source-inventory.v1.json",
-  "inventorySha256": "31f4a0d3c738d41bbd952421aa79913e32b35671a1e7f37656d85165a021adb7",
+  "inventorySha256": "ef35d1f5fc5a7db8856ef57c48a7fed65a4765dcb086a4a9f214dbe744f6575a",
   "privateRegistryPath": "exports/source-registry/male-source-registry.v1.json",
-  "privateRegistrySha256": "c4e62458de4247c4717b80b95e0e552b090c7689879745344dc431554e92004c",
+  "privateRegistrySha256": "068afa39e7a0a6f29e494bce1c2d6bc95b032febf4cba382dbb6f341f1f41ad5",
+  "managerSelectionPath": "evidence/genre-souls/male-manager-selection.v1.json",
+  "managerSelectionSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f",
   "counts": {
     "discovered": 398,
-    "verifiedLocal": 21,
+    "verifiedLocal": 27,
     "driftedLocal": 1,
-    "remoteOnly": 376,
+    "remoteOnly": 370,
     "providerSizeMismatch": 1,
     "suspiciouslySmall": 2,
     "excludedFemale": 374,
-    "eligibleForSoulInput": 0
+    "eligibleForSoulInput": 9
   },
-  "resolverEligibility": "blocked-until-manager-selection",
+  "resolverEligibility": "manager-selected-local-only",
   "rawSourceTracked": false,
   "absolutePathCount": 0
 }

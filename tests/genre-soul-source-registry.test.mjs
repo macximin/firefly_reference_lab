@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,10 +9,13 @@ import {
   buildGenreSoulSourceRegistry,
   deriveCorpusIdentity,
   resolveRegistryEntry,
+  resolveSoulInputRegistryEntry,
   validateDriveSnapshot,
   validateSourceRegistryArtifacts,
   validateSourceRegistryFiles,
 } from "../tools/genre-soul-source-registry.mjs";
+
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
 function snapshot(files) {
   return {
@@ -87,6 +91,17 @@ test("builds a complete inventory while keeping unavailable files fail-closed", 
       () => resolveRegistryEntry(result.privateRegistry, "gdrive-file-b"),
       /not locally verified/u,
     );
+    assert.throws(
+      () => validateSourceRegistryArtifacts({
+        inventory: {
+          ...result.inventory,
+          counts: { ...result.inventory.counts, eligibleForSoulInput: 1 },
+        },
+        privateRegistry: result.privateRegistry,
+        receipt: result.receipt,
+      }),
+      /counts do not match its items/u,
+    );
     assert.equal(JSON.parse(await readFile(join(root, "evidence/inventory.json"), "utf8")).items.length, 2);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -111,7 +126,16 @@ test("rejects duplicates, missing female exclusion, empty registries, and absolu
   );
   const inventory = {
     schemaVersion: "genre-soul-source-inventory/v1",
-    counts: {},
+    counts: {
+      discovered: 1,
+      verifiedLocal: 0,
+      driftedLocal: 0,
+      remoteOnly: 0,
+      providerSizeMismatch: 0,
+      suspiciouslySmall: 0,
+      excludedFemale: 2,
+      eligibleForSoulInput: 0,
+    },
     items: [{ sourceId: "gdrive-file-a", repoRelativePath: "/tmp/raw.txt" }],
   };
   const privateRegistry = {
@@ -122,6 +146,11 @@ test("rejects duplicates, missing female exclusion, empty registries, and absolu
       sourceSha256: "a".repeat(64),
       sizeBytes: 10,
       status: "available",
+      soulInput: {
+        eligible: false,
+        genre: null,
+        managerSelectionReceiptSha256: null,
+      },
     }],
   };
   assert.throws(
@@ -182,6 +211,81 @@ test("readback detects private registry tampering", async () => {
     await assert.rejects(
       validateSourceRegistryFiles({ repositoryRoot: root, privateRegistryPath: registryPath, inventoryPath, receiptPath }),
       /full SHA-256|byte SHA-256 mismatch/u,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("binds manager-selected local sources to one genre and detects selection tampering", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-source-selection-"));
+  try {
+    const contents = ["현대 원문", "판타지 원문", "무협 원문"];
+    const files = [
+      { ...fileA, providerFileId: "modern", title: "현대 작품_현대필명_합본.txt", sizeBytes: Buffer.byteLength(contents[0]) },
+      { ...fileA, providerFileId: "fantasy", title: "판타지 작품_판타지필명_합본.txt", sizeBytes: Buffer.byteLength(contents[1]) },
+      { ...fileA, providerFileId: "murim", title: "무협 작품_무협필명_합본.txt", sizeBytes: Buffer.byteLength(contents[2]) },
+    ];
+    const sourceSnapshot = snapshot(files);
+    const snapshotPath = join(root, "exports/source-registry/snapshot.json");
+    const managerSelectionPath = join(root, "evidence/genre-souls/selection.json");
+    const privateRegistryPath = join(root, "exports/source-registry/private.json");
+    const inventoryPath = join(root, "evidence/inventory.json");
+    const receiptPath = join(root, "evidence/receipt.json");
+    await mkdir(join(root, "exports/source-registry"), { recursive: true });
+    await mkdir(join(root, "evidence/genre-souls"), { recursive: true });
+    await writeFile(snapshotPath, `${JSON.stringify(sourceSnapshot, null, 2)}\n`);
+    for (const [index, file] of files.entries()) {
+      const identity = deriveCorpusIdentity(file);
+      await mkdir(join(root, identity.repoRelativePath, ".."), { recursive: true });
+      await writeFile(join(root, identity.repoRelativePath), contents[index]);
+    }
+    const genres = ["modern-fantasy-ko", "fantasy-ko", "murim-ko"];
+    const selection = {
+      schemaVersion: "genre-soul-manager-selection/v1",
+      selectionId: "test-selection",
+      selectedAt: "2026-08-28T01:00:00.000Z",
+      manager: { actorId: "test-manager", role: "manager" },
+      sourceSnapshotSha256: sha256(`${JSON.stringify(sourceSnapshot, null, 2)}\n`),
+      genres: Object.fromEntries(genres.map((genre, index) => {
+        const file = files[index];
+        const identity = deriveCorpusIdentity(file);
+        return [genre, [{
+          sourceId: identity.sourceId,
+          providerFileId: file.providerFileId,
+          title: file.title,
+          author: identity.author,
+          sourceSha256: sha256(contents[index]),
+          sizeBytes: Buffer.byteLength(contents[index]),
+          selectionBasis: "commercial-anchor",
+          evidenceMode: "local-source-inspection",
+        }]];
+      })),
+      promotionEvidence: false,
+    };
+    await writeFile(managerSelectionPath, `${JSON.stringify(selection, null, 2)}\n`);
+
+    const result = await buildGenreSoulSourceRegistry({
+      repositoryRoot: root,
+      snapshotPath,
+      managerSelectionPath,
+      privateRegistryPath,
+      inventoryPath,
+      receiptPath,
+      expectedDirectFiles: 3,
+      expectedExcludedFemaleFiles: 2,
+      managerSelectionMinimumPerGenre: 1,
+    });
+    assert.equal(result.inventory.counts.eligibleForSoulInput, 3);
+    const modernId = deriveCorpusIdentity(files[0]).sourceId;
+    assert.equal(resolveSoulInputRegistryEntry(result.privateRegistry, modernId, genres[0]).sourceId, modernId);
+    assert.throws(() => resolveSoulInputRegistryEntry(result.privateRegistry, modernId, genres[1]), /not manager-selected/u);
+    await validateSourceRegistryFiles({ repositoryRoot: root, privateRegistryPath, inventoryPath, receiptPath });
+
+    await writeFile(managerSelectionPath, `${JSON.stringify({ ...selection, selectionId: "tampered" }, null, 2)}\n`);
+    await assert.rejects(
+      validateSourceRegistryFiles({ repositoryRoot: root, privateRegistryPath, inventoryPath, receiptPath }),
+      /Manager selection byte SHA-256 mismatch/u,
     );
   } finally {
     await rm(root, { recursive: true, force: true });

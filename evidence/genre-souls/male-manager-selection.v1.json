@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "genre-soul-manager-selection/v1",
+  "selectionId": "male-genre-soul-anchors-2026-08-28-v1",
+  "selectedAt": "2026-08-28T06:15:00.000Z",
+  "manager": {
+    "actorId": "codex-manager-firefly-phase7",
+    "role": "manager"
+  },
+  "sourceSnapshotSha256": "d5e60718d4673d4f01b5786866e0c664fbd99cfd89397ed70314b93bbf7d26a9",
+  "genres": {
+    "modern-fantasy-ko": [
+      {
+        "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "providerFileId": "1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "title": "독식하는 재벌 3세_서오_합본.txt",
+        "author": "서오",
+        "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+        "sizeBytes": 10220730,
+        "selectionBasis": "commercial-anchor",
+        "evidenceMode": "local-source-inspection"
+      },
+      {
+        "sourceId": "gdrive-1SCo2Irbk3wKT-Yzx56tcoUqjI_OjNP3Q",
+        "providerFileId": "1SCo2Irbk3wKT-Yzx56tcoUqjI_OjNP3Q",
+        "title": "금수저 투자백서_강동호_합본.txt",
+        "author": "강동호",
+        "sourceSha256": "1ac62315ac08181c712154e480d6cd6951fb61b8825ab6bb28af88d4fdb534af",
+        "sizeBytes": 9851355,
+        "selectionBasis": "genre-breadth",
+        "evidenceMode": "local-source-inspection"
+      },
+      {
+        "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "providerFileId": "1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "title": "이혼 후 재벌 각성!_흑곰작가_합본.txt",
+        "author": "흑곰작가",
+        "sourceSha256": "09ca4bb08e88f7791e38bc33c393ee1732af32823d7ed39a1c7026f4b7e37908",
+        "sizeBytes": 2782069,
+        "selectionBasis": "surface-anchor",
+        "evidenceMode": "local-source-inspection"
+      }
+    ],
+    "fantasy-ko": [
+      {
+        "sourceId": "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b",
+        "providerFileId": "1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b",
+        "title": "하급 서기관의 회귀_킹메이커_합본.txt",
+        "author": "킹메이커",
+        "sourceSha256": "e86d5b1135dd9c4b4f711df5e863f5b688229f78105f3859415ead8e5a90cc74",
+        "sizeBytes": 3201149,
+        "selectionBasis": "commercial-anchor",
+        "evidenceMode": "drive-content-inspection"
+      },
+      {
+        "sourceId": "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+        "providerFileId": "1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+        "title": "기사학교의 검술천재_비비다_합본.txt",
+        "author": "비비다",
+        "sourceSha256": "c040a1daa98ad027002e0c34931cf530fbac41b92f415c3a19699dc36022dcc1",
+        "sizeBytes": 3378950,
+        "selectionBasis": "genre-breadth",
+        "evidenceMode": "drive-content-inspection"
+      },
+      {
+        "sourceId": "gdrive-1tkIL3K8D9YfpFgjc4WgOl5MCAVzWvHCA",
+        "providerFileId": "1tkIL3K8D9YfpFgjc4WgOl5MCAVzWvHCA",
+        "title": "드래곤 레어에 조난당했다_이우찬_합본.txt",
+        "author": "이우찬",
+        "sourceSha256": "491da1dc27030eb2201983330ab5f6606403ff3ad0ee6fc19755a4147f255df4",
+        "sizeBytes": 6195873,
+        "selectionBasis": "surface-anchor",
+        "evidenceMode": "drive-content-inspection"
+      }
+    ],
+    "murim-ko": [
+      {
+        "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "providerFileId": "1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "title": "화산대도_송재일_합본.txt",
+        "author": "송재일",
+        "sourceSha256": "d07ed27d4a9c320906182ad8de5f48e1d6df35c8d5c3795812686d81db9f6646",
+        "sizeBytes": 6782198,
+        "selectionBasis": "commercial-anchor",
+        "evidenceMode": "drive-content-inspection"
+      },
+      {
+        "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "providerFileId": "1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "title": "무당귀환_앤서_합본.txt",
+        "author": "앤서",
+        "sourceSha256": "371cf60079da9073423530723396edf8e37963f3ff6bf1f1078ed3b7ee4d40fe",
+        "sizeBytes": 2336689,
+        "selectionBasis": "genre-breadth",
+        "evidenceMode": "drive-content-inspection"
+      },
+      {
+        "sourceId": "gdrive-1atzAZZaQ_Uav6A3ojiCWfeYlYb-6Mwl_",
+        "providerFileId": "1atzAZZaQ_Uav6A3ojiCWfeYlYb-6Mwl_",
+        "title": "모용세가 역대급 천재의 귀환_독성_합본.txt",
+        "author": "독성",
+        "sourceSha256": "e09846a9626c2948293d5456c18dc8072f328035c9f0e48bb1765728e6fa5055",
+        "sizeBytes": 2065182,
+        "selectionBasis": "surface-anchor",
+        "evidenceMode": "drive-content-inspection"
+      }
+    ]
+  },
+  "promotionEvidence": false
+}

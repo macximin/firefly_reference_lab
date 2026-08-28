@@ -5,7 +5,7 @@ import { lstat, readFile } from "node:fs/promises";
 import { isAbsolute, normalize, relative, resolve, sep } from "node:path";
 
 import {
-  resolveRegistryEntry,
+  resolveSoulInputRegistryEntry,
   validateSourceRegistryFiles,
 } from "./genre-soul-source-registry.mjs";
 
@@ -122,7 +122,7 @@ export function validateSurveyArtifact(survey, privateRegistry) {
     throw new Error("Survey entry source IDs do not equal candidateSourceIds.");
   }
   for (const [index, entry] of survey.entries.entries()) {
-    const registryEntry = resolveRegistryEntry(privateRegistry, entry.sourceId);
+    const registryEntry = resolveSoulInputRegistryEntry(privateRegistry, entry.sourceId, survey.genre);
     assertSha(entry.sourceSha256, `survey.entries[${index}].sourceSha256`);
     if (entry.sourceSha256 !== registryEntry.sourceSha256) throw new Error(`Survey source SHA drift: ${entry.sourceId}`);
     assertHostReadReader(entry.reader, `survey reader ${entry.sourceId}`);
@@ -153,7 +153,7 @@ export function validateDeepReadArtifact(deepRead, privateRegistry) {
     throw new Error("Deep-read artifact must use genre-soul-deep-read/v1.");
   }
   assertGenre(deepRead.genre);
-  const registryEntry = resolveRegistryEntry(privateRegistry, deepRead.sourceId);
+  const registryEntry = resolveSoulInputRegistryEntry(privateRegistry, deepRead.sourceId, deepRead.genre);
   assertSha(deepRead.sourceSha256, "deepRead.sourceSha256");
   if (deepRead.sourceSha256 !== registryEntry.sourceSha256 || deepRead.sourceSizeBytes !== registryEntry.sizeBytes) {
     throw new Error(`Deep-read source identity drift: ${deepRead.sourceId}`);

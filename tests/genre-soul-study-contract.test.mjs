@@ -57,6 +57,11 @@ async function fixtureRoot() {
     expectedDirectFiles: 1,
     expectedExcludedFemaleFiles: 1,
   });
+  built.privateRegistry.items[0].soulInput = {
+    eligible: true,
+    genre: "modern-fantasy-ko",
+    managerSelectionReceiptSha256: hash("f"),
+  };
   return { root, sourcePath, sourceId: "gdrive-source-one", paths, ...built };
 }
 

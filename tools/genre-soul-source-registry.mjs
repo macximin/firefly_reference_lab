@@ -10,12 +10,15 @@ const defaultSnapshotPath = join(repoRoot, "exports/source-registry/drive-male-c
 const defaultPrivateRegistryPath = join(repoRoot, "exports/source-registry/male-source-registry.v1.json");
 const defaultInventoryPath = join(repoRoot, "evidence/genre-souls/male-source-inventory.v1.json");
 const defaultReceiptPath = join(repoRoot, "evidence/genre-souls/male-source-registry-receipt.v1.json");
+const defaultManagerSelectionRelativePath = "evidence/genre-souls/male-manager-selection.v1.json";
 const defaultLocalRoot = join(repoRoot, "private_sources/korean_webnovel_corpus");
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const SAFE_SOURCE_ID = /^gdrive-[A-Za-z0-9_-]+$/u;
 const EXPECTED_DIRECT_FILES = 398;
 const EXPECTED_EXCLUDED_FEMALE_FILES = 374;
+const SOUL_GENRES = ["modern-fantasy-ko", "fantasy-ko", "murim-ko"];
+const SELECTION_BASES = ["commercial-anchor", "genre-breadth", "surface-anchor"];
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -177,12 +180,79 @@ export function validateDriveSnapshot(snapshot, options = {}) {
   return snapshot;
 }
 
+export function validateManagerSelectionArtifact(selection, snapshot, items, options = {}) {
+  const minimumPerGenre = options.minimumPerGenre ?? 3;
+  if (!isObject(selection) || selection.schemaVersion !== "genre-soul-manager-selection/v1") {
+    throw new Error("Manager selection must use genre-soul-manager-selection/v1.");
+  }
+  assertExactKeys(selection, [
+    "schemaVersion", "selectionId", "selectedAt", "manager", "sourceSnapshotSha256",
+    "genres", "promotionEvidence",
+  ], "managerSelection");
+  if (typeof selection.selectionId !== "string" || !selection.selectionId) throw new Error("Manager selection ID is required.");
+  if (typeof selection.selectedAt !== "string" || !Number.isFinite(Date.parse(selection.selectedAt))) {
+    throw new Error("Manager selection selectedAt is invalid.");
+  }
+  if (!isObject(selection.manager)) throw new Error("Manager selection actor is required.");
+  assertExactKeys(selection.manager, ["actorId", "role"], "managerSelection.manager");
+  if (typeof selection.manager.actorId !== "string" || !selection.manager.actorId || selection.manager.role !== "manager") {
+    throw new Error("Manager selection requires a named manager actor.");
+  }
+  if (selection.sourceSnapshotSha256 !== sha256(jsonBytes(snapshot))) {
+    throw new Error("Manager selection source snapshot SHA-256 drifted.");
+  }
+  if (selection.promotionEvidence !== false) throw new Error("Manager selection is not promotion evidence.");
+  if (!isObject(selection.genres)) throw new Error("Manager selection genres are required.");
+  assertExactKeys(selection.genres, SOUL_GENRES, "managerSelection.genres");
+  const itemBySourceId = new Map(items.map((item) => [item.sourceId, item]));
+  const seenSourceIds = new Set();
+  for (const genre of SOUL_GENRES) {
+    const entries = selection.genres[genre];
+    if (!Array.isArray(entries) || entries.length !== minimumPerGenre) {
+      throw new Error(`Manager selection ${genre} must contain exactly ${minimumPerGenre} sources.`);
+    }
+    const bases = [];
+    for (const [index, entry] of entries.entries()) {
+      const label = `managerSelection.genres.${genre}[${index}]`;
+      if (!isObject(entry)) throw new Error(`${label} must be an object.`);
+      assertExactKeys(entry, [
+        "sourceId", "providerFileId", "title", "author", "sourceSha256", "sizeBytes",
+        "selectionBasis", "evidenceMode",
+      ], label);
+      if (seenSourceIds.has(entry.sourceId)) throw new Error(`Manager selection source is duplicated: ${entry.sourceId}`);
+      seenSourceIds.add(entry.sourceId);
+      const source = itemBySourceId.get(entry.sourceId);
+      if (!source) throw new Error(`Manager selection source is not inventoried: ${entry.sourceId}`);
+      if (
+        source.providerFileId !== entry.providerFileId
+        || source.title !== entry.title
+        || source.author !== entry.author
+        || source.local.sourceSha256 !== entry.sourceSha256
+        || source.local.actualSizeBytes !== entry.sizeBytes
+      ) throw new Error(`Manager selection source identity drift: ${entry.sourceId}`);
+      if (source.local.status !== "verified-local") throw new Error(`Manager selection source is not locally verified: ${entry.sourceId}`);
+      if (!SELECTION_BASES.includes(entry.selectionBasis)) throw new Error(`${label}.selectionBasis is invalid.`);
+      if (!["local-source-inspection", "drive-content-inspection"].includes(entry.evidenceMode)) {
+        throw new Error(`${label}.evidenceMode is invalid.`);
+      }
+      bases.push(entry.selectionBasis);
+    }
+    if (minimumPerGenre === SELECTION_BASES.length && JSON.stringify([...bases].sort()) !== JSON.stringify([...SELECTION_BASES].sort())) {
+      throw new Error(`Manager selection ${genre} must preserve commercial, genre-breadth, and surface anchors.`);
+    }
+  }
+  return true;
+}
+
 export async function buildGenreSoulSourceRegistry(options = {}) {
   const repositoryRoot = resolve(options.repositoryRoot ?? repoRoot);
   const snapshotPath = resolve(options.snapshotPath ?? defaultSnapshotPath);
   const privateRegistryPath = resolve(options.privateRegistryPath ?? defaultPrivateRegistryPath);
   const inventoryPath = resolve(options.inventoryPath ?? defaultInventoryPath);
   const receiptPath = resolve(options.receiptPath ?? defaultReceiptPath);
+  const managerSelectionPath = options.managerSelectionPath === null
+    ? null
+    : resolve(options.managerSelectionPath ?? join(repositoryRoot, defaultManagerSelectionRelativePath));
   const snapshot = validateDriveSnapshot(
     await readJson(snapshotPath, "Drive metadata snapshot"),
     options,
@@ -221,6 +291,34 @@ export async function buildGenreSoulSourceRegistry(options = {}) {
     });
   }
 
+  let managerSelection = null;
+  let managerSelectionSha256 = null;
+  if (managerSelectionPath !== null) {
+    try {
+      const selectionBytes = await readFile(managerSelectionPath);
+      managerSelection = JSON.parse(selectionBytes.toString("utf8"));
+      validateManagerSelectionArtifact(managerSelection, snapshot, items, {
+        minimumPerGenre: options.managerSelectionMinimumPerGenre,
+      });
+      managerSelectionSha256 = sha256(selectionBytes);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+  if (managerSelection) {
+    for (const genre of SOUL_GENRES) {
+      for (const selected of managerSelection.genres[genre]) {
+        const item = items.find((candidate) => candidate.sourceId === selected.sourceId);
+        item.classification = {
+          status: "manager-selected",
+          genre,
+          managerReceiptSha256: managerSelectionSha256,
+        };
+        item.eligibleForSoulInput = true;
+      }
+    }
+  }
+
   const counts = {
     discovered: items.length,
     verifiedLocal: items.filter((item) => item.local.status === "verified-local").length,
@@ -229,7 +327,7 @@ export async function buildGenreSoulSourceRegistry(options = {}) {
     providerSizeMismatch: items.filter((item) => item.local.providerSizeMatches === false).length,
     suspiciouslySmall: items.filter((item) => item.integrityHints.includes("suspiciously-small")).length,
     excludedFemale: snapshot.scope.excludedFolders[0].observedDirectFileCount,
-    eligibleForSoulInput: 0,
+    eligibleForSoulInput: items.filter((item) => item.eligibleForSoulInput).length,
   };
   const inventory = {
     schemaVersion: "genre-soul-source-inventory/v1",
@@ -265,6 +363,17 @@ export async function buildGenreSoulSourceRegistry(options = {}) {
       sourceSha256: item.local.sourceSha256,
       sizeBytes: item.local.actualSizeBytes,
       status: item.local.status === "verified-local" ? "available" : "unavailable",
+      soulInput: item.eligibleForSoulInput
+        ? {
+            eligible: true,
+            genre: item.classification.genre,
+            managerSelectionReceiptSha256: managerSelectionSha256,
+          }
+        : {
+            eligible: false,
+            genre: null,
+            managerSelectionReceiptSha256: null,
+          },
       ...(item.local.status === "drifted-local" ? { rejectionReason: "provider-size-drift" } : {}),
     })),
   };
@@ -278,8 +387,12 @@ export async function buildGenreSoulSourceRegistry(options = {}) {
     inventorySha256: sha256(inventoryBytes),
     privateRegistryPath: relative(repositoryRoot, privateRegistryPath),
     privateRegistrySha256: sha256(registryBytes),
+    managerSelectionPath: managerSelectionPath && managerSelection
+      ? relative(repositoryRoot, managerSelectionPath)
+      : null,
+    managerSelectionSha256,
     counts,
-    resolverEligibility: "blocked-until-manager-selection",
+    resolverEligibility: managerSelection ? "manager-selected-local-only" : "blocked-until-manager-selection",
     rawSourceTracked: false,
     absolutePathCount: 0,
   };
@@ -312,11 +425,24 @@ export function validateSourceRegistryArtifacts({ inventory, privateRegistry, re
   }
   const inventoryById = new Map(inventory.items.map((item) => [item.sourceId, item]));
   if (inventoryById.size !== inventory.items.length) throw new Error("Tracked inventory source IDs must be unique.");
+  const derivedCounts = {
+    discovered: inventory.items.length,
+    verifiedLocal: inventory.items.filter((item) => item.local?.status === "verified-local").length,
+    driftedLocal: inventory.items.filter((item) => item.local?.status === "drifted-local").length,
+    remoteOnly: inventory.items.filter((item) => item.local?.status === "remote-only").length,
+    providerSizeMismatch: inventory.items.filter((item) => item.local?.providerSizeMatches === false).length,
+    suspiciouslySmall: inventory.items.filter((item) => item.integrityHints?.includes("suspiciously-small")).length,
+    excludedFemale: inventory.counts?.excludedFemale,
+    eligibleForSoulInput: inventory.items.filter((item) => item.eligibleForSoulInput === true).length,
+  };
+  if (JSON.stringify(inventory.counts) !== JSON.stringify(derivedCounts)) {
+    throw new Error("Tracked inventory counts do not match its items.");
+  }
   const registryIds = new Set();
   for (const [index, entry] of privateRegistry.items.entries()) {
     const expectedKeys = entry.status === "unavailable" && entry.rejectionReason
-      ? ["sourceId", "repoRelativePath", "sourceSha256", "sizeBytes", "status", "rejectionReason"]
-      : ["sourceId", "repoRelativePath", "sourceSha256", "sizeBytes", "status"];
+      ? ["sourceId", "repoRelativePath", "sourceSha256", "sizeBytes", "status", "soulInput", "rejectionReason"]
+      : ["sourceId", "repoRelativePath", "sourceSha256", "sizeBytes", "status", "soulInput"];
     assertExactKeys(entry, expectedKeys, `privateRegistry.items[${index}]`);
     if (!SAFE_SOURCE_ID.test(entry.sourceId)) throw new Error(`Invalid private registry source ID: ${entry.sourceId}`);
     if (registryIds.has(entry.sourceId)) throw new Error(`Duplicate private registry source ID: ${entry.sourceId}`);
@@ -325,6 +451,23 @@ export function validateSourceRegistryArtifacts({ inventory, privateRegistry, re
     const inventoryEntry = inventoryById.get(entry.sourceId);
     if (!inventoryEntry || inventoryEntry.repoRelativePath !== entry.repoRelativePath) {
       throw new Error(`Private registry entry does not match tracked inventory: ${entry.sourceId}`);
+    }
+    if (!isObject(entry.soulInput)) throw new Error(`Private registry Soul input state is missing: ${entry.sourceId}`);
+    assertExactKeys(entry.soulInput, ["eligible", "genre", "managerSelectionReceiptSha256"], `privateRegistry.items[${index}].soulInput`);
+    if (entry.soulInput.eligible !== inventoryEntry.eligibleForSoulInput) {
+      throw new Error(`Private registry Soul eligibility differs from tracked inventory: ${entry.sourceId}`);
+    }
+    if (entry.soulInput.eligible) {
+      if (
+        entry.status !== "available"
+        || !SOUL_GENRES.includes(entry.soulInput.genre)
+        || !SHA256.test(entry.soulInput.managerSelectionReceiptSha256 ?? "")
+        || inventoryEntry.classification.status !== "manager-selected"
+        || inventoryEntry.classification.genre !== entry.soulInput.genre
+        || inventoryEntry.classification.managerReceiptSha256 !== entry.soulInput.managerSelectionReceiptSha256
+      ) throw new Error(`Private registry Soul selection evidence is invalid: ${entry.sourceId}`);
+    } else if (entry.soulInput.genre !== null || entry.soulInput.managerSelectionReceiptSha256 !== null) {
+      throw new Error(`Ineligible private source cannot carry Soul selection evidence: ${entry.sourceId}`);
     }
     if (entry.status === "available") {
       if (!SHA256.test(entry.sourceSha256 ?? "") || !Number.isInteger(entry.sizeBytes) || entry.sizeBytes < 1) {
@@ -347,6 +490,27 @@ export function validateSourceRegistryArtifacts({ inventory, privateRegistry, re
   }
   safeRepoRelative(receipt.inventoryPath, "receipt.inventoryPath");
   safeRepoRelative(receipt.privateRegistryPath, "receipt.privateRegistryPath");
+  if (receipt.managerSelectionPath === null) {
+    if (receipt.managerSelectionSha256 !== null || receipt.resolverEligibility !== "blocked-until-manager-selection") {
+      throw new Error("Registry receipt cannot claim manager selection evidence.");
+    }
+  } else {
+    safeRepoRelative(receipt.managerSelectionPath, "receipt.managerSelectionPath");
+    if (!SHA256.test(receipt.managerSelectionSha256 ?? "") || receipt.resolverEligibility !== "manager-selected-local-only") {
+      throw new Error("Registry receipt manager selection evidence is invalid.");
+    }
+  }
+  const eligibleEntries = privateRegistry.items.filter((entry) => entry.soulInput.eligible);
+  if (
+    eligibleEntries.length > 0
+    && (
+      receipt.managerSelectionPath === null
+      || eligibleEntries.some((entry) => entry.soulInput.managerSelectionReceiptSha256 !== receipt.managerSelectionSha256)
+    )
+  ) throw new Error("Soul input eligibility is not bound to the receipt manager selection.");
+  if (eligibleEntries.length === 0 && receipt.managerSelectionPath !== null) {
+    throw new Error("Manager selection receipt must select at least one Soul input.");
+  }
   if (receipt.inventorySha256 !== sha256(jsonBytes(inventory))) throw new Error("Tracked inventory SHA-256 mismatch.");
   if (receipt.privateRegistrySha256 !== sha256(jsonBytes(privateRegistry))) throw new Error("Private registry SHA-256 mismatch.");
   if (receipt.rawSourceTracked !== false || receipt.absolutePathCount !== 0) {
@@ -374,6 +538,17 @@ export function resolveRegistryEntry(privateRegistry, sourceId) {
   return entry;
 }
 
+export function resolveSoulInputRegistryEntry(privateRegistry, sourceId, genre) {
+  const entry = resolveRegistryEntry(privateRegistry, sourceId);
+  if (
+    !isObject(entry.soulInput)
+    || entry.soulInput.eligible !== true
+    || entry.soulInput.genre !== genre
+    || !SHA256.test(entry.soulInput.managerSelectionReceiptSha256 ?? "")
+  ) throw new Error(`Resolver source is not manager-selected for ${genre}: ${sourceId}`);
+  return entry;
+}
+
 export async function validateSourceRegistryFiles(options = {}) {
   const repositoryRoot = resolve(options.repositoryRoot ?? repoRoot);
   const inventoryPath = resolve(options.inventoryPath ?? defaultInventoryPath);
@@ -395,6 +570,11 @@ export async function validateSourceRegistryFiles(options = {}) {
   }
   if (safeRepoRelative(receipt.privateRegistryPath, "receipt.privateRegistryPath") !== relative(repositoryRoot, privateRegistryPath)) {
     throw new Error("Private registry path does not match the receipt.");
+  }
+  if (receipt.managerSelectionPath !== null) {
+    const selectionPath = resolve(repositoryRoot, safeRepoRelative(receipt.managerSelectionPath, "receipt.managerSelectionPath"));
+    const selectionBytes = await readFile(selectionPath);
+    if (sha256(selectionBytes) !== receipt.managerSelectionSha256) throw new Error("Manager selection byte SHA-256 mismatch.");
   }
   if (options.verifyAvailableBytes !== false) {
     for (const entry of privateRegistry.items.filter((candidate) => candidate.status === "available")) {
