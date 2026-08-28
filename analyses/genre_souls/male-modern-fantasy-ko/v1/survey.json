@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "genre-soul-survey/v1",
+  "genre": "modern-fantasy-ko",
+  "completedAt": "2026-08-28T06:52:37.103Z",
+  "candidateSourceIds": [
+    "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+    "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+    "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+  ],
+  "entries": [
+    {
+      "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+      "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+      "reader": {
+        "runId": "20260828_153036_2ad284",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "high",
+        "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+        "traceReceiptSha256": "76ce5c3c643801b34053cfd32fee9a8c36a3b6178907848e9934657773e53346"
+      },
+      "status": "surveyed",
+      "coverage": [
+        {
+          "startByte": 0,
+          "endByte": 11999
+        },
+        {
+          "startByte": 1434007,
+          "endByte": 1446007
+        },
+        {
+          "startByte": 2855269,
+          "endByte": 2867268
+        },
+        {
+          "startByte": 4300195,
+          "endByte": 4312195
+        },
+        {
+          "startByte": 5776806,
+          "endByte": 5788806
+        },
+        {
+          "startByte": 7249091,
+          "endByte": 7261089
+        },
+        {
+          "startByte": 8735011,
+          "endByte": 8747011
+        },
+        {
+          "startByte": 10205609,
+          "endByte": 10217609
+        }
+      ],
+      "managerExclusion": null,
+      "observationIds": [
+        "obs-1BzfNJPOBwau-01-cd537b00b6a0",
+        "obs-1BzfNJPOBwau-02-418bb26aee54",
+        "obs-1BzfNJPOBwau-03-4da5702dd9ee",
+        "obs-1BzfNJPOBwau-04-e2343ba8fbfe",
+        "obs-1BzfNJPOBwau-05-e2adad975071",
+        "obs-1BzfNJPOBwau-06-3413629fe226",
+        "obs-1BzfNJPOBwau-07-87aed3210df0",
+        "obs-1BzfNJPOBwau-08-edd1004ee610"
+      ]
+    },
+    {
+      "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+      "sourceSha256": "e00881820810cd27f1efbe72a0a514aa4a0a9b1a08a77a747444766a84892c7f",
+      "reader": {
+        "runId": "20260828_153415_dece72",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "high",
+        "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+        "traceReceiptSha256": "3ccc772921ea388d985a0d65b46ff1079f81c5f4a1c44b6b710e13e021c77f90"
+      },
+      "status": "surveyed",
+      "coverage": [
+        {
+          "startByte": 0,
+          "endByte": 12000
+        },
+        {
+          "startByte": 1226794,
+          "endByte": 1238793
+        },
+        {
+          "startByte": 2464448,
+          "endByte": 2476447
+        },
+        {
+          "startByte": 3701697,
+          "endByte": 3713697
+        },
+        {
+          "startByte": 4965031,
+          "endByte": 4977031
+        }
+      ],
+      "managerExclusion": null,
+      "observationIds": [
+        "obs-1SRFbbNIAztK-01-5056c40cf305",
+        "obs-1SRFbbNIAztK-02-4800831ed45e",
+        "obs-1SRFbbNIAztK-03-427605889fb6",
+        "obs-1SRFbbNIAztK-04-ff96bc89079e",
+        "obs-1SRFbbNIAztK-05-4471dbbc4b7c"
+      ]
+    },
+    {
+      "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+      "sourceSha256": "09ca4bb08e88f7791e38bc33c393ee1732af32823d7ed39a1c7026f4b7e37908",
+      "reader": {
+        "runId": "20260828_153622_642271",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "high",
+        "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+        "traceReceiptSha256": "07aa21b4c4f76a973bf3156fbc036a0a461942c51f5811a5ced24630066ddff2"
+      },
+      "status": "surveyed",
+      "coverage": [
+        {
+          "startByte": 0,
+          "endByte": 8938
+        },
+        {
+          "startByte": 623869,
+          "endByte": 635869
+        },
+        {
+          "startByte": 1320725,
+          "endByte": 1332723
+        },
+        {
+          "startByte": 2032661,
+          "endByte": 2044661
+        },
+        {
+          "startByte": 2752807,
+          "endByte": 2764807
+        }
+      ],
+      "managerExclusion": null,
+      "observationIds": [
+        "obs-1IveOliU4R7F-01-3fe8a7529d20",
+        "obs-1IveOliU4R7F-02-e749731caf91",
+        "obs-1IveOliU4R7F-03-0382ea26015a",
+        "obs-1IveOliU4R7F-04-1b00b88af02b",
+        "obs-1IveOliU4R7F-05-cdb6e2e58daa"
+      ]
+    }
+  ]
+}

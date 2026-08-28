@@ -24,6 +24,7 @@ InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 
 ```bash
 node tools/validate-source-manifest.mjs
 node tools/genre-soul-source-registry.mjs
+node tools/genre-soul-survey-runner.mjs
 node tools/validate-five-work-analyses.mjs --strict
 node tools/validate-writing-system-contracts.mjs
 ```
@@ -37,6 +38,13 @@ source를 대조해 398개 남성향 재고를 추적 가능한 inventory로 만
 구조가 모두 일치한 항목만
 `eligibleForSoulInput=true`가 된다. 이 선택은 survey/deep-read 입력 허가일 뿐
 학습 완료나 Soul 승격 근거는 아니다.
+
+`tools/genre-soul-survey-runner.mjs`는 선별된 9개에 한해 장르별 격리 Hermes
+프로필을 `gpt-5.6-sol/high`로 실행한다. 분산 private window를 각각 읽은
+session trace, profile config, usage와 결과를 ignored `exports/`에 보존하고,
+모든 readback과 `keep` 판정이 일치할 때만 raw 없는 장르별 survey JSON을 만든다.
+각 survey 옆에는 전체 available 원문 코퍼스와 대조한 zero-match 누출 검사
+영수증을 함께 둔다. `needs-manager-review`는 자동 완료하지 않는다.
 
 분산 survey, 전수 deep-read, 장르 프로필, manager QA, tracked 누출 검사와
 promotion eligibility의 완료선은

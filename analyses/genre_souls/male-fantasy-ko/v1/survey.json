@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "genre-soul-survey/v1",
+  "genre": "fantasy-ko",
+  "completedAt": "2026-08-28T06:52:51.122Z",
+  "candidateSourceIds": [
+    "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+    "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+    "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b"
+  ],
+  "entries": [
+    {
+      "sourceId": "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b",
+      "sourceSha256": "e86d5b1135dd9c4b4f711df5e863f5b688229f78105f3859415ead8e5a90cc74",
+      "reader": {
+        "runId": "20260828_153801_592e64",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "high",
+        "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+        "traceReceiptSha256": "860ab2466c23b6c0536430f4221b212f8eef3bd9a4a36845200184ce0f53977e"
+      },
+      "status": "surveyed",
+      "coverage": [
+        {
+          "startByte": 0,
+          "endByte": 11999
+        },
+        {
+          "startByte": 778819,
+          "endByte": 790818
+        },
+        {
+          "startByte": 1565632,
+          "endByte": 1577630
+        },
+        {
+          "startByte": 2333580,
+          "endByte": 2345580
+        },
+        {
+          "startByte": 3084370,
+          "endByte": 3096370
+        }
+      ],
+      "managerExclusion": null,
+      "observationIds": [
+        "obs-1tvlx7aVmtCQ-01-391b040c46d4",
+        "obs-1tvlx7aVmtCQ-02-0cc14fb4efeb",
+        "obs-1tvlx7aVmtCQ-03-302fb12fbc3e",
+        "obs-1tvlx7aVmtCQ-04-be76b37b5f75",
+        "obs-1tvlx7aVmtCQ-05-24e5ac202848"
+      ]
+    },
+    {
+      "sourceId": "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+      "sourceSha256": "c040a1daa98ad027002e0c34931cf530fbac41b92f415c3a19699dc36022dcc1",
+      "reader": {
+        "runId": "20260828_154006_8f1056",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "high",
+        "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+        "traceReceiptSha256": "d951417e58c07e34bb706b212f7e2f4cb6739de2d1fa90deb21169528ca34d79"
+      },
+      "status": "surveyed",
+      "coverage": [
+        {
+          "startByte": 0,
+          "endByte": 11999
+        },
+        {
+          "startByte": 848036,
+          "endByte": 860036
+        },
+        {
+          "startByte": 1657624,
+          "endByte": 1669624
+        },
+        {
+          "startByte": 2459240,
+          "endByte": 2471238
+        },
+        {
+          "startByte": 3243237,
+          "endByte": 3255236
+        }
+      ],
+      "managerExclusion": null,
+      "observationIds": [
+        "obs-1fwf7btYmJFp-01-4c9b65f126c6",
+        "obs-1fwf7btYmJFp-02-a3fe33236aa0",
+        "obs-1fwf7btYmJFp-03-5c78865af906",
+        "obs-1fwf7btYmJFp-04-047223bd69b4",
+        "obs-1fwf7btYmJFp-05-4d31e297e893"
+      ]
+    },
+    {
+      "sourceId": "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+      "sourceSha256": "211d2830b290f3b8bd21f8cd27d8eb8b5a46fa9b7be916cb68b2ecc78a2b34ad",
+      "reader": {
+        "runId": "20260828_154158_a64e92",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "high",
+        "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+        "traceReceiptSha256": "70ef21c0d9dc9d7e126ce24fac36b7b11e80d9f899a95d22277a79a1d65d18bd"
+      },
+      "status": "surveyed",
+      "coverage": [
+        {
+          "startByte": 0,
+          "endByte": 11998
+        },
+        {
+          "startByte": 1098915,
+          "endByte": 1110914
+        },
+        {
+          "startByte": 2198202,
+          "endByte": 2210200
+        },
+        {
+          "startByte": 3284270,
+          "endByte": 3296268
+        },
+        {
+          "startByte": 4384780,
+          "endByte": 4396779
+        }
+      ],
+      "managerExclusion": null,
+      "observationIds": [
+        "obs-1cKpe8b5G76V-01-a22fc2a4033b",
+        "obs-1cKpe8b5G76V-02-8bad7234f486",
+        "obs-1cKpe8b5G76V-03-3bfbda694463",
+        "obs-1cKpe8b5G76V-04-2a9159775710",
+        "obs-1cKpe8b5G76V-05-23dbe264f1ef"
+      ]
+    }
+  ]
+}
