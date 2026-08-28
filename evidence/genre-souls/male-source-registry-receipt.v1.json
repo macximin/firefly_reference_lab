@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "source-registry-receipt/v1",
+  "receiptId": "male-korean-webnovel-corpus-v1",
+  "generatedAt": "2026-08-28T04:34:59.279Z",
+  "inventoryPath": "evidence/genre-souls/male-source-inventory.v1.json",
+  "inventorySha256": "31f4a0d3c738d41bbd952421aa79913e32b35671a1e7f37656d85165a021adb7",
+  "privateRegistryPath": "exports/source-registry/male-source-registry.v1.json",
+  "privateRegistrySha256": "c4e62458de4247c4717b80b95e0e552b090c7689879745344dc431554e92004c",
+  "counts": {
+    "discovered": 398,
+    "verifiedLocal": 21,
+    "driftedLocal": 1,
+    "remoteOnly": 376,
+    "providerSizeMismatch": 1,
+    "suspiciouslySmall": 2,
+    "excludedFemale": 374,
+    "eligibleForSoulInput": 0
+  },
+  "resolverEligibility": "blocked-until-manager-selection",
+  "rawSourceTracked": false,
+  "absolutePathCount": 0
+}

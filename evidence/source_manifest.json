@@ -9,7 +9,8 @@
       "accessedAt": "2026-08-13T00:00:00+09:00",
       "itemCount": 22,
       "totalBytes": 138666000,
-      "notes": "Local source snapshot grouped by pen name."
+      "resolverEligible": false,
+      "notes": "Legacy analysis register only. Resolver authority lives in the Phase 7 private source registry and its tracked receipt."
     }
   ]
 }

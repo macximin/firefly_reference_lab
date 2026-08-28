@@ -2,7 +2,7 @@
 
 내 작품과 참고 작품을 전수 비교해 **웹소설에 맞는 실제 Arc 구조와 페이싱**을 추출하는 독립 연구 저장소다.
 
-InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 간 구조 비교, 증거 기록, 분석 도구, 그리고 InkOS에 반영할 기획·Arc 인사이트를 보관한다.
+InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 간 구조 비교, 증거 기록, 분석 도구, 그리고 InkOS에 반영할 기획·Arc·reference 근거를 보관한다. 관리자가 승인한 비추적 원문은 축약하지 않고 전수 독해할 수 있지만, Git에는 원문 문장 대신 source ID·범위·SHA와 누출 검사 영수증만 남긴다. 실제 이야기·문체 예문을 쓰는 경우에도 검증된 private store에서 InkOS로 일회성 전달하며 공용 추상화만 강요하지 않는다.
 
 ## 작업 원칙
 
@@ -23,9 +23,17 @@ InkOS 본체는 집필·감리·수정에 집중한다. 이 저장소는 작품 
 
 ```bash
 node tools/validate-source-manifest.mjs
+node tools/genre-soul-source-registry.mjs
 node tools/validate-five-work-analyses.mjs --strict
 node tools/validate-writing-system-contracts.mjs
 ```
+
+`tools/genre-soul-source-registry.mjs`는 Drive 메타데이터 스냅샷과 로컬 private
+source를 대조해 398개 남성향 재고를 추적 가능한 inventory로 만들고, 로컬
+바이트의 SHA-256이 검증된 항목만 private registry의 `available` 상태로 둔다.
+여성향 하위 폴더 374개는 v1에서 명시적으로 제외한다. 제목 키워드와 자동
+분류는 Soul 승격 근거가 아니며, manager selection 전에는 모든 항목이
+`eligibleForSoulInput=false`다.
 
 ## 폴더
 
@@ -33,7 +41,7 @@ node tools/validate-writing-system-contracts.mjs
 | --- | --- |
 | `private_sources/` | 커밋하지 않는 로컬 원문 입력. |
 | `reference_inputs/` | 커밋하지 않는 참고 분석 입력. |
-| `evidence/` | 로컬 위치·해시·접근일이 기록된 매니페스트와 증거 메모. |
+| `evidence/` | raw 없이 source ID·repo-relative path·해시·접근일을 기록한 매니페스트와 증거 메모. |
 | `docs/session-briefs/` | 작품별 독립 분석 발주와 입력·출력 경계. |
 | `templates/` | 회차·Arc·기획서·보고서 공통 분석 계약. |
 | `analyses/` | 작품별 전 회차 지도, 기획서, Arc Atlas·페이싱과 InkOS 보고서. |
