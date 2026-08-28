@@ -16,16 +16,18 @@
         "author": "서오",
         "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
         "sizeBytes": 10220730,
+        "chapterCount": 751,
         "selectionBasis": "commercial-anchor",
         "evidenceMode": "local-source-inspection"
       },
       {
-        "sourceId": "gdrive-1SCo2Irbk3wKT-Yzx56tcoUqjI_OjNP3Q",
-        "providerFileId": "1SCo2Irbk3wKT-Yzx56tcoUqjI_OjNP3Q",
-        "title": "금수저 투자백서_강동호_합본.txt",
-        "author": "강동호",
-        "sourceSha256": "1ac62315ac08181c712154e480d6cd6951fb61b8825ab6bb28af88d4fdb534af",
-        "sizeBytes": 9851355,
+        "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+        "providerFileId": "1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+        "title": "재벌가 막둥이는 만능 천재(개정판)_흑곰작가_합본.txt",
+        "author": "흑곰작가",
+        "sourceSha256": "e00881820810cd27f1efbe72a0a514aa4a0a9b1a08a77a747444766a84892c7f",
+        "sizeBytes": 4979490,
+        "chapterCount": 380,
         "selectionBasis": "genre-breadth",
         "evidenceMode": "local-source-inspection"
       },
@@ -36,6 +38,7 @@
         "author": "흑곰작가",
         "sourceSha256": "09ca4bb08e88f7791e38bc33c393ee1732af32823d7ed39a1c7026f4b7e37908",
         "sizeBytes": 2782069,
+        "chapterCount": 219,
         "selectionBasis": "surface-anchor",
         "evidenceMode": "local-source-inspection"
       }
@@ -48,6 +51,7 @@
         "author": "킹메이커",
         "sourceSha256": "e86d5b1135dd9c4b4f711df5e863f5b688229f78105f3859415ead8e5a90cc74",
         "sizeBytes": 3201149,
+        "chapterCount": 222,
         "selectionBasis": "commercial-anchor",
         "evidenceMode": "drive-content-inspection"
       },
@@ -58,16 +62,18 @@
         "author": "비비다",
         "sourceSha256": "c040a1daa98ad027002e0c34931cf530fbac41b92f415c3a19699dc36022dcc1",
         "sizeBytes": 3378950,
+        "chapterCount": 233,
         "selectionBasis": "genre-breadth",
         "evidenceMode": "drive-content-inspection"
       },
       {
-        "sourceId": "gdrive-1tkIL3K8D9YfpFgjc4WgOl5MCAVzWvHCA",
-        "providerFileId": "1tkIL3K8D9YfpFgjc4WgOl5MCAVzWvHCA",
-        "title": "드래곤 레어에 조난당했다_이우찬_합본.txt",
-        "author": "이우찬",
-        "sourceSha256": "491da1dc27030eb2201983330ab5f6606403ff3ad0ee6fc19755a4147f255df4",
-        "sizeBytes": 6195873,
+        "sourceId": "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+        "providerFileId": "1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+        "title": "카레인_강동호_합본.txt",
+        "author": "강동호",
+        "sourceSha256": "211d2830b290f3b8bd21f8cd27d8eb8b5a46fa9b7be916cb68b2ecc78a2b34ad",
+        "sizeBytes": 4397705,
+        "chapterCount": 300,
         "selectionBasis": "surface-anchor",
         "evidenceMode": "drive-content-inspection"
       }
@@ -80,6 +86,7 @@
         "author": "송재일",
         "sourceSha256": "d07ed27d4a9c320906182ad8de5f48e1d6df35c8d5c3795812686d81db9f6646",
         "sizeBytes": 6782198,
+        "chapterCount": 425,
         "selectionBasis": "commercial-anchor",
         "evidenceMode": "drive-content-inspection"
       },
@@ -90,16 +97,18 @@
         "author": "앤서",
         "sourceSha256": "371cf60079da9073423530723396edf8e37963f3ff6bf1f1078ed3b7ee4d40fe",
         "sizeBytes": 2336689,
+        "chapterCount": 152,
         "selectionBasis": "genre-breadth",
         "evidenceMode": "drive-content-inspection"
       },
       {
-        "sourceId": "gdrive-1atzAZZaQ_Uav6A3ojiCWfeYlYb-6Mwl_",
-        "providerFileId": "1atzAZZaQ_Uav6A3ojiCWfeYlYb-6Mwl_",
-        "title": "모용세가 역대급 천재의 귀환_독성_합본.txt",
-        "author": "독성",
-        "sourceSha256": "e09846a9626c2948293d5456c18dc8072f328035c9f0e48bb1765728e6fa5055",
-        "sizeBytes": 2065182,
+        "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+        "providerFileId": "1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+        "title": "마교육제_송재일_합본.txt",
+        "author": "송재일",
+        "sourceSha256": "9f027e2d259c93a48d12251ee968cdd1e7b4d7bb8d3e0121da7626db200241a0",
+        "sizeBytes": 5826988,
+        "chapterCount": 400,
         "selectionBasis": "surface-anchor",
         "evidenceMode": "drive-content-inspection"
       }

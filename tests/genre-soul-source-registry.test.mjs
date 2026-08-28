@@ -6,6 +6,7 @@ import test from "node:test";
 import { tmpdir } from "node:os";
 
 import {
+  analyzeSourceStructure,
   buildGenreSoulSourceRegistry,
   deriveCorpusIdentity,
   resolveRegistryEntry,
@@ -62,6 +63,25 @@ test("derives stable source identity and repository-local path", () => {
     author: "필명",
     repoRelativePath: "private_sources/korean_webnovel_corpus/필명/첫 작품_필명_합본.txt",
   });
+});
+
+test("recognizes supported chapter markers and flags damaged sequences", () => {
+  assert.deepEqual(
+    analyzeSourceStructure(Buffer.from("ⓚ작품명 1화\n첫 장\nⓚ<2>\n둘째 장")),
+    {
+      status: "complete",
+      utf8Valid: true,
+      markerLineCount: 2,
+      parsedChapterCount: 2,
+      unparsedMarkerLineCount: 0,
+      sequenceIssueCount: 0,
+      firstChapterNumber: 1,
+      lastChapterNumber: 2,
+      replacementCharacterCount: 0,
+    },
+  );
+  assert.equal(analyzeSourceStructure(Buffer.from("ⓚ1화\n본문\nⓚ3화\n본문")).status, "needs-review");
+  assert.equal(analyzeSourceStructure(Buffer.from("ⓚ1화\n문자 � 손상")).status, "needs-review");
 });
 
 test("builds a complete inventory while keeping unavailable files fail-closed", async () => {
@@ -220,7 +240,7 @@ test("readback detects private registry tampering", async () => {
 test("binds manager-selected local sources to one genre and detects selection tampering", async () => {
   const root = await mkdtemp(join(tmpdir(), "genre-source-selection-"));
   try {
-    const contents = ["현대 원문", "판타지 원문", "무협 원문"];
+    const contents = ["ⓚ1화\n현대 원문", "ⓚ<1>\n판타지 원문", "ⓚ무협 작품 1화\n무협 원문"];
     const files = [
       { ...fileA, providerFileId: "modern", title: "현대 작품_현대필명_합본.txt", sizeBytes: Buffer.byteLength(contents[0]) },
       { ...fileA, providerFileId: "fantasy", title: "판타지 작품_판타지필명_합본.txt", sizeBytes: Buffer.byteLength(contents[1]) },
@@ -257,6 +277,7 @@ test("binds manager-selected local sources to one genre and detects selection ta
           author: identity.author,
           sourceSha256: sha256(contents[index]),
           sizeBytes: Buffer.byteLength(contents[index]),
+          chapterCount: 1,
           selectionBasis: "commercial-anchor",
           evidenceMode: "local-source-inspection",
         }]];

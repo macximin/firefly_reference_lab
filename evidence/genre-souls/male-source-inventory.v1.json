@@ -22,9 +22,9 @@
   },
   "counts": {
     "discovered": 398,
-    "verifiedLocal": 27,
+    "verifiedLocal": 32,
     "driftedLocal": 1,
-    "remoteOnly": 370,
+    "remoteOnly": 365,
     "providerSizeMismatch": 1,
     "suspiciouslySmall": 2,
     "excludedFemale": 374,
@@ -371,9 +371,23 @@
         "status": "verified-local",
         "sourceSha256": "0df34f148005d22db0fa2e6a952ec5ad9645fb8889b02c5c7e32f676f0fd16f7",
         "actualSizeBytes": 3016579,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 220,
+          "parsedChapterCount": 216,
+          "unparsedMarkerLineCount": 4,
+          "sequenceIssueCount": 3,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 219,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed",
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -721,9 +735,23 @@
         "status": "verified-local",
         "sourceSha256": "bd90732f0ae6fa2a8d83631c5d48364ecf87106230cc7b73ab128c146510fd5f",
         "actualSizeBytes": 3887722,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 280,
+          "parsedChapterCount": 279,
+          "unparsedMarkerLineCount": 1,
+          "sequenceIssueCount": 1,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 280,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed",
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -968,12 +996,25 @@
         "modifiedAt": "2026-05-22T02:45:42.804Z"
       },
       "local": {
-        "status": "remote-only",
-        "sourceSha256": null,
-        "actualSizeBytes": null,
-        "providerSizeMatches": null
+        "status": "verified-local",
+        "sourceSha256": "fc4cd6741d26115c52e3375d3430474c488baf48c4ac60f791635cb6f36bccba",
+        "actualSizeBytes": 3154461,
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 225,
+          "parsedChapterCount": 225,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 2,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 225,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -1043,12 +1084,26 @@
         "modifiedAt": "2026-05-22T02:28:28.180Z"
       },
       "local": {
-        "status": "remote-only",
-        "sourceSha256": null,
-        "actualSizeBytes": null,
-        "providerSizeMatches": null
+        "status": "verified-local",
+        "sourceSha256": "567b2ae33872d59c961fa0d2e6d631f7ac9662d6db1ef4f4b3be2337ab75f620",
+        "actualSizeBytes": 2949332,
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 202,
+          "parsedChapterCount": 197,
+          "unparsedMarkerLineCount": 5,
+          "sequenceIssueCount": 3,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 202,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed",
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -1146,15 +1201,28 @@
         "status": "verified-local",
         "sourceSha256": "1ac62315ac08181c712154e480d6cd6951fb61b8825ab6bb28af88d4fdb534af",
         "actualSizeBytes": 9851355,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 686,
+          "parsedChapterCount": 686,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 11,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 708,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
-        "status": "manager-selected",
-        "genre": "modern-fantasy-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "status": "unreviewed",
+        "genre": null,
+        "managerReceiptSha256": null
       },
-      "eligibleForSoulInput": true
+      "eligibleForSoulInput": false
     },
     {
       "sourceId": "gdrive-1R95-II96SX8_1CtywYEaP9OsT3TjbaJu",
@@ -1171,9 +1239,23 @@
         "status": "verified-local",
         "sourceSha256": "0b3542d640338c504cf7fd7c26c559e753357244dfcd451ddd7d4c75a920f93f",
         "actualSizeBytes": 10988254,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 703,
+          "parsedChapterCount": 702,
+          "unparsedMarkerLineCount": 1,
+          "sequenceIssueCount": 1,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 703,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed",
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -1221,13 +1303,26 @@
         "status": "verified-local",
         "sourceSha256": "c040a1daa98ad027002e0c34931cf530fbac41b92f415c3a19699dc36022dcc1",
         "actualSizeBytes": 3378950,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 242,
+          "parsedChapterCount": 233,
+          "unparsedMarkerLineCount": 9,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 233,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed"
+      ],
       "classification": {
         "status": "manager-selected",
         "genre": "fantasy-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
       "eligibleForSoulInput": true
     },
@@ -1696,7 +1791,18 @@
         "status": "verified-local",
         "sourceSha256": "b74c0e66d22a50a1f9f9442013f2818ba952c1f8e00fbebddfe6a46c09d371b2",
         "actualSizeBytes": 4467627,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 325,
+          "parsedChapterCount": 325,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 325,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -2421,9 +2527,22 @@
         "status": "verified-local",
         "sourceSha256": "60a91d7a4f95fb3f808dfd0c2dd1967a4f2e72d71f70e4b713d32766669b918e",
         "actualSizeBytes": 13428458,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 1002,
+          "parsedChapterCount": 1002,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 2,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 1002,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -2696,13 +2815,24 @@
         "status": "verified-local",
         "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
         "actualSizeBytes": 10220730,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 751,
+          "parsedChapterCount": 751,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 751,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
         "status": "manager-selected",
         "genre": "modern-fantasy-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
       "eligibleForSoulInput": true
     },
@@ -2896,15 +3026,28 @@
         "status": "verified-local",
         "sourceSha256": "491da1dc27030eb2201983330ab5f6606403ff3ad0ee6fc19755a4147f255df4",
         "actualSizeBytes": 6195873,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 423,
+          "parsedChapterCount": 423,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 423,
+          "replacementCharacterCount": 1
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "replacement-character"
+      ],
       "classification": {
-        "status": "manager-selected",
-        "genre": "fantasy-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "status": "unreviewed",
+        "genre": null,
+        "managerReceiptSha256": null
       },
-      "eligibleForSoulInput": true
+      "eligibleForSoulInput": false
     },
     {
       "sourceId": "gdrive-1IQse59s-q4kkbdSh7FbiaJhvcashOqZt",
@@ -3096,7 +3239,18 @@
         "status": "verified-local",
         "sourceSha256": "7ad2949d0e1d22e76555a8d4007a39b118ce78182f95f0d620dc2c52fb031f12",
         "actualSizeBytes": 4765677,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 301,
+          "parsedChapterCount": 301,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 301,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -3146,7 +3300,18 @@
         "status": "verified-local",
         "sourceSha256": "d1dd84aebe77ece8f17e4b4448b739c3106931ccec5f2008933b385b74b8ba45",
         "actualSizeBytes": 4056319,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 310,
+          "parsedChapterCount": 310,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 310,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -3243,18 +3408,29 @@
         "modifiedAt": "2026-05-22T02:38:44.592Z"
       },
       "local": {
-        "status": "remote-only",
-        "sourceSha256": null,
-        "actualSizeBytes": null,
-        "providerSizeMatches": null
+        "status": "verified-local",
+        "sourceSha256": "9f027e2d259c93a48d12251ee968cdd1e7b4d7bb8d3e0121da7626db200241a0",
+        "actualSizeBytes": 5826988,
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 400,
+          "parsedChapterCount": 400,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 400,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
-        "status": "unreviewed",
-        "genre": null,
-        "managerReceiptSha256": null
+        "status": "manager-selected",
+        "genre": "murim-ko",
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
-      "eligibleForSoulInput": false
+      "eligibleForSoulInput": true
     },
     {
       "sourceId": "gdrive-1cYbnbH8fX-SDjR_sXOt5gkztEJagBt_G",
@@ -3296,7 +3472,18 @@
         "status": "verified-local",
         "sourceSha256": "f6517541f1be4d1ed108613687fb024a4745258927669447898b914a0578e0f3",
         "actualSizeBytes": 4125913,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 304,
+          "parsedChapterCount": 304,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 304,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -3771,15 +3958,28 @@
         "status": "verified-local",
         "sourceSha256": "e09846a9626c2948293d5456c18dc8072f328035c9f0e48bb1765728e6fa5055",
         "actualSizeBytes": 2065182,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 128,
+          "parsedChapterCount": 128,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 1,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 127,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
-        "status": "manager-selected",
-        "genre": "murim-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "status": "unreviewed",
+        "genre": null,
+        "managerReceiptSha256": null
       },
-      "eligibleForSoulInput": true
+      "eligibleForSoulInput": false
     },
     {
       "sourceId": "gdrive-1caxTSf077NXd-nMzihIvPfHX4ItIZnsG",
@@ -3871,13 +4071,24 @@
         "status": "verified-local",
         "sourceSha256": "371cf60079da9073423530723396edf8e37963f3ff6bf1f1078ed3b7ee4d40fe",
         "actualSizeBytes": 2336689,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 152,
+          "parsedChapterCount": 152,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 152,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
         "status": "manager-selected",
         "genre": "murim-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
       "eligibleForSoulInput": true
     },
@@ -3918,12 +4129,26 @@
         "modifiedAt": "2026-05-22T02:49:00.517Z"
       },
       "local": {
-        "status": "remote-only",
-        "sourceSha256": null,
-        "actualSizeBytes": null,
-        "providerSizeMatches": null
+        "status": "verified-local",
+        "sourceSha256": "aeda85a1fe59da55f4eabe3abbb2bca8e1220f9687f20a3b486823103f0622fb",
+        "actualSizeBytes": 2802947,
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 200,
+          "parsedChapterCount": 0,
+          "unparsedMarkerLineCount": 200,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": null,
+          "lastChapterNumber": null,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-missing",
+        "chapter-markers-unparsed"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -4396,9 +4621,23 @@
         "status": "drifted-local",
         "sourceSha256": "994b205ffc22ff9a51633c8b71db89207716c64cae3ff97f9b02d4122e27078e",
         "actualSizeBytes": 10878293,
-        "providerSizeMatches": false
+        "providerSizeMatches": false,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 830,
+          "parsedChapterCount": 829,
+          "unparsedMarkerLineCount": 1,
+          "sequenceIssueCount": 2,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 100,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed",
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -4746,7 +4985,18 @@
         "status": "verified-local",
         "sourceSha256": "6aa081f0c9039e25bfec93ffbc2e2fe9f10175e8d302d794e454263200257a79",
         "actualSizeBytes": 13442354,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 1006,
+          "parsedChapterCount": 1006,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 1006,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -5796,7 +6046,18 @@
         "status": "verified-local",
         "sourceSha256": "62359dee9a6610c158845281d5e60ffe08806de07ace1717cd901115c99a552b",
         "actualSizeBytes": 3017612,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 240,
+          "parsedChapterCount": 240,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 240,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -5946,9 +6207,22 @@
         "status": "verified-local",
         "sourceSha256": "72353f790d8ee488a7832ee08008bd96a1681af7438a21ba7811a790223bc7b7",
         "actualSizeBytes": 7015035,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 485,
+          "parsedChapterCount": 485,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 3,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 502,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -6546,13 +6820,26 @@
         "status": "verified-local",
         "sourceSha256": "09ca4bb08e88f7791e38bc33c393ee1732af32823d7ed39a1c7026f4b7e37908",
         "actualSizeBytes": 2782069,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 220,
+          "parsedChapterCount": 219,
+          "unparsedMarkerLineCount": 1,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 219,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed"
+      ],
       "classification": {
         "status": "manager-selected",
         "genre": "modern-fantasy-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
       "eligibleForSoulInput": true
     },
@@ -6670,12 +6957,25 @@
         "modifiedAt": "2026-05-22T02:49:16.237Z"
       },
       "local": {
-        "status": "remote-only",
-        "sourceSha256": null,
-        "actualSizeBytes": null,
-        "providerSizeMatches": null
+        "status": "verified-local",
+        "sourceSha256": "b6dcd518df1273353ee4e8daaef304d27803b721873a9fea4c7ff562ef7bfdfc",
+        "actualSizeBytes": 3378642,
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 242,
+          "parsedChapterCount": 242,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 1,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 8,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -6798,15 +7098,26 @@
         "status": "verified-local",
         "sourceSha256": "e00881820810cd27f1efbe72a0a514aa4a0a9b1a08a77a747444766a84892c7f",
         "actualSizeBytes": 4979490,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 380,
+          "parsedChapterCount": 380,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 380,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
-        "status": "unreviewed",
-        "genre": null,
-        "managerReceiptSha256": null
+        "status": "manager-selected",
+        "genre": "modern-fantasy-ko",
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
-      "eligibleForSoulInput": false
+      "eligibleForSoulInput": true
     },
     {
       "sourceId": "gdrive-1AWUU8zRpsxM3fC_QtPamEgG_yFzTCDp_",
@@ -6973,9 +7284,23 @@
         "status": "verified-local",
         "sourceSha256": "edacbddb7a69c84055a4011c4f611abf82d62f84630898611a791f69d387b811",
         "actualSizeBytes": 3111260,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "needs-review",
+          "utf8Valid": true,
+          "markerLineCount": 235,
+          "parsedChapterCount": 233,
+          "unparsedMarkerLineCount": 2,
+          "sequenceIssueCount": 2,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 235,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed",
+        "chapter-sequence-anomaly"
+      ],
       "classification": {
         "status": "unreviewed",
         "genre": null,
@@ -7373,7 +7698,18 @@
         "status": "verified-local",
         "sourceSha256": "bef82d12d88fc1b2be260d8ee1460554771b967d79b6ce6e5418335a952c93b2",
         "actualSizeBytes": 4124379,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 250,
+          "parsedChapterCount": 250,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 250,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -7523,7 +7859,18 @@
         "status": "verified-local",
         "sourceSha256": "67997af4a5922c21e2852545c958c3f71ec6b1a30a679271d0a7d41c87a947a8",
         "actualSizeBytes": 5759987,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 450,
+          "parsedChapterCount": 450,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 450,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -8373,15 +8720,26 @@
         "status": "verified-local",
         "sourceSha256": "211d2830b290f3b8bd21f8cd27d8eb8b5a46fa9b7be916cb68b2ecc78a2b34ad",
         "actualSizeBytes": 4397705,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 300,
+          "parsedChapterCount": 300,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 300,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
-        "status": "unreviewed",
-        "genre": null,
-        "managerReceiptSha256": null
+        "status": "manager-selected",
+        "genre": "fantasy-ko",
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
-      "eligibleForSoulInput": false
+      "eligibleForSoulInput": true
     },
     {
       "sourceId": "gdrive-1utKAmTnyNqyQI7QOFuFUC9IICYBKvmgc",
@@ -8598,7 +8956,18 @@
         "status": "verified-local",
         "sourceSha256": "2cfab13c95c781b7cc83a7e559c572eedb30c896598a79b6d97e393a6a4512a7",
         "actualSizeBytes": 3573681,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 275,
+          "parsedChapterCount": 275,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 275,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
@@ -8773,13 +9142,26 @@
         "status": "verified-local",
         "sourceSha256": "e86d5b1135dd9c4b4f711df5e863f5b688229f78105f3859415ead8e5a90cc74",
         "actualSizeBytes": 3201149,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 229,
+          "parsedChapterCount": 222,
+          "unparsedMarkerLineCount": 7,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 222,
+          "replacementCharacterCount": 0
+        }
       },
-      "integrityHints": [],
+      "integrityHints": [
+        "chapter-markers-unparsed"
+      ],
       "classification": {
         "status": "manager-selected",
         "genre": "fantasy-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
       "eligibleForSoulInput": true
     },
@@ -9198,13 +9580,24 @@
         "status": "verified-local",
         "sourceSha256": "d07ed27d4a9c320906182ad8de5f48e1d6df35c8d5c3795812686d81db9f6646",
         "actualSizeBytes": 6782198,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 425,
+          "parsedChapterCount": 425,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 425,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {
         "status": "manager-selected",
         "genre": "murim-ko",
-        "managerReceiptSha256": "419ea8730fd8aa4f502f23c58b3bafb5458fd9048e1a8147c4ae20173cc23f8f"
+        "managerReceiptSha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b"
       },
       "eligibleForSoulInput": true
     },
@@ -9500,7 +9893,18 @@
         "status": "verified-local",
         "sourceSha256": "f0b4459d33253c389d9bf6a9c6b648ec3b461eeb327e44822be719d4a179e334",
         "actualSizeBytes": 6775501,
-        "providerSizeMatches": true
+        "providerSizeMatches": true,
+        "structure": {
+          "status": "complete",
+          "utf8Valid": true,
+          "markerLineCount": 500,
+          "parsedChapterCount": 500,
+          "unparsedMarkerLineCount": 0,
+          "sequenceIssueCount": 0,
+          "firstChapterNumber": 1,
+          "lastChapterNumber": 500,
+          "replacementCharacterCount": 0
+        }
       },
       "integrityHints": [],
       "classification": {

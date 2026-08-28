@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
+import { isUtf8 } from "node:buffer";
 import { lstat, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,6 +127,7 @@ async function inspectLocalSource(input) {
       sourceSha256: sha256(bytes),
       actualSizeBytes: bytes.byteLength,
       providerSizeMatches,
+      structure: analyzeSourceStructure(bytes),
     };
   } catch (error) {
     if (error?.code === "ENOENT") {
@@ -138,6 +140,54 @@ async function inspectLocalSource(input) {
     }
     throw error;
   }
+}
+
+function parseChapterNumber(markerLine) {
+  const direct = markerLine.match(/^ⓚ(\d{1,4})(?:화)?/u);
+  if (direct) return Number(direct[1]);
+  const angle = markerLine.match(/^ⓚ<(\d{1,4})>/u);
+  if (angle) return Number(angle[1]);
+  const titleFirst = markerLine.match(/^ⓚ[^\r\n]{0,120}?\b(\d{1,4})화(?:\s|$)/u);
+  return titleFirst ? Number(titleFirst[1]) : null;
+}
+
+export function analyzeSourceStructure(bytes) {
+  if (!Buffer.isBuffer(bytes)) throw new Error("Source structure input must be a Buffer.");
+  if (!isUtf8(bytes)) {
+    return {
+      status: "needs-review",
+      utf8Valid: false,
+      markerLineCount: 0,
+      parsedChapterCount: 0,
+      unparsedMarkerLineCount: 0,
+      sequenceIssueCount: 0,
+      firstChapterNumber: null,
+      lastChapterNumber: null,
+      replacementCharacterCount: 0,
+    };
+  }
+  const text = bytes.toString("utf8");
+  const markerLines = [...text.matchAll(/^ⓚ[^\r\n]*/gmu)].map((match) => match[0]);
+  const chapterNumbers = markerLines.map(parseChapterNumber).filter((value) => value !== null);
+  let sequenceIssueCount = 0;
+  for (let index = 1; index < chapterNumbers.length; index += 1) {
+    if (chapterNumbers[index] !== chapterNumbers[index - 1] + 1) sequenceIssueCount += 1;
+  }
+  const replacementCharacterCount = text.match(/�/gu)?.length ?? 0;
+  const complete = chapterNumbers.length > 0
+    && sequenceIssueCount === 0
+    && replacementCharacterCount === 0;
+  return {
+    status: complete ? "complete" : "needs-review",
+    utf8Valid: true,
+    markerLineCount: markerLines.length,
+    parsedChapterCount: chapterNumbers.length,
+    unparsedMarkerLineCount: markerLines.length - chapterNumbers.length,
+    sequenceIssueCount,
+    firstChapterNumber: chapterNumbers[0] ?? null,
+    lastChapterNumber: chapterNumbers.at(-1) ?? null,
+    replacementCharacterCount,
+  };
 }
 
 export function validateDriveSnapshot(snapshot, options = {}) {
@@ -217,7 +267,7 @@ export function validateManagerSelectionArtifact(selection, snapshot, items, opt
       if (!isObject(entry)) throw new Error(`${label} must be an object.`);
       assertExactKeys(entry, [
         "sourceId", "providerFileId", "title", "author", "sourceSha256", "sizeBytes",
-        "selectionBasis", "evidenceMode",
+        "chapterCount", "selectionBasis", "evidenceMode",
       ], label);
       if (seenSourceIds.has(entry.sourceId)) throw new Error(`Manager selection source is duplicated: ${entry.sourceId}`);
       seenSourceIds.add(entry.sourceId);
@@ -231,6 +281,10 @@ export function validateManagerSelectionArtifact(selection, snapshot, items, opt
         || source.local.actualSizeBytes !== entry.sizeBytes
       ) throw new Error(`Manager selection source identity drift: ${entry.sourceId}`);
       if (source.local.status !== "verified-local") throw new Error(`Manager selection source is not locally verified: ${entry.sourceId}`);
+      if (
+        source.local.structure?.status !== "complete"
+        || source.local.structure.parsedChapterCount !== entry.chapterCount
+      ) throw new Error(`Manager selection source structure is not complete: ${entry.sourceId}`);
       if (!SELECTION_BASES.includes(entry.selectionBasis)) throw new Error(`${label}.selectionBasis is invalid.`);
       if (!["local-source-inspection", "drive-content-inspection"].includes(entry.evidenceMode)) {
         throw new Error(`${label}.evidenceMode is invalid.`);
@@ -281,7 +335,14 @@ export async function buildGenreSoulSourceRegistry(options = {}) {
         modifiedAt: file.modifiedAt,
       },
       local,
-      integrityHints: file.sizeBytes < 100_000 ? ["suspiciously-small"] : [],
+      integrityHints: [
+        ...(file.sizeBytes < 100_000 ? ["suspiciously-small"] : []),
+        ...(local.structure?.utf8Valid === false ? ["utf8-invalid"] : []),
+        ...((local.structure?.replacementCharacterCount ?? 0) > 0 ? ["replacement-character"] : []),
+        ...(local.structure?.parsedChapterCount === 0 ? ["chapter-markers-missing"] : []),
+        ...((local.structure?.unparsedMarkerLineCount ?? 0) > 0 ? ["chapter-markers-unparsed"] : []),
+        ...((local.structure?.sequenceIssueCount ?? 0) > 0 ? ["chapter-sequence-anomaly"] : []),
+      ],
       classification: {
         status: "unreviewed",
         genre: null,

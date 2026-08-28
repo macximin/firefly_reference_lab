@@ -33,7 +33,8 @@ source를 대조해 398개 남성향 재고를 추적 가능한 inventory로 만
 바이트의 SHA-256이 검증된 항목만 private registry의 `available` 상태로 둔다.
 여성향 하위 폴더 374개는 v1에서 명시적으로 제외한다. 제목 키워드와 자동
 분류는 Soul 승격 근거가 아니다. `male-manager-selection.v1.json`에서 관리자가
-장르별 상업·장르 폭·표면 앵커를 선택하고 로컬 바이트가 일치한 항목만
+장르별 상업·장르 폭·표면 앵커를 선택하고 로컬 바이트, UTF-8, 순차 회차
+구조가 모두 일치한 항목만
 `eligibleForSoulInput=true`가 된다. 이 선택은 survey/deep-read 입력 허가일 뿐
 학습 완료나 Soul 승격 근거는 아니다.
 
