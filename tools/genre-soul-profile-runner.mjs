@@ -26,18 +26,22 @@ import {
 import {
   FICTION_CONTENT_CONTRACT_ID,
   FICTION_CONTENT_CONTRACT_SHA256,
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
   HERMES_STRUCTURED_ATTEMPT_EVIDENCE_FILENAMES,
   HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_RUNTIME_KEYS,
   HERMES_STRUCTURED_MODEL,
   HERMES_STRUCTURED_PROVIDER,
   HERMES_STRUCTURED_REASONING,
+  assertHermesAuthAdapterPlanningMatch,
   assertHermesExactInputPluginPlanningMatch,
   buildHermesExecutionEnvironment,
+  loadHermesAuthAdapterPlanningEvidence,
   loadHermesExactInputPluginPlanningEvidence,
   loadHermesRuntimeEvidence,
   measureHermesExactInputTranscript,
   planHermesStructuredContextBudget,
   runHermesStructuredAttempt,
+  validateHermesAuthAdapterPlanningEvidence,
   validateHermesExactInputReadCapability,
   validateHermesExactInputPluginPlanningEvidence,
   validateHermesExactInputTrace,
@@ -74,7 +78,7 @@ const RUN_COMPLETION_SCHEMA = "private-genre-soul-profile-run-completed/v1";
 const PROFILE_SCHEMA = "genre-soul-analysis-profile/v1";
 const ROUTING_SCHEMA = "genre-soul-reference-routing-catalog/v1";
 const RUNTIME_EVIDENCE_SCHEMA = "genre-soul-hermes-runtime-evidence/v2";
-const PROFILE_RUN_INPUT_SCHEMA = "private-genre-soul-profile-run-input-digest/v2";
+const PROFILE_RUN_INPUT_SCHEMA = "private-genre-soul-profile-run-input-digest/v3";
 const PROFILE_CONTEXT_BUDGET_CONTRACT_VERSION = "genre-soul-profile-context-budget/v1";
 const PROFILE_PRIVATE_INPUT_CONTEXT_BUDGET_SCHEMA = "genre-soul-private-input-context-budget/v1";
 const PROFILE_MAX_INPUT_CONTEXT_PROXY_TOKENS = 190_000;
@@ -2232,6 +2236,15 @@ async function collectHermesEvidenceArtifacts(repositoryRoot, structuredRunRoot,
     expected.exactInputPluginPlanningEvidence,
     `${label} Hermes sealed plugin capability`,
   );
+  if (
+    readCapability.capability.authProjectionContractVersion
+    !== expected.exactInputAuthProjectionContractVersion
+  ) throw new Error(`${label} Hermes sealed auth projection contract drifted.`);
+  assertHermesAuthAdapterPlanningMatch(
+    readCapability.capability.authAdapterFiles,
+    expected.authAdapterPlanningEvidence,
+    `${label} Hermes sealed auth adapter capability`,
+  );
   const expectedRuntime = Object.fromEntries(
     HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_RUNTIME_KEYS
       .filter((key) => expected.runtime[key] !== undefined)
@@ -2416,6 +2429,7 @@ function expectedProfileRunManifestKeys() {
   return [
     "schemaVersion", "genre", "soulId", "version", "promptContractVersion",
     "contextBudgetContractVersion", "outputReserveTokens", "exactInputPluginPlanningEvidence",
+    "exactInputAuthProjectionContractVersion", "authAdapterPlanningEvidence",
     "semanticSurfaceLintVersion", "runtime", "promptContracts", "workInputs", "evidence", "inputDigest",
   ];
 }
@@ -2447,6 +2461,8 @@ async function validateSealedHermesGroup({
   role,
   runtime,
   exactInputPluginPlanningEvidence,
+  exactInputAuthProjectionContractVersion,
+  authAdapterPlanningEvidence,
   profileId,
   profileHome,
   prompt,
@@ -2543,6 +2559,15 @@ async function validateSealedHermesGroup({
     readCapability.capability.pluginFiles,
     exactInputPluginPlanningEvidence,
     `${label} Hermes sealed plugin capability`,
+  );
+  if (
+    readCapability.capability.authProjectionContractVersion
+    !== exactInputAuthProjectionContractVersion
+  ) throw new Error(`${label} Hermes sealed auth projection contract drifted.`);
+  assertHermesAuthAdapterPlanningMatch(
+    readCapability.capability.authAdapterFiles,
+    authAdapterPlanningEvidence,
+    `${label} Hermes sealed auth adapter capability`,
   );
   validateHermesStructuredAttemptInputAttestation({
     bytes: inputAttestationBytes,
@@ -2760,6 +2785,7 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
     || manifest.soulId !== profile.soulId
     || manifest.version !== PROFILE_VERSION
     || manifest.contextBudgetContractVersion !== PROFILE_CONTEXT_BUDGET_CONTRACT_VERSION
+    || manifest.exactInputAuthProjectionContractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
     || !Number.isSafeInteger(manifest.outputReserveTokens)
     || manifest.outputReserveTokens < 48_000
     || manifest.semanticSurfaceLintVersion !== SEMANTIC_SURFACE_LINT_VERSION
@@ -2771,9 +2797,16 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
   if (!config || config.soulId !== profile.soulId) throw new Error("Profile run genre configuration drifted.");
   validateRuntimeEvidence(manifest.runtime, config.profileId);
   validateHermesExactInputPluginPlanningEvidence(manifest.exactInputPluginPlanningEvidence);
-  const liveExactInputPluginPlanningEvidence = await loadHermesExactInputPluginPlanningEvidence();
+  validateHermesAuthAdapterPlanningEvidence(manifest.authAdapterPlanningEvidence);
+  const [liveExactInputPluginPlanningEvidence, liveAuthAdapterPlanningEvidence] = await Promise.all([
+    loadHermesExactInputPluginPlanningEvidence(),
+    loadHermesAuthAdapterPlanningEvidence(),
+  ]);
   if (!isDeepStrictEqual(liveExactInputPluginPlanningEvidence, manifest.exactInputPluginPlanningEvidence)) {
     throw new Error("Profile run exact-input plugin planning evidence drifted from the current runtime.");
+  }
+  if (!isDeepStrictEqual(liveAuthAdapterPlanningEvidence, manifest.authAdapterPlanningEvidence)) {
+    throw new Error("Profile run auth adapter planning evidence drifted from the current runtime.");
   }
   if (manifest.promptContractVersion !== "genre-soul-profile-partitioned-synthesis-prompts/v2") {
     throw new Error("Profile run prompt contract version drifted.");
@@ -2956,6 +2989,8 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
         role: `genre-soul-work-part:${work.sourceId}:${part.partId}`,
         runtime: manifest.runtime,
         exactInputPluginPlanningEvidence: manifest.exactInputPluginPlanningEvidence,
+        exactInputAuthProjectionContractVersion: manifest.exactInputAuthProjectionContractVersion,
+        authAdapterPlanningEvidence: manifest.authAdapterPlanningEvidence,
         profileId: config.profileId,
         profileHome: resolvedProfileHome,
         prompt,
@@ -3083,6 +3118,8 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
       role: `genre-soul-work-consolidation:${work.sourceId}`,
       runtime: manifest.runtime,
       exactInputPluginPlanningEvidence: manifest.exactInputPluginPlanningEvidence,
+      exactInputAuthProjectionContractVersion: manifest.exactInputAuthProjectionContractVersion,
+      authAdapterPlanningEvidence: manifest.authAdapterPlanningEvidence,
       profileId: config.profileId,
       profileHome: resolvedProfileHome,
       prompt: consolidationPrompt,
@@ -3159,6 +3196,8 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
     role: "genre-soul-profile-synthesis",
     runtime: manifest.runtime,
     exactInputPluginPlanningEvidence: manifest.exactInputPluginPlanningEvidence,
+    exactInputAuthProjectionContractVersion: manifest.exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence: manifest.authAdapterPlanningEvidence,
     profileId: config.profileId,
     profileHome: resolvedProfileHome,
     prompt: reconstructedGenrePrompt,
@@ -3411,7 +3450,13 @@ export async function runGenreSoulProfile(options) {
   const outputReserveTokens = options.testOnlyOutputReserveTokens ?? 48_000;
   const profileRoot = resolve(options.testOnlyProfileRoot ?? join(homedir(), ".hermes/profiles"));
   const profileHome = join(profileRoot, config.profileId);
-  const [evidence, runtimeEvidence, soulText, exactInputPluginPlanningEvidence] = await Promise.all([
+  const [
+    evidence,
+    runtimeEvidence,
+    soulText,
+    exactInputPluginPlanningEvidence,
+    authAdapterPlanningEvidence,
+  ] = await Promise.all([
     evidenceLoader({ repositoryRoot, genre }),
     runtimeEvidenceLoader({
       profileHome,
@@ -3423,9 +3468,11 @@ export async function runGenreSoulProfile(options) {
       ? Promise.resolve(options.testOnlySoulText)
       : readFile(join(profileHome, "SOUL.md"), "utf8"),
     loadHermesExactInputPluginPlanningEvidence(),
+    loadHermesAuthAdapterPlanningEvidence(),
   ]);
   validateRuntimeEvidence(runtimeEvidence, config.profileId);
   validateHermesExactInputPluginPlanningEvidence(exactInputPluginPlanningEvidence);
+  validateHermesAuthAdapterPlanningEvidence(authAdapterPlanningEvidence);
   if (soulText.length < 1 || sha256(Buffer.from(soulText)) !== runtimeEvidence.soulSha256) {
     throw new Error("Hermes runtime SOUL bytes drifted from the attested runtime evidence.");
   }
@@ -3459,6 +3506,8 @@ export async function runGenreSoulProfile(options) {
     contextBudgetContractVersion: PROFILE_CONTEXT_BUDGET_CONTRACT_VERSION,
     outputReserveTokens,
     exactInputPluginPlanningEvidence,
+    exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterPlanningEvidence,
     semanticSurfaceLintVersion: SEMANTIC_SURFACE_LINT_VERSION,
     runtime: runtimeEvidence,
     promptContracts: promptContractEvidence,
@@ -3523,6 +3572,7 @@ export async function runGenreSoulProfile(options) {
         expectedReadPaths: [inputPath],
         inputDigest: inputSha,
         expectedPluginPlanningEvidence: exactInputPluginPlanningEvidence,
+        expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
         outputReserveTokens,
         validateResult: (result) => validatePrivateWorkPartResult(result, {
           work: binding,
@@ -3550,6 +3600,8 @@ export async function runGenreSoulProfile(options) {
         soulText,
         runtime: runtimeEvidence,
         exactInputPluginPlanningEvidence,
+        exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+        authAdapterPlanningEvidence,
       };
       validateRun(run, runExpected);
       const hermesEvidenceFiles = await collectHermesEvidenceArtifacts(
@@ -3602,6 +3654,7 @@ export async function runGenreSoulProfile(options) {
       expectedReadPaths: [consolidationInputPath],
       inputDigest: consolidationDigest,
       expectedPluginPlanningEvidence: exactInputPluginPlanningEvidence,
+      expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
       outputReserveTokens,
       validateResult: (result) => {
         validatePrivateWorkSynthesisResult(result, binding, consolidationProvenance);
@@ -3637,6 +3690,8 @@ export async function runGenreSoulProfile(options) {
       soulText,
       runtime: runtimeEvidence,
       exactInputPluginPlanningEvidence,
+      exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+      authAdapterPlanningEvidence,
     };
     validateRun(run, runExpected);
     const hermesEvidenceFiles = await collectHermesEvidenceArtifacts(
@@ -3681,6 +3736,7 @@ export async function runGenreSoulProfile(options) {
     expectedReadPaths: [genreInputPath],
     inputDigest: genreInputDigest,
     expectedPluginPlanningEvidence: exactInputPluginPlanningEvidence,
+    expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
     outputReserveTokens,
     validateResult: (result) => {
       validatePrivateGenreSynthesisResult(result, {
@@ -3720,6 +3776,8 @@ export async function runGenreSoulProfile(options) {
     soulText,
     runtime: runtimeEvidence,
     exactInputPluginPlanningEvidence,
+    exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterPlanningEvidence,
   };
   validateRun(genreRun, genreRunExpected);
   const genreHermesEvidenceFiles = await collectHermesEvidenceArtifacts(

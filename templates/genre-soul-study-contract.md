@@ -16,20 +16,38 @@ source ID, UTF-8 byte 범위, SHA-256, 파생 관찰과 판정 영수증만 둔�
 
 신규 Hermes 실행은 경로·glob·offset을 모델에 주지 않는다. host가 exact input bytes를
 opaque input ID에 결속하고, 격리된 임시 capsule은 `firefly_read_source` 하나만
-bundled plugin root를 통해 노출한다. capability v2는 큰 UTF-8 원문을 결정론적
+bundled plugin root를 통해 노출한다. capability v3는 큰 UTF-8 원문을 결정론적
 cursor chunk로 나누고 직전 결과의 `nextInputId`·`nextCursor`를 한 번에 하나씩만
 따르게 한다. host가 누락·병렬·재분할·재정렬·변조를 거절하고 완전한 원본 bytes로
 재조립한 뒤에만 읽기를 인정한다. trace의 도구 이름·호출 순서·인자·반환 bytes와
-runtime/plugin/input attestation이 모두 일치해야 실행을 완료한다. capsule은 성공과 실패 뒤 모두 삭제하며
-인증 자료나 private 원문을 repository에 영속하지 않는다.
+runtime/plugin/input attestation이 모두 일치해야 실행을 완료한다. capsule은 handled
+completion/failure마다 삭제를 시도한다. capsule identity drift나 제거 실패는 완료를
+중단하고 감사용 상태를 남길 수 있으며, SIGKILL·host loss는 in-process cleanup 보장 밖이다.
+인증 자료의 capsule 사본이나 session/state DB를 repository에 영속하지 않는다.
+profile runner의 exact private 입력·attempt 증거는 기존 계약대로 ignored `exports/`에
+감사 자료로 남는다. credential bytes는 capsule에
+복사하거나 symlink하지 않는다. 봉인된 bootstrap adapter가 attested delegated
+Hermes 시작 시 source profile tree의 canonical global `auth.json`만 중앙 auth helper에
+연결하고, provider가 소유하는 credential lifecycle 및 auth-state 변경(refresh,
+cooldown, pool sync·정규화·pruning)은 기존 global `auth.lock` 아래에서만 수행한다.
+같은 adapter가 현재 Hermes private-hook consumer 호환성을 fail-closed로 확인하고,
+project/managed dotenv, external secret source, Codex CLI credential 자동 수입을
+비활성화한다. reader는 READY contract와 capsule HERMES_HOME을 확인한 뒤에만 원문
+chunk를 반환한다. survey·deep-read·profile·Manager QA의 current structured run은 모두
+adapter planning evidence를 run-input digest와 executable capability에 결속한다.
 
 Profile partition budget은 raw source byte 수가 아니라 위 cursor chain의 실제
 assistant/tool transcript byte 수를 사용한다. profile context, bundled plugin,
 stage prompt, static reserve와 output reserve를 공용 Hermes preflight와 동일하게
 합산하며 총합이 context limit과 같아도 거절한다. 모든 work partition은 provider
-호출 전에 계획되고 run-input digest v2에 영수증으로 봉인되며 실행 직전에 exact
+호출 전에 계획되고 run-input digest v3에 영수증으로 봉인되며 실행 직전에 exact
 재검증한다. 이전 budget 계약의 미완료 run root는 audit trail로 보존하고 새 실행에
 복사·수정·재사용하지 않는다.
+
+Hermes v0.19의 일반 profile process는 global singleton을 읽은 뒤에도 profile-local
+lock/write 경로로 refresh할 수 있다. upstream source-aware Codex transaction이
+도입되기 전까지 profile synthesis 중 별도 비-adapter Soul Hermes 실행을 병행하지
+않는다. Reference Lab exact run끼리는 canonical global auth lock을 공유한다.
 
 플러그인이 등록되지 않아 완료될 수 없었던 pre-v2 structured attempt는 audit
 trail로만 보존하고 current evidence로 재사용하지 않는다. 실제 역사적 v1 survey와

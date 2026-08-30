@@ -29,7 +29,10 @@ import {
   validatePrivateDeepReadSegment,
 } from "./genre-soul-deep-read-runner.mjs";
 import {
+  assertHermesAuthAdapterPlanningMatch,
   buildHermesExecutionEnvironment,
+  buildHistoricalHermesExecutionEnvironmentDescriptorV2,
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
   HERMES_READ_ONLY_TOOL,
   HERMES_READ_ONLY_TOOLSET,
   HERMES_STRUCTURED_ATTEMPT_EVIDENCE_FILENAMES,
@@ -38,8 +41,10 @@ import {
   HERMES_STRUCTURED_PROVIDER,
   HERMES_STRUCTURED_REASONING,
   loadHermesRuntimeEvidence,
+  validateHistoricalHermesExactInputReadCapabilityV2,
   validateHermesExactInputReadCapability,
   validateHermesExactInputTrace,
+  validateHermesAuthAdapterPlanningEvidence,
   validateHermesStructuredAttemptEvidenceFileNames,
   validateHermesStructuredAttemptInputAttestation,
   validateHermesStructuredReceipt,
@@ -110,6 +115,66 @@ function canonicalJsonBytes(value) {
 function assertExactObjectKeys(value, expected, label) {
   assertObject(value, label);
   assertEqual(Object.keys(value).sort(compareStrings), [...expected].sort(compareStrings), `${label} keys`);
+}
+
+function validateSealedAuthAdapterBinding(input, label) {
+  if (
+    input?.exactInputAuthProjectionContractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
+  ) throw new Error(`${label} auth projection contract drifted.`);
+  validateHermesAuthAdapterPlanningEvidence(input.authAdapterPlanningEvidence);
+  return {
+    exactInputAuthProjectionContractVersion: input.exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence: input.authAdapterPlanningEvidence,
+  };
+}
+
+function validateReadCapabilityAuthAdapterBinding(readCapability, binding, label) {
+  if (!binding) return true;
+  if (
+    readCapability?.capability?.authProjectionContractVersion
+    !== binding.exactInputAuthProjectionContractVersion
+  ) throw new Error(`${label} read capability auth projection contract drifted.`);
+  assertHermesAuthAdapterPlanningMatch(
+    readCapability.capability.authAdapterFiles,
+    binding.authAdapterPlanningEvidence,
+    `${label} read capability auth adapter`,
+  );
+  return true;
+}
+
+function validateVersionedReadCapability({
+  bytes,
+  expectedFiles,
+  sourceRuntimeIdentitySha256,
+  expectedMode,
+  label,
+}) {
+  let schemaVersion;
+  try {
+    schemaVersion = JSON.parse(bytes.toString("utf8"))?.schemaVersion;
+  } catch (error) {
+    throw new Error(`${label} read capability is invalid JSON.`, { cause: error });
+  }
+  const mode = schemaVersion === "private-hermes-exact-input-read-capability/v2"
+    ? "historical"
+    : schemaVersion === "private-hermes-exact-input-read-capability/v3"
+      ? "current"
+      : null;
+  if (mode === null || (expectedMode !== undefined && mode !== expectedMode)) {
+    throw new Error(`${label} read capability version drifted from its run-input contract.`);
+  }
+  const validated = mode === "historical"
+    ? validateHistoricalHermesExactInputReadCapabilityV2({
+      bytes,
+      expectedFiles,
+      sourceRuntimeIdentitySha256,
+    })
+    : validateHermesExactInputReadCapability({
+      bytes,
+      expectedFiles,
+      sourceRuntimeIdentitySha256,
+    });
+  return { ...validated, mode };
 }
 
 async function lstatOrNull(path) {
@@ -512,10 +577,11 @@ async function validateCurrentSurveyStructuredEvidence(input) {
       sizeBytes: file.bytes.byteLength,
     })),
   ];
-  const readCapability = validateHermesExactInputReadCapability({
+  const readCapability = validateVersionedReadCapability({
     bytes: readCapabilityBytes,
     expectedFiles,
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    label,
   });
   const expectedReads = expectedFiles.map(({ path, sha256: fileSha256, sizeBytes }) => ({
     path,
@@ -527,10 +593,15 @@ async function validateCurrentSurveyStructuredEvidence(input) {
     sha256: fileSha256,
   }))));
   const prompt = buildCurrentSurveyPrompt(manifest);
-  const executionEnvironment = buildHermesExecutionEnvironment({
-    profileHome: runtime.profileHome,
-    projectCwd: repositoryRoot,
-  });
+  const executionEnvironment = readCapability.mode === "historical"
+    ? buildHistoricalHermesExecutionEnvironmentDescriptorV2({
+      profileHome: runtime.profileHome,
+      projectCwd: repositoryRoot,
+    })
+    : buildHermesExecutionEnvironment({
+      profileHome: runtime.profileHome,
+      projectCwd: repositoryRoot,
+    });
   validateHermesStructuredAttemptInputAttestation({
     bytes: inputAttestationBytes,
     attemptDir: located.evidenceRoot,
@@ -645,6 +716,7 @@ async function validateCurrentSurveyStructuredEvidence(input) {
     || structuredPointerBytes.compare(canonicalJsonBytes(structuredPointer)) !== 0
     || !same(structuredPointer, expectedStructuredPointer)
   ) throw new Error(`${label} structured completion seal drifted.`);
+  return { readCapability };
 }
 
 async function validateCurrentDeepReadStructuredEvidence(input) {
@@ -661,6 +733,7 @@ async function validateCurrentDeepReadStructuredEvidence(input) {
     runtime,
     profileId,
     expected,
+    authAdapterBinding,
     label,
   } = input;
   assertExactObjectKeys(pointer, [
@@ -690,6 +763,7 @@ async function validateCurrentDeepReadStructuredEvidence(input) {
     workInputDigest: bundle.workInputDigest,
     manifest,
     prompt,
+    ...(authAdapterBinding ?? {}),
   });
   if (pointer.inputDigest !== expectedInputDigest) {
     throw new Error(`${label} segment input digest drifted.`);
@@ -773,11 +847,14 @@ async function validateCurrentDeepReadStructuredEvidence(input) {
       sizeBytes: file.bytes.byteLength,
     })),
   ];
-  const readCapability = validateHermesExactInputReadCapability({
+  const readCapability = validateVersionedReadCapability({
     bytes: readCapabilityBytes,
     expectedFiles,
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    expectedMode: authAdapterBinding ? "current" : "historical",
+    label,
   });
+  validateReadCapabilityAuthAdapterBinding(readCapability, authAdapterBinding, label);
   const expectedReads = expectedFiles.map(({ path, sha256: fileSha256, sizeBytes }) => ({
     path,
     sha256: fileSha256,
@@ -788,10 +865,15 @@ async function validateCurrentDeepReadStructuredEvidence(input) {
     sha256: fileSha256,
   }))));
   const role = `genre-soul-deep-read:${manifest.sourceId}:${manifest.segmentId}`;
-  const executionEnvironment = buildHermesExecutionEnvironment({
-    profileHome: runtime.profileHome,
-    projectCwd: repositoryRoot,
-  });
+  const executionEnvironment = readCapability.mode === "historical"
+    ? buildHistoricalHermesExecutionEnvironmentDescriptorV2({
+      profileHome: runtime.profileHome,
+      projectCwd: repositoryRoot,
+    })
+    : buildHermesExecutionEnvironment({
+      profileHome: runtime.profileHome,
+      projectCwd: repositoryRoot,
+    });
   validateHermesStructuredAttemptInputAttestation({
     bytes: inputAttestationBytes,
     attemptDir: evidenceRoot,
@@ -879,6 +961,7 @@ async function validateCurrentDeepReadStructuredEvidence(input) {
     structuredCompletedPointerBytes: structuredPointerBytes,
     structuredHostReceiptBytes: sharedHostReceiptBytes,
     readCapabilityBytes,
+    ...(authAdapterBinding ?? {}),
   });
   const expectedDomainReceiptBytes = canonicalJsonBytes(expectedDomainReceipt);
   const expectedPointer = buildCurrentDeepReadCompletedPointer({
@@ -1356,8 +1439,9 @@ async function validateSurveyPrivateEvidence(input) {
     legacy
     && userMessages[0].content !== buildLegacyCurrentSurveyPrompt(located.manifestPath, manifest)
   ) throw new Error(`${label} legacy prompt binding drifted.`);
+  let currentStructuredEvidence = null;
   if (currentV3) {
-    await validateCurrentSurveyStructuredEvidence({
+    currentStructuredEvidence = await validateCurrentSurveyStructuredEvidence({
       repositoryRoot,
       located,
       receipt,
@@ -1386,10 +1470,35 @@ async function validateSurveyPrivateEvidence(input) {
     await assertNoSymlinkPath(repositoryRoot, runInputPath, `${label} run input`);
     const runInputFile = await readJson(repositoryRoot, runInputPath, `${label} run input`);
     const descriptor = runInputFile.value;
+    const freshAuthBoundCurrent = currentV3
+      && descriptor?.schemaVersion === "private-genre-soul-survey-run-input-digest/v3";
+    const historicalCurrent = currentV3
+      && descriptor?.schemaVersion === "private-genre-soul-survey-run-input-digest/v2";
+    if (currentV3 && !freshAuthBoundCurrent && !historicalCurrent) {
+      throw new Error(`${label} current run-input schema is unsupported.`);
+    }
     assertExactObjectKeys(descriptor, [
       "schemaVersion", "promptContractVersion", "genre", "soulId", "profileId", "model", "provider",
       "reasoningEffort", "source", "profile", "windowBytes", "windows",
+      ...(freshAuthBoundCurrent ? [
+        "exactInputAuthProjectionContractVersion", "authAdapterPlanningEvidence",
+      ] : []),
     ], `${label} run input`);
+    const authAdapterBinding = freshAuthBoundCurrent
+      ? validateSealedAuthAdapterBinding(descriptor, `${label} run input`)
+      : null;
+    if (
+      currentV3
+      && currentStructuredEvidence?.readCapability?.mode
+        !== (freshAuthBoundCurrent ? "current" : "historical")
+    ) throw new Error(`${label} run input and read capability versions drifted.`);
+    if (freshAuthBoundCurrent) {
+      validateReadCapabilityAuthAdapterBinding(
+        currentStructuredEvidence?.readCapability,
+        authAdapterBinding,
+        label,
+      );
+    }
     assertExactObjectKeys(descriptor.source, [
       "sourceId", "repoRelativePath", "sha256", "sizeBytes", "chapterCount",
     ], `${label} run input source`);
@@ -1425,12 +1534,17 @@ async function validateSurveyPrivateEvidence(input) {
       windowBytes: LEGACY_SURVEY_WINDOW_BYTES,
       windows: expectedDescriptorWindows,
       promptContractVersion: manifest.promptContractVersion,
+      ...(authAdapterBinding ? {
+        authAdapterPlanningEvidence: authAdapterBinding.authAdapterPlanningEvidence,
+      } : {}),
     }) : null;
     if (
       runInputFile.bytes.compare(canonicalJsonBytes(descriptor)) !== 0
       || sha256(runInputFile.bytes) !== located.inputDigest
       || descriptor?.schemaVersion !== (currentV3
-        ? "private-genre-soul-survey-run-input-digest/v2"
+        ? (freshAuthBoundCurrent
+          ? "private-genre-soul-survey-run-input-digest/v3"
+          : "private-genre-soul-survey-run-input-digest/v2")
         : "private-genre-soul-survey-run-input-digest/v1")
       || (currentV3
         ? descriptor.promptContractVersion !== "private-genre-soul-survey-prompt/v4"
@@ -1819,12 +1933,29 @@ async function loadWork(input) {
   assertSha(bundle.profileConfigSha256, `bundle ${selected.sourceId} profileConfigSha256`);
   bundle.segmentReceiptSha256s.forEach((value, index) => assertSha(value, `bundle segment receipt ${index}`));
 
+  let currentAuthAdapterBinding = null;
   if (layout === "current") {
     assertSha(bundle.workInputDigest, `bundle ${selected.sourceId} workInputDigest`);
     if (!Number.isSafeInteger(bundle.targetSegmentBytes) || bundle.targetSegmentBytes < 1) {
       throw new Error(`Current private bundle target segment bytes are invalid: ${selected.sourceId}`);
     }
     const expectedSegments = buildDeepReadSegments(sourceBytes, selected.chapterCount, bundle.targetSegmentBytes);
+    const workInputPath = join(runRoot, "work-input.json");
+    await assertNoSymlinkPath(repositoryRoot, workInputPath, `Current work input ${selected.sourceId}`);
+    const workInputFile = await readJson(
+      repositoryRoot,
+      workInputPath,
+      `Current work input ${selected.sourceId}`,
+    );
+    const workInput = workInputFile.value;
+    if (workInput?.schemaVersion === "private-genre-soul-deep-read-work-input-digest/v3") {
+      currentAuthAdapterBinding = validateSealedAuthAdapterBinding(
+        workInput,
+        `Current work input ${selected.sourceId}`,
+      );
+    } else if (workInput?.schemaVersion !== "private-genre-soul-deep-read-work-input-digest/v2") {
+      throw new Error(`Current private work input schema is unsupported: ${selected.sourceId}`);
+    }
     const descriptorInput = {
       genre,
       soulId,
@@ -1833,6 +1964,7 @@ async function loadWork(input) {
       targetBytes: bundle.targetSegmentBytes,
       segments: expectedSegments,
       runtime,
+      ...(currentAuthAdapterBinding ?? {}),
     };
     const descriptor = buildDeepReadWorkInputDescriptor(descriptorInput);
     const expectedDigest = buildDeepReadWorkInputDigest(descriptorInput);
@@ -1846,13 +1978,6 @@ async function loadWork(input) {
       || bundle.segmentCount !== expectedSegments.length
       || !same(bundle.coverage, expectedSegments.map(({ startByte, endByte }) => ({ startByte, endByte })))
     ) throw new Error(`Current private bundle input digest or segmentation drifted: ${selected.sourceId}`);
-    const workInputPath = join(runRoot, "work-input.json");
-    await assertNoSymlinkPath(repositoryRoot, workInputPath, `Current work input ${selected.sourceId}`);
-    const workInputFile = await readJson(
-      repositoryRoot,
-      workInputPath,
-      `Current work input ${selected.sourceId}`,
-    );
     const expectedWorkInputBytes = Buffer.from(`${JSON.stringify({ ...descriptor, inputDigest: expectedDigest }, null, 2)}\n`);
     if (workInputFile.bytes.compare(expectedWorkInputBytes) !== 0) {
       throw new Error(`Current private work input descriptor drifted: ${selected.sourceId}`);
@@ -1976,6 +2101,7 @@ async function loadWork(input) {
           runtime,
           profileId,
           expected: expectedSegment,
+          authAdapterBinding: currentAuthAdapterBinding,
           label: `Current deep-read ${selected.sourceId}/${segmentId}`,
         })
       : await validateDeepReadCompletedAttempt({

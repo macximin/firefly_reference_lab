@@ -23,14 +23,18 @@ import { loadGenreDeepReadEvidence } from "./genre-soul-evidence-lib.mjs";
 import {
   FICTION_CONTENT_CONTRACT_ID,
   FICTION_CONTENT_CONTRACT_SHA256,
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
   HERMES_STRUCTURED_ATTEMPT_EVIDENCE_FILENAMES,
   HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_RUNTIME_KEYS,
   HERMES_STRUCTURED_MODEL,
   HERMES_STRUCTURED_PROVIDER,
   HERMES_STRUCTURED_REASONING,
+  assertHermesAuthAdapterPlanningMatch,
   buildHermesExecutionEnvironment,
+  loadHermesAuthAdapterPlanningEvidence,
   loadHermesRuntimeEvidence,
   runHermesStructuredAttempt,
+  validateHermesAuthAdapterPlanningEvidence,
   validateHermesExactInputReadCapability,
   validateHermesExactInputTrace,
   validateHermesStructuredAttemptInputAttestation,
@@ -195,6 +199,45 @@ async function readJson(path, label) {
     throw new Error(`${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
   return { bytes, value };
+}
+
+function sameStableFileIdentity(left, right) {
+  return left.dev === right.dev
+    && left.ino === right.ino
+    && left.mode === right.mode
+    && left.size === right.size
+    && left.mtimeMs === right.mtimeMs
+    && left.ctimeMs === right.ctimeMs;
+}
+
+async function assertImmutableFileBytes(repositoryRoot, path, expectedBytes, label) {
+  await assertNoSymlinkAncestors(repositoryRoot, path, label, { requireExists: true });
+  const beforePath = await lstat(path);
+  if (!beforePath.isFile() || beforePath.isSymbolicLink()) {
+    throw new Error(`${label} is not a real regular file.`);
+  }
+  const handle = await open(
+    path,
+    fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_CLOEXEC ?? 0),
+  );
+  try {
+    const beforeHandle = await handle.stat();
+    if (!beforeHandle.isFile() || !sameStableFileIdentity(beforePath, beforeHandle)) {
+      throw new Error(`${label} changed before readback.`);
+    }
+    const bytes = await handle.readFile();
+    const [afterHandle, afterPath] = await Promise.all([handle.stat(), lstat(path)]);
+    if (
+      !afterHandle.isFile()
+      || !afterPath.isFile()
+      || afterPath.isSymbolicLink()
+      || !sameStableFileIdentity(beforeHandle, afterHandle)
+      || !sameStableFileIdentity(afterHandle, afterPath)
+      || bytes.compare(expectedBytes) !== 0
+    ) throw new Error(`${label} changed during structured execution.`);
+  } finally {
+    await handle.close();
+  }
 }
 
 async function lstatOrNull(path) {
@@ -1251,6 +1294,7 @@ async function verifyStructuredAttemptEvidence({
   privateInputPath,
   privateInputBytes,
   loadedRuntime,
+  authAdapterPlanningEvidence,
   profileHome,
 }) {
   if (typeof run.attemptDir !== "string") {
@@ -1297,6 +1341,15 @@ async function verifyStructuredAttemptEvidence({
     expectedFiles: expectedInputFiles,
     sourceRuntimeIdentitySha256: loadedRuntime.hermesRuntimeIdentitySha256,
   });
+  if (
+    readCapability.capability.authProjectionContractVersion
+      !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
+  ) throw new Error("Manager QA Hermes auth projection contract drifted.");
+  assertHermesAuthAdapterPlanningMatch(
+    readCapability.capability.authAdapterFiles,
+    authAdapterPlanningEvidence,
+    "Manager QA Hermes auth-store adapter",
+  );
   validateHermesStructuredAttemptInputAttestation({
     bytes: inputAttestationBytes,
     attemptDir: resolvedAttemptDir,
@@ -1907,6 +1960,7 @@ const MANAGER_TEST_ONLY_OPTION_KEYS = [
   "testOnlyRepositoryRoot",
   "testOnlyProfileHome",
   "testOnlyContextCachePath",
+  "testOnlyAuthAdapterPlanningEvidenceLoader",
   "testOnlyLoadEvidence",
   "testOnlyRuntimeLoader",
   "testOnlyProfileCompletionReadback",
@@ -1948,6 +2002,8 @@ export async function runGenreSoulManagerQa(options) {
   const loadEvidence = options.testOnlyLoadEvidence ?? loadGenreDeepReadEvidence;
   const runStructured = options.testOnlyRunStructured ?? runHermesStructuredAttempt;
   const loadRuntime = options.testOnlyRuntimeLoader ?? loadHermesRuntimeEvidence;
+  const loadAuthAdapterPlanningEvidence = options.testOnlyAuthAdapterPlanningEvidenceLoader
+    ?? loadHermesAuthAdapterPlanningEvidence;
   const profileCompletionReadback = options.testOnlyProfileCompletionReadback ?? readCompletedGenreSoulProfileRun;
   const scanProjection = options.testOnlyScanProjection ?? scanTrackedProjectionBytes;
   const profileHome = resolve(options.testOnlyProfileHome ?? join(homedir(), ".hermes/profiles", config.profileId));
@@ -1961,7 +2017,7 @@ export async function runGenreSoulManagerQa(options) {
     assertNoSymlinkAncestors(repositoryRoot, absoluteProfilePath, "Genre profile path"),
     assertNoSymlinkAncestors(repositoryRoot, absoluteProfileLeakPath, "Genre profile leak path"),
   ]);
-  const [profileFile, profileLeakFile, evidence, loadedRuntime] = await Promise.all([
+  const [profileFile, profileLeakFile, evidence, loadedRuntime, authAdapterPlanningEvidence] = await Promise.all([
     readJson(absoluteProfilePath, "Candidate genre profile"),
     readJson(absoluteProfileLeakPath, "Candidate genre profile leak receipt"),
     loadEvidence({ repositoryRoot, genre: options.genre }),
@@ -1969,7 +2025,9 @@ export async function runGenreSoulManagerQa(options) {
       projectCwd: repositoryRoot,
       contextCachePath: options.testOnlyContextCachePath,
     }),
+    loadAuthAdapterPlanningEvidence(),
   ]);
+  validateHermesAuthAdapterPlanningEvidence(authAdapterPlanningEvidence);
   const runtime = projectRuntimeEvidence(loadedRuntime, config.profileId);
   const expectedScanCorpus = options.testOnly === true
     ? profileLeakFile.value?.corpus
@@ -2019,7 +2077,7 @@ export async function runGenreSoulManagerQa(options) {
     : `${basePrompt}\n${String(options.testOnlyPromptSuffix)}`;
   const promptBytes = Buffer.from(prompt);
   const runDescriptor = {
-    schemaVersion: "private-genre-soul-manager-qa-run-input-digest/v3",
+    schemaVersion: "private-genre-soul-manager-qa-run-input-digest/v4",
     genre: options.genre,
     soulId: config.soulId,
     profileId: config.profileId,
@@ -2030,6 +2088,8 @@ export async function runGenreSoulManagerQa(options) {
       sizeBytes: privateInputBytes.byteLength,
     },
     prompt: { sha256: sha256(promptBytes), sizeBytes: promptBytes.byteLength },
+    exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterPlanningEvidence,
     runtime,
   };
   const runDescriptorBytes = jsonBytes(runDescriptor);
@@ -2040,11 +2100,13 @@ export async function runGenreSoulManagerQa(options) {
     structuredRunRelativeRoot,
     "Manager QA structured run root",
   );
+  const runDescriptorPath = join(structuredRunRoot, "run-descriptor.json");
+  const promptPath = join(structuredRunRoot, "prompt.txt");
   verifyContextBudget(privateInputBytes, prompt);
   await writeImmutable(absolutePrivateInputPath, privateInputBytes, "Manager QA private input", repositoryRoot);
   await assertNoSymlinkAncestors(repositoryRoot, absolutePrivateInputPath, "Manager QA private input");
-  await writeImmutable(join(structuredRunRoot, "run-descriptor.json"), runDescriptorBytes, "Manager QA run descriptor", repositoryRoot);
-  await writeImmutable(join(structuredRunRoot, "prompt.txt"), promptBytes, "Manager QA exact prompt", repositoryRoot);
+  await writeImmutable(runDescriptorPath, runDescriptorBytes, "Manager QA run descriptor", repositoryRoot);
+  await writeImmutable(promptPath, promptBytes, "Manager QA exact prompt", repositoryRoot);
   const run = await runStructured({
     role: "manager-qa",
     runRoot: structuredRunRoot,
@@ -2055,6 +2117,7 @@ export async function runGenreSoulManagerQa(options) {
     inputDigest,
     outputReserveTokens: OUTPUT_RESERVE_TOKENS,
     projectCwd: repositoryRoot,
+    expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
     validateResult: (candidate) => {
       validatePrivateManagerQaResult(candidate, { input: privateInput });
       if (derivePrivateManagerQaVerdict(candidate).result === "pass") {
@@ -2091,8 +2154,18 @@ export async function runGenreSoulManagerQa(options) {
     privateInputPath: absolutePrivateInputPath,
     privateInputBytes,
     loadedRuntime,
+    authAdapterPlanningEvidence,
     profileHome,
   });
+  await Promise.all([
+    assertImmutableFileBytes(
+      repositoryRoot,
+      runDescriptorPath,
+      runDescriptorBytes,
+      "Manager QA run descriptor",
+    ),
+    assertImmutableFileBytes(repositoryRoot, promptPath, promptBytes, "Manager QA exact prompt"),
+  ]);
   await assertRawSamplesBindPrivateSources({ repositoryRoot, evidence, rawSamples });
   const structuredReceiptBytes = structuredEvidence.hostReceiptBytes;
   const structuredReceiptSha256 = sha256(structuredReceiptBytes);

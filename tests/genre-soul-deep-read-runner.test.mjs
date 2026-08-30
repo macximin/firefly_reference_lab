@@ -7,21 +7,53 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  buildHermesExecutionEnvironment,
+  buildHistoricalHermesExecutionEnvironmentDescriptorV2,
+  buildHermesStructuredAttemptInputAttestation,
+  FICTION_CONTENT_CONTRACT_ID,
+  FICTION_CONTENT_CONTRACT_SHA256,
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+  HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_RUNTIME_KEYS,
+  HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
+} from "../tools/genre-soul-hermes-run-lib.mjs";
+import {
   buildCurrentDeepReadCompletedPointer,
   buildCurrentDeepReadDomainReceipt,
   buildCurrentDeepReadSegmentInputDigest,
   buildCurrentDeepReadSegmentPrompt,
   buildDeepReadSegments,
+  buildDeepReadWorkInputDescriptor,
   buildDeepReadWorkInputDigest,
   classifyDeepReadRuntimeAttestation,
   publishDeepReadTrackedProjection,
   resolveDeepReadReadFilePath,
+  validateDeepReadCompletedAttempt,
   validatePrivateDeepReadSegment,
   withDeepReadWorkLock,
 } from "../tools/genre-soul-deep-read-runner.mjs";
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function jsonBytes(value) {
+  return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function authAdapterPlanningEvidence(fileSha256 = "e".repeat(64)) {
+  const descriptor = {
+    schemaVersion: "hermes-auth-store-adapter-planning-evidence/v1",
+    contractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    files: [{ name: "sitecustomize.py", sha256: fileSha256, sizeBytes: 1234 }],
+    totalBytes: 1234,
+  };
+  return { ...descriptor, sha256: sha256(jsonBytes(descriptor)) };
+}
+
+function exactReadCursor(inputId, sourceSha256, chunkIndex = 0) {
+  return `cursor-${sha256(Buffer.from([
+    "firefly-hermes-read-cursor/v1", inputId, sourceSha256, String(chunkIndex),
+  ].join("\0")))}`;
 }
 
 const TEST_CORPUS = {
@@ -126,7 +158,13 @@ test("binds target segmentation and current runtime identity into the work diges
     targetBytes: Math.ceil(bytes.byteLength / 2),
     segments: buildDeepReadSegments(bytes, 4, Math.ceil(bytes.byteLength / 2)),
     runtime,
+    exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterPlanningEvidence: authAdapterPlanningEvidence(),
   };
+  assert.equal(
+    buildDeepReadWorkInputDescriptor(base).schemaVersion,
+    "private-genre-soul-deep-read-work-input-digest/v3",
+  );
   const digest = buildDeepReadWorkInputDigest(base);
   assert.notEqual(buildDeepReadWorkInputDigest({ ...base, targetBytes: base.targetBytes + 1 }), digest);
   assert.notEqual(buildDeepReadWorkInputDigest({
@@ -137,6 +175,23 @@ test("binds target segmentation and current runtime identity into the work diges
     ...base,
     selectionEntry: { ...selectionEntry, sourceSha256: "d".repeat(64) },
   }), digest);
+  assert.notEqual(buildDeepReadWorkInputDigest({
+    ...base,
+    authAdapterPlanningEvidence: authAdapterPlanningEvidence("f".repeat(64)),
+  }), digest);
+  assert.throws(() => buildDeepReadWorkInputDigest({
+    ...base,
+    exactInputAuthProjectionContractVersion: undefined,
+  }), /auth projection digest binding drifted/u);
+
+  const historical = { ...base };
+  delete historical.exactInputAuthProjectionContractVersion;
+  delete historical.authAdapterPlanningEvidence;
+  assert.equal(
+    buildDeepReadWorkInputDescriptor(historical).schemaVersion,
+    "private-genre-soul-deep-read-work-input-digest/v2",
+  );
+  assert.notEqual(buildDeepReadWorkInputDigest(historical), digest);
 });
 
 test("fresh deep-read prompts and domain seals bind only opaque exact inputs", () => {
@@ -167,7 +222,32 @@ test("fresh deep-read prompts and domain seals bind only opaque exact inputs", (
     promptContractVersion: "private-genre-soul-deep-read-segment-prompt/v4",
   }), /canonical pathless manifest/u);
   const workInputDigest = "d".repeat(64);
-  const segmentInputDigest = buildCurrentDeepReadSegmentInputDigest({ workInputDigest, manifest, prompt });
+  const adapterBinding = {
+    exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterPlanningEvidence: authAdapterPlanningEvidence(),
+  };
+  const segmentInputDigest = buildCurrentDeepReadSegmentInputDigest({
+    workInputDigest,
+    manifest,
+    prompt,
+    ...adapterBinding,
+  });
+  const historicalSegmentInputDigest = buildCurrentDeepReadSegmentInputDigest({ workInputDigest, manifest, prompt });
+  assert.equal(historicalSegmentInputDigest, sha256(jsonBytes({
+    schemaVersion: "private-genre-soul-deep-read-segment-input-digest/v1",
+    workInputDigest,
+    promptContractVersion: manifest.promptContractVersion,
+    promptSha256: sha256(Buffer.from(prompt)),
+    manifestSha256: sha256(jsonBytes(manifest)),
+  })));
+  assert.notEqual(segmentInputDigest, historicalSegmentInputDigest);
+  assert.notEqual(buildCurrentDeepReadSegmentInputDigest({
+    workInputDigest,
+    manifest,
+    prompt,
+    ...adapterBinding,
+    authAdapterPlanningEvidence: authAdapterPlanningEvidence("f".repeat(64)),
+  }), segmentInputDigest);
   const result = {
     schemaVersion: "private-genre-soul-deep-read-segment/v1",
     sourceId: manifest.sourceId,
@@ -228,6 +308,7 @@ test("fresh deep-read prompts and domain seals bind only opaque exact inputs", (
     structuredCompletedPointerBytes: Buffer.from("structured-pointer\n"),
     structuredHostReceiptBytes,
     readCapabilityBytes,
+    ...adapterBinding,
   });
   assert.equal(domainReceipt.schemaVersion, "private-hermes-deep-read-segment-receipt/v2");
   assert.equal(domainReceipt.exactReadCount, 2);
@@ -247,7 +328,469 @@ test("fresh deep-read prompts and domain seals bind only opaque exact inputs", (
     structuredCompletedPointerBytes: Buffer.from("structured-pointer\n"),
     structuredHostReceiptBytes,
     readCapabilityBytes: Buffer.from("forged\n"),
+    ...adapterBinding,
   }), /does not bind/u);
+  assert.throws(() => buildCurrentDeepReadDomainReceipt({
+    workInputDigest,
+    segmentInputDigest,
+    segmentIndex: 0,
+    manifest,
+    prompt,
+    structured: { attempt: "attempts/attempt-current", receipt, result },
+    structuredCompletedPointerBytes: Buffer.from("structured-pointer\n"),
+    structuredHostReceiptBytes,
+    readCapabilityBytes,
+    ...adapterBinding,
+    authAdapterPlanningEvidence: authAdapterPlanningEvidence("f".repeat(64)),
+  }), /prompt contract drifted/u);
+});
+
+test("reuses a sealed historical current-v2 attempt without entering the auth-required executor", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "deep-read-historical-current-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const profileId = "inkos_male_murim";
+  const profileHome = join(root, "profiles", profileId);
+  const configBytes = Buffer.from("fixture-config\n");
+  const soulBytes = Buffer.from("fixture historical soul\n");
+  const contextLimitEntryBytes = Buffer.from("gpt-5.6-sol@fixture: 272000");
+  const runtime = {
+    runtimeAttestation: "current-attested",
+    profileId,
+    profileHome,
+    configBytes,
+    soulBytes,
+    soulText: soulBytes.toString("utf8"),
+    contextLimitEntryBytes,
+    contextLimit: 272_000,
+    profileConfigSha256: sha256(configBytes),
+    soulSha256: sha256(soulBytes),
+    contentNeutralContractId: FICTION_CONTENT_CONTRACT_ID,
+    contentNeutralContractSha256: FICTION_CONTENT_CONTRACT_SHA256,
+    contentNeutralSoulSectionSha256: "1".repeat(64),
+    contextLimitEntrySha256: sha256(contextLimitEntryBytes),
+    hermesCommand: join(root, "missing-hermes-that-must-not-run"),
+    hermesExecutableSha256: "2".repeat(64),
+    hermesDelegatedExecutableSha256: "3".repeat(64),
+    hermesVersionSha256: "4".repeat(64),
+    hermesImplementationSha256: "5".repeat(64),
+    hermesDependencySha256: "6".repeat(64),
+    hermesProfileContextSha256: "7".repeat(64),
+    hermesProjectContextSha256: "8".repeat(64),
+  };
+  runtime.hermesRuntimeIdentitySha256 = sha256(jsonBytes({
+    runtimeAttestation: runtime.runtimeAttestation,
+    profileConfigSha256: runtime.profileConfigSha256,
+    soulSha256: runtime.soulSha256,
+    contextLimitEntrySha256: runtime.contextLimitEntrySha256,
+    hermesExecutableSha256: runtime.hermesExecutableSha256,
+    hermesDelegatedExecutableSha256: runtime.hermesDelegatedExecutableSha256,
+    hermesVersionSha256: runtime.hermesVersionSha256,
+    hermesImplementationSha256: runtime.hermesImplementationSha256,
+    hermesDependencySha256: runtime.hermesDependencySha256,
+    hermesProfileContextSha256: runtime.hermesProfileContextSha256,
+    hermesProjectContextSha256: runtime.hermesProjectContextSha256,
+  }));
+  const sourceBytes = source(2);
+  const segment = buildDeepReadSegments(sourceBytes, 2, sourceBytes.byteLength)[0];
+  const selectionEntry = {
+    sourceId: "gdrive-historical-current",
+    sourceSha256: sha256(sourceBytes),
+    sizeBytes: sourceBytes.byteLength,
+    chapterCount: 2,
+  };
+  const workInputDigest = buildDeepReadWorkInputDigest({
+    genre: "murim-ko",
+    soulId: "male-murim-ko",
+    profileId,
+    selectionEntry,
+    targetBytes: sourceBytes.byteLength,
+    segments: [segment],
+    runtime,
+  });
+  const segmentDir = join(root, "historical", "segments", segment.segmentId);
+  const chaptersDir = join(segmentDir, "chapters");
+  const chapterFiles = segment.chapters.map((chapter) => {
+    const fileId = `c${String(chapter.sequence).padStart(4, "0")}`;
+    const bytes = sourceBytes.subarray(chapter.startByte, chapter.endByte);
+    return {
+      fileId,
+      path: join(chaptersDir, `${fileId}.txt`),
+      bytes,
+      chapterSequence: chapter.sequence,
+      chapterNumber: chapter.chapterNumber,
+      startByte: chapter.startByte,
+      endByte: chapter.endByte,
+      sha256: sha256(bytes),
+    };
+  });
+  const manifest = {
+    schemaVersion: "private-genre-soul-deep-read-segment-manifest/v2",
+    promptContractVersion: "private-genre-soul-deep-read-segment-prompt/v5",
+    profileId,
+    sourceId: selectionEntry.sourceId,
+    sourceSha256: selectionEntry.sourceSha256,
+    genre: "murim-ko",
+    segmentId: segment.segmentId,
+    coverage: { startByte: segment.startByte, endByte: segment.endByte },
+    chapterFiles: chapterFiles.map((file, index) => ({
+      inputId: `input-${String(index + 2).padStart(3, "0")}`,
+      fileId: file.fileId,
+      chapterSequence: file.chapterSequence,
+      chapterNumber: file.chapterNumber,
+      startByte: file.startByte,
+      endByte: file.endByte,
+      sha256: file.sha256,
+    })),
+  };
+  const manifestBytes = jsonBytes(manifest);
+  const manifestPath = join(segmentDir, "manifest.json");
+  await mkdir(chaptersDir, { recursive: true });
+  await Promise.all([
+    writeFile(manifestPath, manifestBytes),
+    ...chapterFiles.map((file) => writeFile(file.path, file.bytes)),
+  ]);
+  const prompt = buildCurrentDeepReadSegmentPrompt(manifest);
+  const segmentInputDigest = buildCurrentDeepReadSegmentInputDigest({ workInputDigest, manifest, prompt });
+  const expectedFiles = [
+    { inputId: "input-001", path: manifestPath, bytes: manifestBytes, sha256: sha256(manifestBytes), sizeBytes: manifestBytes.byteLength },
+    ...chapterFiles.map((file, index) => ({
+      inputId: manifest.chapterFiles[index].inputId,
+      path: file.path,
+      bytes: file.bytes,
+      sha256: file.sha256,
+      sizeBytes: file.bytes.byteLength,
+    })),
+  ];
+  const expectedInputs = expectedFiles.map(({ inputId, path, sha256: fileSha256, sizeBytes }) => ({
+    inputId,
+    path: resolve(path),
+    sha256: fileSha256,
+    sizeBytes,
+  }));
+  const readManifestBytes = jsonBytes({ schemaVersion: "firefly-hermes-read-manifest/v1", inputs: expectedInputs });
+  const executionPolicy = {
+    schemaVersion: "hermes-exact-input-execution-policy/v2",
+    homeScope: "ephemeral-system-temp",
+    workspaceScope: "empty-ephemeral-system-temp",
+    cleanup: "required-before-finalization",
+    credentialPersistence: "forbidden",
+    pluginDiscovery: "ephemeral-bundled-root",
+    readProtocol: "sequential-cursor-chunks-v2",
+    resultSchema: "firefly-hermes-read-result/v2",
+    cursorProtocol: "firefly-hermes-read-cursor/v1",
+    maxSourceBytes: 4_500_000,
+    maxEncodedContentChars: 75_000,
+    maxResultChars: 80_000,
+    preflightAccounting: "deterministic-chunk-transcript",
+    forbiddenCredentialNames: [".anthropic_oauth.json", ".env", "auth.json", "credentials.json", "oauth.json", "tokens.json"],
+    pythonDontWriteBytecode: "1",
+    gitOptionalLocks: "0",
+  };
+  const pluginFiles = ["__init__.py", "plugin.yaml", "reader.py"].map((name, index) => ({
+    name,
+    sha256: sha256(`historical-plugin-${index}`),
+    sizeBytes: index + 1,
+  }));
+  const executionEnvironmentSha256 = sha256(jsonBytes({
+    schemaVersion: "hermes-exact-input-environment-template/v2",
+    executionPolicy,
+    baseEnvironmentKeys: ["HERMES_BUNDLED_PLUGINS"],
+    manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
+    addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
+  }));
+  const executionRuntimeIdentitySha256 = sha256(jsonBytes({
+    schemaVersion: "hermes-exact-input-runtime-identity/v2",
+    sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    manifestSha256: sha256(readManifestBytes),
+    pluginFiles,
+    executionEnvironmentSha256,
+  }));
+  const readCapability = {
+    schemaVersion: "private-hermes-exact-input-read-capability/v2",
+    toolset: "firefly-source-read",
+    tool: "firefly_read_source",
+    sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    executionRuntimeIdentitySha256,
+    executionEnvironmentSha256,
+    manifest: { sha256: sha256(readManifestBytes), sizeBytes: readManifestBytes.byteLength },
+    pluginFiles,
+    expectedInputs,
+    cliPolicy: {
+      flags: ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"],
+      model: "gpt-5.6-sol",
+      provider: "openai-codex",
+      toolsets: ["firefly-source-read"],
+    },
+    executionPolicy,
+  };
+  const readCapabilityBytes = jsonBytes(readCapability);
+  const result = {
+    schemaVersion: "private-genre-soul-deep-read-segment/v1",
+    sourceId: manifest.sourceId,
+    sourceSha256: manifest.sourceSha256,
+    genre: manifest.genre,
+    segmentId: manifest.segmentId,
+    coverage: manifest.coverage,
+    observations: ["commercial-engine", "protagonist-action", "pressure-resistance", "payoff-witness"].map((kind) => ({
+      kind,
+      finding: "히스토리컬 재사용 관찰",
+      commercialFunction: "상업 기능",
+      chapterSequences: [1],
+    })),
+    unresolvedPromises: [],
+  };
+  const resultBytes = jsonBytes(result);
+  const candidateOutputBytes = Buffer.from(JSON.stringify(result));
+  const runId = "historical-current-run";
+  const completedAt = "2026-08-30T00:00:00.000Z";
+  const usage = {
+    cost_usd: 0,
+    cost_status: "included",
+    cost_source: "none",
+    input_tokens: 10,
+    output_tokens: 5,
+    cache_read_tokens: 5,
+    cache_write_tokens: 0,
+    reasoning_tokens: 1,
+    total_tokens: 20,
+    api_calls: expectedFiles.length,
+    model: "gpt-5.6-sol",
+    provider: "openai-codex",
+    session_id: runId,
+    completed: true,
+    failed: false,
+    service_tier: null,
+  };
+  const readMessages = expectedFiles.flatMap((file, index) => {
+    const callId = `${runId}-read-${index + 1}`;
+    const nextFile = expectedFiles[index + 1] ?? null;
+    return [
+      {
+        role: "assistant",
+        compacted: 0,
+        finish_reason: "tool_calls",
+        tool_calls: [{
+          id: callId,
+          function: {
+            name: "firefly_read_source",
+            arguments: JSON.stringify(index === 0
+              ? { inputId: file.inputId }
+              : { inputId: file.inputId, cursor: exactReadCursor(file.inputId, file.sha256) }),
+          },
+        }],
+      },
+      {
+        role: "tool",
+        compacted: 0,
+        tool_call_id: callId,
+        tool_name: "firefly_read_source",
+        content: JSON.stringify({
+          schemaVersion: "firefly-hermes-read-result/v2",
+          inputId: file.inputId,
+          sha256: file.sha256,
+          sizeBytes: file.sizeBytes,
+          chunkIndex: 0,
+          chunkCount: 1,
+          chunkSha256: file.sha256,
+          nextInputId: nextFile?.inputId ?? null,
+          nextCursor: nextFile ? exactReadCursor(nextFile.inputId, nextFile.sha256) : null,
+          content: file.bytes.toString("utf8"),
+        }),
+      },
+    ];
+  });
+  const trace = {
+    id: runId,
+    model: "gpt-5.6-sol",
+    billing_provider: "openai-codex",
+    profile_name: profileId,
+    end_reason: "agent_close",
+    ended_at: Date.parse(completedAt) / 1000,
+    compression_failure_cooldown_until: null,
+    compression_failure_error: null,
+    compression_fallback_streak: 0,
+    compression_ineffective_count: 0,
+    input_tokens: usage.input_tokens,
+    output_tokens: usage.output_tokens,
+    cache_read_tokens: usage.cache_read_tokens,
+    cache_write_tokens: usage.cache_write_tokens,
+    reasoning_tokens: usage.reasoning_tokens,
+    api_call_count: usage.api_calls,
+    system_prompt: runtime.soulText,
+    messages: [
+      { role: "user", compacted: 0, content: prompt },
+      ...readMessages,
+      { role: "assistant", compacted: 0, finish_reason: "stop", content: candidateOutputBytes.toString("utf8") },
+    ],
+  };
+  const usageBytes = jsonBytes(usage);
+  const traceBytes = Buffer.from(`${JSON.stringify(trace)}\n`);
+  const contextInputProxyTokens = Math.ceil((
+    Buffer.byteLength(trace.system_prompt, "utf8")
+    + Buffer.byteLength(JSON.stringify(trace.messages.slice(0, -1)), "utf8")
+  ) / 2);
+  const inputSha256 = sha256(jsonBytes(expectedInputs.map(({ path, sha256: fileSha256 }) => ({ path, sha256: fileSha256 }))));
+  const role = `genre-soul-deep-read:${manifest.sourceId}:${manifest.segmentId}`;
+  const receipt = {
+    schemaVersion: "private-hermes-structured-run-receipt/v1",
+    role,
+    runId,
+    profileId,
+    model: "gpt-5.6-sol",
+    provider: "openai-codex",
+    readCapabilitySha256: sha256(readCapabilityBytes),
+    readCapabilityTool: "firefly_read_source",
+    readCapabilityToolset: "firefly-source-read",
+    readExecutionEnvironmentSha256: readCapability.executionEnvironmentSha256,
+    readExecutionRuntimeIdentitySha256: readCapability.executionRuntimeIdentitySha256,
+    readManifestSha256: readCapability.manifest.sha256,
+    reasoningEffort: "high",
+    runtimeAttestation: runtime.runtimeAttestation,
+    promptSha256: sha256(Buffer.from(prompt)),
+    inputDigest: segmentInputDigest,
+    inputSha256,
+    profileConfigSha256: runtime.profileConfigSha256,
+    soulSha256: runtime.soulSha256,
+    contentNeutralContractId: runtime.contentNeutralContractId,
+    contentNeutralContractSha256: runtime.contentNeutralContractSha256,
+    contentNeutralSoulSectionSha256: runtime.contentNeutralSoulSectionSha256,
+    effectiveSystemPromptSha256: sha256(Buffer.from(trace.system_prompt)),
+    contextLimitEntrySha256: runtime.contextLimitEntrySha256,
+    hermesExecutableSha256: runtime.hermesExecutableSha256,
+    hermesDelegatedExecutableSha256: runtime.hermesDelegatedExecutableSha256,
+    hermesVersionSha256: runtime.hermesVersionSha256,
+    hermesImplementationSha256: runtime.hermesImplementationSha256,
+    hermesDependencySha256: runtime.hermesDependencySha256,
+    hermesProfileContextSha256: runtime.hermesProfileContextSha256,
+    hermesProjectContextSha256: runtime.hermesProjectContextSha256,
+    hermesRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    contextLimit: runtime.contextLimit,
+    contextInputProxyTokens,
+    contextOutputReserveTokens: 48_000,
+    contextBudgetUpperBoundTokens: contextInputProxyTokens + 48_000,
+    cumulativeCacheReadTokens: usage.cache_read_tokens,
+    cacheWriteTokens: usage.cache_write_tokens,
+    compaction: false,
+    compression: false,
+    truncation: false,
+    expectedReadCount: expectedFiles.length,
+    exactReadCount: expectedFiles.length,
+    exactReadSha256s: expectedFiles.map((file) => file.sha256),
+    candidateOutputSha256: sha256(candidateOutputBytes),
+    resultSha256: sha256(resultBytes),
+    usageSha256: sha256(usageBytes),
+    traceSha256: sha256(traceBytes),
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    reasoningTokens: usage.reasoning_tokens,
+    totalTokens: usage.total_tokens,
+    apiCalls: usage.api_calls,
+    completedAt,
+    completed: true,
+  };
+  const hostReceiptBytes = jsonBytes(receipt);
+  const expectedReads = expectedInputs.map(({ path, sha256: fileSha256, sizeBytes }) => ({
+    path,
+    sha256: fileSha256,
+    sizeBytes,
+  }));
+  const inputAttestationBytes = jsonBytes(buildHermesStructuredAttemptInputAttestation({
+    schemaVersion: HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
+    role,
+    profileHome: resolve(profileHome),
+    projectCwd: resolve(root),
+    profileId,
+    promptSha256: sha256(Buffer.from(prompt)),
+    inputDigest: segmentInputDigest,
+    inputSha256,
+    expectedReads,
+    outputReserveTokens: 48_000,
+    executionEnvironmentSha256: buildHistoricalHermesExecutionEnvironmentDescriptorV2({
+      profileHome,
+      projectCwd: root,
+    }).descriptorSha256,
+    readCapabilitySha256: sha256(readCapabilityBytes),
+    runtime: Object.fromEntries(HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_RUNTIME_KEYS.map((key) => [key, runtime[key]])),
+  }));
+  const attemptId = `attempt-fixture-${sha256(inputAttestationBytes)}`;
+  const attemptRelativePath = `attempts/${attemptId}`;
+  const attemptDir = join(segmentDir, "structured", attemptRelativePath);
+  const attemptCompletionBytes = jsonBytes({
+    schemaVersion: "private-hermes-structured-attempt-completion/v1",
+    role,
+    attemptId,
+    runId,
+    hostReceiptSha256: sha256(hostReceiptBytes),
+    completed: true,
+  });
+  const structuredCompletedPointerBytes = jsonBytes({
+    schemaVersion: "private-hermes-structured-completed-pointer/v1",
+    role,
+    attempt: attemptRelativePath,
+    attemptCompletionSha256: sha256(attemptCompletionBytes),
+    hostReceiptSha256: sha256(hostReceiptBytes),
+  });
+  const structured = { attempt: attemptRelativePath, attemptDir, receipt, result };
+  const domainReceipt = buildCurrentDeepReadDomainReceipt({
+    workInputDigest,
+    segmentInputDigest,
+    segmentIndex: 0,
+    manifest,
+    prompt,
+    structured,
+    structuredCompletedPointerBytes,
+    structuredHostReceiptBytes: hostReceiptBytes,
+    readCapabilityBytes,
+  });
+  const domainReceiptBytes = jsonBytes(domainReceipt);
+  const completedPointer = buildCurrentDeepReadCompletedPointer({
+    segmentInputDigest,
+    domainReceipt,
+    domainReceiptBytes,
+  });
+  await mkdir(attemptDir, { recursive: true });
+  await Promise.all([
+    writeFile(join(attemptDir, "candidate-output.txt"), candidateOutputBytes),
+    ...[
+      ["completed.json", attemptCompletionBytes],
+      ["host-receipt.json", hostReceiptBytes],
+      ["input-attestation.json", inputAttestationBytes],
+      ["read-capability.json", readCapabilityBytes],
+      ["result.json", resultBytes],
+      ["session.jsonl", traceBytes],
+      ["usage.json", usageBytes],
+    ].map(([name, bytes]) => writeFile(join(attemptDir, name), bytes)),
+    writeFile(join(segmentDir, "structured", "completed.json"), structuredCompletedPointerBytes),
+    writeFile(join(segmentDir, "domain-receipt.json"), domainReceiptBytes),
+    writeFile(join(segmentDir, "completed.json"), jsonBytes(completedPointer)),
+  ]);
+  const validationInput = {
+    repositoryRoot: root,
+    segmentDir,
+    completedPath: join(segmentDir, "completed.json"),
+    manifest,
+    manifestPath,
+    segment,
+    segmentIndex: 0,
+    workInputDigest,
+    expected: {
+      sourceId: manifest.sourceId,
+      sourceSha256: manifest.sourceSha256,
+      genre: manifest.genre,
+      segmentId: manifest.segmentId,
+      coverage: manifest.coverage,
+      chapters: segment.chapters,
+    },
+    profileId,
+    runtime,
+    chapterFiles,
+    manifestBytes,
+  };
+  const first = await validateDeepReadCompletedAttempt(validationInput);
+  const second = await validateDeepReadCompletedAttempt(validationInput);
+  assert.equal(first.receipt.runId, runId);
+  assert.equal(second.receipt.runId, runId);
+  assert.deepEqual(second.result, result);
 });
 
 test("validates derived observations only at chapter boundaries", () => {

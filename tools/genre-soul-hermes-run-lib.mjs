@@ -60,8 +60,10 @@ const CURRENT_RUNTIME_ATTESTATION = "current-attested";
 const MAX_FINGERPRINT_BYTES = 512 * 1024 * 1024;
 const CONTEXT_PROXY_BYTES_PER_TOKEN = 2;
 const CONTEXT_STATIC_PROMPT_RESERVE_TOKENS = 16_384;
-const READ_CAPABILITY_SCHEMA = "private-hermes-exact-input-read-capability/v2";
+const READ_CAPABILITY_SCHEMA = "private-hermes-exact-input-read-capability/v3";
 const READ_PLUGIN_PLANNING_EVIDENCE_SCHEMA = "hermes-exact-input-plugin-planning-evidence/v1";
+export const HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT = "hermes-global-auth-store-adapter/v1";
+const READ_AUTH_ADAPTER_PLANNING_EVIDENCE_SCHEMA = "hermes-auth-store-adapter-planning-evidence/v1";
 const READ_MANIFEST_SCHEMA = "firefly-hermes-read-manifest/v1";
 const READ_RESULT_SCHEMA = "firefly-hermes-read-result/v2";
 const READ_SOURCE_MAX_BYTES = 4_500_000;
@@ -80,6 +82,9 @@ const READ_EXECUTION_FORBIDDEN_CREDENTIAL_NAMES = Object.freeze([
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const READ_PLUGIN_SOURCE_ROOT = join(moduleDirectory, "hermes-plugins/firefly-source-read");
 const READ_PLUGIN_FILES = Object.freeze(["__init__.py", "plugin.yaml", "reader.py"]);
+const READ_AUTH_ADAPTER_SOURCE_ROOT = join(moduleDirectory, "hermes-runtime/firefly-auth-store");
+const READ_AUTH_ADAPTER_FILES = Object.freeze(["sitecustomize.py"]);
+const READ_AUTH_ADAPTER_DIRECTORY = "hermes-auth-adapter";
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -489,6 +494,7 @@ const HERMES_EXACT_ENV_OVERRIDES = new Set([
 function isHermesExecutionOverride(key) {
   return key.startsWith("HERMES_")
     || key.startsWith("_HERMES_")
+    || key.startsWith("FIREFLY_HERMES_")
     || key.startsWith("CODEX_")
     || key.startsWith("_CODEX_")
     || key.startsWith("OPENAI_")
@@ -559,7 +565,7 @@ export function buildHermesExecutionEnvironment({
       ...(absoluteBundledPluginsPath ? [HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY] : []),
     ].sort(),
     removedDynamicPrefixes: [
-      "ANTHROPIC_", "CODEX_", "DYLD_", "GIT_", "HERMES_", "OPENAI_", "OPENROUTER_",
+      "ANTHROPIC_", "CODEX_", "DYLD_", "FIREFLY_HERMES_", "GIT_", "HERMES_", "OPENAI_", "OPENROUTER_",
       "PYTHON", "TERMINAL_", "_CODEX_", "_HERMES_",
     ],
     removedProxyVariablesCaseInsensitive: ["ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"],
@@ -571,6 +577,90 @@ export function buildHermesExecutionEnvironment({
     descriptor,
     descriptorSha256: sha256(jsonBytes(descriptor)),
     contextCachePath: absoluteContextCachePath,
+  };
+}
+
+// Historical Survey v2 and Deep work-v2 receipts bind the exact base execution
+// descriptor that existed before the auth adapter introduced FIREFLY_HERMES_*
+// sanitization. Keep this reconstruction narrow and validation-only: execution
+// must always use buildHermesExecutionEnvironment() and its current policy.
+export function buildHistoricalHermesExecutionEnvironmentDescriptorV2({
+  profileHome,
+  projectCwd,
+  contextCachePath,
+  bundledPluginsPath,
+} = {}) {
+  if (typeof profileHome !== "string" || profileHome.length < 1) {
+    throw new Error("Historical Hermes execution profile home is required.");
+  }
+  if (typeof projectCwd !== "string" || projectCwd.length < 1) {
+    throw new Error("Historical Hermes execution project cwd is required.");
+  }
+  const absoluteProfileHome = resolve(profileHome);
+  const absoluteProjectCwd = resolve(projectCwd);
+  const absoluteContextCachePath = resolve(contextCachePath
+    ?? join(dirname(dirname(absoluteProfileHome)), "context_length_cache.yaml"));
+  let absoluteBundledPluginsPath = null;
+  if (bundledPluginsPath !== undefined) {
+    if (typeof bundledPluginsPath !== "string" || bundledPluginsPath.length < 1) {
+      throw new Error("Historical Hermes bundled plugin discovery path must be non-empty text.");
+    }
+    absoluteBundledPluginsPath = resolve(bundledPluginsPath);
+    const expectedBundledPluginsPath = join(
+      dirname(dirname(dirname(absoluteProfileHome))),
+      "hermes-bundled-plugins",
+    );
+    if (absoluteBundledPluginsPath !== expectedBundledPluginsPath) {
+      throw new Error("Historical Hermes bundled plugin discovery path escaped the ephemeral capsule boundary.");
+    }
+  }
+  const descriptor = {
+    profileHome: absoluteProfileHome,
+    projectCwd: absoluteProjectCwd,
+    contextCachePath: absoluteContextCachePath,
+    terminalCwd: absoluteProjectCwd,
+    terminalEnvironment: "local",
+    pythonDontWriteBytecode: "1",
+    gitOptionalLocks: "0",
+    pathSha256: sha256(Buffer.from(process.env.PATH ?? "")),
+    homeSha256: sha256(Buffer.from(process.env.HOME ?? "")),
+    configuredTimeZone: (process.env.TZ ?? "").trim() || null,
+    canonicalOverrideKeys: [
+      "HERMES_CONTEXT_CACHE_PATH",
+      "HERMES_HOME",
+      ...(absoluteBundledPluginsPath ? ["HERMES_BUNDLED_PLUGINS"] : []),
+      "TERMINAL_CWD",
+      "TERMINAL_ENV",
+    ].sort(),
+    removedDynamicPrefixes: [
+      "ANTHROPIC_", "CODEX_", "DYLD_", "GIT_", "HERMES_", "OPENAI_", "OPENROUTER_",
+      "PYTHON", "TERMINAL_", "_CODEX_", "_HERMES_",
+    ],
+    removedProxyVariablesCaseInsensitive: ["ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"],
+    removedExactVariables: [
+      "AWS_CA_BUNDLE",
+      "BASH_ENV",
+      "CURL_CA_BUNDLE",
+      "DENO_CERT",
+      "ENV",
+      "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH",
+      "LD_LIBRARY_PATH",
+      "LD_PRELOAD",
+      "NODE_EXTRA_CA_CERTS",
+      "NODE_OPTIONS",
+      "NODE_PATH",
+      "NPM_CONFIG_CAFILE",
+      "OPENSSL_CONF",
+      "PIP_CERT",
+      "REQUESTS_CA_BUNDLE",
+      "SSL_CERT_DIR",
+      "SSL_CERT_FILE",
+    ].sort(),
+  };
+  if (absoluteBundledPluginsPath) descriptor.bundledPluginsPath = absoluteBundledPluginsPath;
+  return {
+    descriptor,
+    descriptorSha256: sha256(jsonBytes(descriptor)),
   };
 }
 
@@ -2052,6 +2142,99 @@ async function loadReadPluginFiles() {
   return files;
 }
 
+async function loadHermesAuthAdapterFiles() {
+  if (await realpath(READ_AUTH_ADAPTER_SOURCE_ROOT) !== READ_AUTH_ADAPTER_SOURCE_ROOT) {
+    throw new Error("Hermes auth-store adapter source root contains a symbolic-link component.");
+  }
+  const sourceRootInfo = await lstat(READ_AUTH_ADAPTER_SOURCE_ROOT);
+  if (!sourceRootInfo.isDirectory() || sourceRootInfo.isSymbolicLink()) {
+    throw new Error("Hermes auth-store adapter source root must be a real directory.");
+  }
+  const files = [];
+  for (const name of READ_AUTH_ADAPTER_FILES) {
+    const path = join(READ_AUTH_ADAPTER_SOURCE_ROOT, name);
+    if (await realpath(path) !== path) throw new Error(`Hermes auth-store adapter contains a symbolic link: ${name}`);
+    const before = await lstat(path);
+    const bytes = await readFile(path);
+    const after = await lstat(path);
+    if (
+      !before.isFile()
+      || before.isSymbolicLink()
+      || !after.isFile()
+      || after.isSymbolicLink()
+      || before.dev !== after.dev
+      || before.ino !== after.ino
+      || before.size !== after.size
+      || before.mtimeMs !== after.mtimeMs
+      || bytes.byteLength !== before.size
+    ) throw new Error(`Hermes auth-store adapter source changed while read: ${name}`);
+    files.push({ name, path, bytes, sha256: sha256(bytes), sizeBytes: bytes.byteLength });
+  }
+  return files;
+}
+
+export async function loadHermesAuthAdapterPlanningEvidence() {
+  const adapterFiles = await loadHermesAuthAdapterFiles();
+  const files = adapterFiles.map(({ name, sha256: fileSha256, sizeBytes }) => ({
+    name,
+    sha256: fileSha256,
+    sizeBytes,
+  }));
+  const totalBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
+  const evidence = {
+    schemaVersion: READ_AUTH_ADAPTER_PLANNING_EVIDENCE_SCHEMA,
+    contractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    files,
+    totalBytes,
+  };
+  return validateHermesAuthAdapterPlanningEvidence({
+    ...evidence,
+    sha256: sha256(jsonBytes(evidence)),
+  });
+}
+
+export function validateHermesAuthAdapterPlanningEvidence(evidence) {
+  assertExactObjectKeys(
+    evidence,
+    ["schemaVersion", "contractVersion", "files", "totalBytes", "sha256"],
+    "Hermes auth-store adapter planning evidence",
+  );
+  if (
+    evidence.schemaVersion !== READ_AUTH_ADAPTER_PLANNING_EVIDENCE_SCHEMA
+    || evidence.contractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
+    || !Array.isArray(evidence.files)
+    || evidence.files.length !== READ_AUTH_ADAPTER_FILES.length
+  ) throw new Error("Hermes auth-store adapter planning evidence identity drifted.");
+  let totalBytes = 0;
+  evidence.files.forEach((file, index) => {
+    assertExactObjectKeys(file, ["name", "sha256", "sizeBytes"], `Hermes auth adapter planning file ${index}`);
+    if (file.name !== READ_AUTH_ADAPTER_FILES[index]) {
+      throw new Error("Hermes auth-store adapter planning file order drifted.");
+    }
+    assertSha256(file.sha256, `Hermes auth adapter planning file ${file.name} digest`);
+    assertNonNegativeInteger(file.sizeBytes, `Hermes auth adapter planning file ${file.name} size`);
+    if (file.sizeBytes < 1) throw new Error(`Hermes auth-store adapter planning file is empty: ${file.name}`);
+    totalBytes += file.sizeBytes;
+  });
+  if (!Number.isSafeInteger(totalBytes) || evidence.totalBytes !== totalBytes) {
+    throw new Error("Hermes auth-store adapter planning evidence total bytes drifted.");
+  }
+  assertSha256(evidence.sha256, "Hermes auth-store adapter planning evidence digest");
+  const { sha256: evidenceSha256, ...descriptor } = evidence;
+  if (evidenceSha256 !== sha256(jsonBytes(descriptor))) {
+    throw new Error("Hermes auth-store adapter planning evidence digest drifted.");
+  }
+  return evidence;
+}
+
+export function assertHermesAuthAdapterPlanningMatch(adapterFiles, evidence, label = "Hermes auth-store adapter") {
+  const validated = validateHermesAuthAdapterPlanningEvidence(evidence);
+  if (!Array.isArray(adapterFiles) || !isDeepStrictEqual(adapterFiles, validated.files)) {
+    throw new Error(`${label} drifted from the sealed planning evidence.`);
+  }
+  return true;
+}
+
 export async function loadHermesExactInputPluginPlanningEvidence() {
   const pluginFiles = await loadReadPluginFiles();
   const files = pluginFiles.map(({ name, sha256: fileSha256, sizeBytes }) => ({
@@ -2112,29 +2295,106 @@ export function assertHermesExactInputPluginPlanningMatch(pluginFiles, evidence,
   return true;
 }
 
-function buildReadCapabilityEnvironment(baseEnvironment, manifestPath, manifestSha256) {
+async function loadHermesAuthStoreBoundary(profileHome, profileId) {
+  const absoluteProfileHome = resolve(profileHome);
+  const canonicalProfileHome = await realpath(absoluteProfileHome);
+  if (canonicalProfileHome !== absoluteProfileHome) {
+    throw new Error("Hermes auth-store source profile contains a symbolic-link component.");
+  }
+  const profileInfo = await lstat(canonicalProfileHome);
+  if (!profileInfo.isDirectory() || profileInfo.isSymbolicLink()) {
+    throw new Error("Hermes auth-store source profile must be a real directory.");
+  }
+  if (
+    basename(canonicalProfileHome) !== profileId
+    || basename(dirname(canonicalProfileHome)) !== "profiles"
+  ) throw new Error("Hermes auth-store source profile identity drifted.");
+  const hermesRoot = dirname(dirname(canonicalProfileHome));
+  if (await realpath(hermesRoot) !== hermesRoot) {
+    throw new Error("Hermes global auth-store root contains a symbolic-link component.");
+  }
+  const rootInfo = await lstat(hermesRoot);
+  if (
+    !rootInfo.isDirectory()
+    || rootInfo.isSymbolicLink()
+    || (rootInfo.mode & 0o777) !== 0o700
+    || (typeof process.getuid === "function" && rootInfo.uid !== process.getuid())
+  ) throw new Error("Hermes global auth-store root must be an owner-only real directory.");
+  const authStorePath = join(hermesRoot, "auth.json");
+  const authInfo = await lstat(authStorePath);
+  if (!authInfo.isFile() || authInfo.isSymbolicLink()) {
+    throw new Error("Hermes global auth store must be a real regular file.");
+  }
+  if (
+    (authInfo.mode & 0o777) !== 0o600
+    || authInfo.nlink !== 1
+    || authInfo.uid !== rootInfo.uid
+    || (typeof process.getuid === "function" && authInfo.uid !== process.getuid())
+  ) throw new Error("Hermes global auth store must be owner-only and owned by the current user.");
+  return {
+    contractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    sourceProfileHome: canonicalProfileHome,
+    hermesRoot,
+    authStorePath,
+  };
+}
+
+function buildReadCapabilityEnvironment(
+  baseEnvironment,
+  manifestPath,
+  manifestSha256,
+  authStoreBoundary,
+  authAdapterRoot,
+) {
+  if (
+    authStoreBoundary?.contractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
+    || typeof authStoreBoundary.authStorePath !== "string"
+    || !isAbsolute(authStoreBoundary.authStorePath)
+    || resolve(authStoreBoundary.authStorePath) !== authStoreBoundary.authStorePath
+  ) throw new Error("Hermes auth-store execution boundary is invalid.");
+  const absoluteAuthAdapterRoot = resolve(authAdapterRoot ?? "");
   const env = {
     ...baseEnvironment.env,
     FIREFLY_READ_MANIFEST: manifestPath,
     FIREFLY_READ_MANIFEST_SHA256: manifestSha256,
+    FIREFLY_HERMES_AUTH_STORE: authStoreBoundary.authStorePath,
+    FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    FIREFLY_HERMES_CAPSULE_HOME: baseEnvironment.descriptor.profileHome,
+    PYTHONPATH: absoluteAuthAdapterRoot,
   };
   const descriptor = {
-    schemaVersion: "hermes-exact-input-execution-environment/v1",
+    schemaVersion: "hermes-exact-input-execution-environment/v3",
     baseEnvironmentSha256: baseEnvironment.descriptorSha256,
     manifestPath,
     manifestSha256,
-    addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authStorePath: authStoreBoundary.authStorePath,
+    authAdapterRoot: absoluteAuthAdapterRoot,
+    addedEnvironmentKeys: [
+      "FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT",
+      "FIREFLY_HERMES_AUTH_STORE",
+      "FIREFLY_HERMES_CAPSULE_HOME",
+      "FIREFLY_READ_MANIFEST",
+      "FIREFLY_READ_MANIFEST_SHA256",
+      "PYTHONPATH",
+    ],
   };
   return { env, descriptor, descriptorSha256: sha256(jsonBytes(descriptor)) };
 }
 
 function canonicalReadExecutionPolicy() {
   return {
-    schemaVersion: "hermes-exact-input-execution-policy/v2",
+    schemaVersion: "hermes-exact-input-execution-policy/v3",
     homeScope: "ephemeral-system-temp",
     workspaceScope: "empty-ephemeral-system-temp",
     cleanup: "required-before-finalization",
-    credentialPersistence: "forbidden",
+    capsuleCredentialPersistence: "forbidden",
+    credentialCopyIntoCapsule: "forbidden",
+    authoritativeAuthStoreScope: "source-profile-global-root",
+    authoritativeAuthStoreMutation: "provider-managed-under-auth-lock",
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authProjectionActivationProof: "sealed-reader-ready-contract",
+    ambientDotenvAndExternalSecretLoading: "disabled-by-bootstrap-adapter",
     pluginDiscovery: "ephemeral-bundled-root",
     readProtocol: "sequential-cursor-chunks-v2",
     resultSchema: READ_RESULT_SCHEMA,
@@ -2151,11 +2411,18 @@ function canonicalReadExecutionPolicy() {
 
 function computeReadExecutionEnvironmentSha256(executionPolicy) {
   return sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-environment-template/v2",
+    schemaVersion: "hermes-exact-input-environment-template/v3",
     executionPolicy,
     baseEnvironmentKeys: [HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY],
     manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
-    addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
+    addedEnvironmentKeys: [
+      "FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT",
+      "FIREFLY_HERMES_AUTH_STORE",
+      "FIREFLY_HERMES_CAPSULE_HOME",
+      "FIREFLY_READ_MANIFEST",
+      "FIREFLY_READ_MANIFEST_SHA256",
+      "PYTHONPATH",
+    ],
   }));
 }
 
@@ -2163,13 +2430,16 @@ function computeReadExecutionRuntimeIdentitySha256({
   sourceRuntimeIdentitySha256,
   manifestSha256,
   pluginFiles,
+  authAdapterFiles,
   executionEnvironmentSha256,
 }) {
   return sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-runtime-identity/v2",
+    schemaVersion: "hermes-exact-input-runtime-identity/v3",
     sourceRuntimeIdentitySha256,
     manifestSha256,
     pluginFiles,
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterFiles,
     executionEnvironmentSha256,
   }));
 }
@@ -2178,7 +2448,8 @@ function canonicalReadCapability(value) {
   assertExactObjectKeys(value, [
     "schemaVersion", "toolset", "tool", "sourceRuntimeIdentitySha256",
     "executionRuntimeIdentitySha256", "executionEnvironmentSha256",
-    "manifest", "pluginFiles", "expectedInputs", "cliPolicy", "executionPolicy",
+    "manifest", "pluginFiles", "authProjectionContractVersion", "authAdapterFiles",
+    "expectedInputs", "cliPolicy", "executionPolicy",
   ], "Hermes exact-input read capability");
   if (
     value.schemaVersion !== READ_CAPABILITY_SCHEMA
@@ -2200,13 +2471,30 @@ function canonicalReadCapability(value) {
     assertSha256(file.sha256, `Hermes exact-input plugin file ${file.name} digest`);
     assertNonNegativeInteger(file.sizeBytes, `Hermes exact-input plugin file ${file.name} size`);
   });
+  if (
+    value.authProjectionContractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
+    || !Array.isArray(value.authAdapterFiles)
+    || value.authAdapterFiles.length !== READ_AUTH_ADAPTER_FILES.length
+  ) throw new Error("Hermes auth-store adapter capability identity drifted.");
+  value.authAdapterFiles.forEach((file, index) => {
+    assertExactObjectKeys(file, ["name", "sha256", "sizeBytes"], `Hermes auth adapter file ${index}`);
+    if (file.name !== READ_AUTH_ADAPTER_FILES[index]) throw new Error("Hermes auth adapter file order drifted.");
+    assertSha256(file.sha256, `Hermes auth adapter file ${file.name} digest`);
+    assertNonNegativeInteger(file.sizeBytes, `Hermes auth adapter file ${file.name} size`);
+    if (file.sizeBytes < 1) throw new Error(`Hermes auth adapter file is empty: ${file.name}`);
+  });
   const manifest = buildHermesExactInputReadManifest(value.expectedInputs);
   if (!isDeepStrictEqual(manifest.inputs, value.expectedInputs)) {
     throw new Error("Hermes exact-input capability inputs are not canonical.");
   }
-  assertExactObjectKeys(value.cliPolicy, ["flags", "model", "provider", "toolsets"], "Hermes exact-input CLI policy");
+  assertExactObjectKeys(
+    value.cliPolicy,
+    ["entrypoint", "flags", "model", "provider", "toolsets"],
+    "Hermes exact-input CLI policy",
+  );
   if (
-    !isDeepStrictEqual(value.cliPolicy.flags, ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"])
+    value.cliPolicy.entrypoint !== "attested-delegated-executable"
+    || !isDeepStrictEqual(value.cliPolicy.flags, ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"])
     || !isDeepStrictEqual(value.cliPolicy.toolsets, [HERMES_READ_ONLY_TOOLSET])
     || value.cliPolicy.model !== HERMES_STRUCTURED_MODEL
     || value.cliPolicy.provider !== HERMES_STRUCTURED_PROVIDER
@@ -2222,12 +2510,134 @@ function canonicalReadCapability(value) {
     sourceRuntimeIdentitySha256: value.sourceRuntimeIdentitySha256,
     manifestSha256: value.manifest.sha256,
     pluginFiles: value.pluginFiles,
+    authAdapterFiles: value.authAdapterFiles,
     executionEnvironmentSha256: value.executionEnvironmentSha256,
   });
   if (value.executionRuntimeIdentitySha256 !== expectedExecutionRuntimeIdentitySha256) {
     throw new Error("Hermes exact-input execution runtime identity drifted.");
   }
   return value;
+}
+
+function canonicalHistoricalReadExecutionPolicyV2() {
+  return {
+    schemaVersion: "hermes-exact-input-execution-policy/v2",
+    homeScope: "ephemeral-system-temp",
+    workspaceScope: "empty-ephemeral-system-temp",
+    cleanup: "required-before-finalization",
+    credentialPersistence: "forbidden",
+    pluginDiscovery: "ephemeral-bundled-root",
+    readProtocol: "sequential-cursor-chunks-v2",
+    resultSchema: READ_RESULT_SCHEMA,
+    cursorProtocol: "firefly-hermes-read-cursor/v1",
+    maxSourceBytes: READ_SOURCE_MAX_BYTES,
+    maxEncodedContentChars: READ_CHUNK_ENCODED_CONTENT_MAX_CHARS,
+    maxResultChars: READ_CHUNK_RESULT_MAX_CHARS,
+    preflightAccounting: "deterministic-chunk-transcript",
+    forbiddenCredentialNames: [...READ_EXECUTION_FORBIDDEN_CREDENTIAL_NAMES],
+    pythonDontWriteBytecode: "1",
+    gitOptionalLocks: "0",
+  };
+}
+
+function canonicalHistoricalReadCapabilityV2(value) {
+  assertExactObjectKeys(value, [
+    "schemaVersion", "toolset", "tool", "sourceRuntimeIdentitySha256",
+    "executionRuntimeIdentitySha256", "executionEnvironmentSha256",
+    "manifest", "pluginFiles", "expectedInputs", "cliPolicy", "executionPolicy",
+  ], "Historical Hermes exact-input read capability");
+  if (
+    value.schemaVersion !== "private-hermes-exact-input-read-capability/v2"
+    || value.toolset !== HERMES_READ_ONLY_TOOLSET
+    || value.tool !== HERMES_READ_ONLY_TOOL
+  ) throw new Error("Historical Hermes exact-input read capability identity drifted.");
+  for (const key of ["sourceRuntimeIdentitySha256", "executionRuntimeIdentitySha256", "executionEnvironmentSha256"]) {
+    assertSha256(value[key], `Historical Hermes exact-input read capability ${key}`);
+  }
+  assertExactObjectKeys(value.manifest, ["sha256", "sizeBytes"], "Historical Hermes exact-input manifest receipt");
+  assertSha256(value.manifest.sha256, "Historical Hermes exact-input manifest digest");
+  assertNonNegativeInteger(value.manifest.sizeBytes, "Historical Hermes exact-input manifest size");
+  if (!Array.isArray(value.pluginFiles) || value.pluginFiles.length !== READ_PLUGIN_FILES.length) {
+    throw new Error("Historical Hermes exact-input plugin file set drifted.");
+  }
+  value.pluginFiles.forEach((file, index) => {
+    assertExactObjectKeys(file, ["name", "sha256", "sizeBytes"], `Historical Hermes exact-input plugin file ${index}`);
+    if (file.name !== READ_PLUGIN_FILES[index]) throw new Error("Historical Hermes exact-input plugin file order drifted.");
+    assertSha256(file.sha256, `Historical Hermes exact-input plugin file ${file.name} digest`);
+    assertNonNegativeInteger(file.sizeBytes, `Historical Hermes exact-input plugin file ${file.name} size`);
+    if (file.sizeBytes < 1) throw new Error(`Historical Hermes exact-input plugin file is empty: ${file.name}`);
+  });
+  const manifest = buildHermesExactInputReadManifest(value.expectedInputs);
+  if (!isDeepStrictEqual(manifest.inputs, value.expectedInputs)) {
+    throw new Error("Historical Hermes exact-input capability inputs are not canonical.");
+  }
+  assertExactObjectKeys(value.cliPolicy, ["flags", "model", "provider", "toolsets"], "Historical Hermes exact-input CLI policy");
+  if (
+    !isDeepStrictEqual(value.cliPolicy.flags, ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"])
+    || !isDeepStrictEqual(value.cliPolicy.toolsets, [HERMES_READ_ONLY_TOOLSET])
+    || value.cliPolicy.model !== HERMES_STRUCTURED_MODEL
+    || value.cliPolicy.provider !== HERMES_STRUCTURED_PROVIDER
+  ) throw new Error("Historical Hermes exact-input CLI policy drifted.");
+  const executionPolicy = canonicalHistoricalReadExecutionPolicyV2();
+  if (!isDeepStrictEqual(value.executionPolicy, executionPolicy)) {
+    throw new Error("Historical Hermes exact-input execution policy drifted.");
+  }
+  const executionEnvironmentSha256 = sha256(jsonBytes({
+    schemaVersion: "hermes-exact-input-environment-template/v2",
+    executionPolicy,
+    baseEnvironmentKeys: [HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY],
+    manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
+    addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
+  }));
+  if (value.executionEnvironmentSha256 !== executionEnvironmentSha256) {
+    throw new Error("Historical Hermes exact-input execution environment identity drifted.");
+  }
+  const executionRuntimeIdentitySha256 = sha256(jsonBytes({
+    schemaVersion: "hermes-exact-input-runtime-identity/v2",
+    sourceRuntimeIdentitySha256: value.sourceRuntimeIdentitySha256,
+    manifestSha256: value.manifest.sha256,
+    pluginFiles: value.pluginFiles,
+    executionEnvironmentSha256,
+  }));
+  if (value.executionRuntimeIdentitySha256 !== executionRuntimeIdentitySha256) {
+    throw new Error("Historical Hermes exact-input execution runtime identity drifted.");
+  }
+  return value;
+}
+
+export function validateHistoricalHermesExactInputReadCapabilityV2({
+  bytes,
+  expectedFiles,
+  sourceRuntimeIdentitySha256,
+} = {}) {
+  if (!Buffer.isBuffer(bytes)) throw new Error("Historical Hermes exact-input read capability bytes must be a buffer.");
+  let capability;
+  try {
+    capability = canonicalHistoricalReadCapabilityV2(
+      JSON.parse(exactUtf8Text(bytes, "Historical Hermes exact-input read capability")),
+    );
+  } catch (error) {
+    throw new Error(`Historical Hermes exact-input read capability is invalid: ${error.message}`);
+  }
+  if (bytes.compare(jsonBytes(capability)) !== 0) {
+    throw new Error("Historical Hermes exact-input read capability is not canonical JSON.");
+  }
+  if (expectedFiles !== undefined) {
+    const expectedInputs = buildHermesExactInputReadManifest(expectedFiles).inputs;
+    if (!isDeepStrictEqual(capability.expectedInputs, expectedInputs)) {
+      throw new Error("Historical Hermes exact-input read capability input binding drifted.");
+    }
+    const manifestBytes = jsonBytes({ schemaVersion: READ_MANIFEST_SCHEMA, inputs: expectedInputs });
+    if (
+      capability.manifest.sha256 !== sha256(manifestBytes)
+      || capability.manifest.sizeBytes !== manifestBytes.byteLength
+    ) throw new Error("Historical Hermes exact-input read capability manifest binding drifted.");
+  }
+  if (
+    sourceRuntimeIdentitySha256 !== undefined
+    && capability.sourceRuntimeIdentitySha256 !== sourceRuntimeIdentitySha256
+  ) throw new Error("Historical Hermes exact-input read capability source runtime binding drifted.");
+  return { capability, bytes, sha256: sha256(bytes) };
 }
 
 export function validateHermesExactInputReadCapability({
@@ -2269,6 +2679,7 @@ export async function prepareHermesExactInputReadCapability({
   runtime,
   inputEvidence,
   expectedPluginPlanningEvidence,
+  expectedAuthAdapterPlanningEvidence,
 } = {}) {
   const absoluteRunRoot = resolve(runRoot ?? "");
   await assertRealRunPath(absoluteRunRoot, absoluteRunRoot, "Hermes exact-input capability run root", {
@@ -2295,11 +2706,24 @@ export async function prepareHermesExactInputReadCapability({
     sha256: fileSha256,
     sizeBytes,
   }));
+  const authAdapterFiles = await loadHermesAuthAdapterFiles();
+  const authAdapterFileReceipts = authAdapterFiles.map(({ name, sha256: fileSha256, sizeBytes }) => ({
+    name,
+    sha256: fileSha256,
+    sizeBytes,
+  }));
   if (expectedPluginPlanningEvidence !== undefined) {
     assertHermesExactInputPluginPlanningMatch(
       pluginFileReceipts,
       expectedPluginPlanningEvidence,
       "Hermes exact-input capability plugin",
+    );
+  }
+  if (expectedAuthAdapterPlanningEvidence !== undefined) {
+    assertHermesAuthAdapterPlanningMatch(
+      authAdapterFileReceipts,
+      expectedAuthAdapterPlanningEvidence,
+      "Hermes exact-input capability auth adapter",
     );
   }
   if (!requireExisting) await ensureRealAbsoluteDirectory(capabilityRoot, "Hermes exact-input capability root");
@@ -2324,6 +2748,7 @@ export async function prepareHermesExactInputReadCapability({
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
     manifestSha256: sha256(manifestBytes),
     pluginFiles: pluginFileReceipts,
+    authAdapterFiles: authAdapterFileReceipts,
     executionEnvironmentSha256,
   });
   const capability = canonicalReadCapability({
@@ -2335,8 +2760,11 @@ export async function prepareHermesExactInputReadCapability({
     executionEnvironmentSha256,
     manifest: { sha256: sha256(manifestBytes), sizeBytes: manifestBytes.byteLength },
     pluginFiles: pluginFileReceipts,
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterFiles: authAdapterFileReceipts,
     expectedInputs: buildHermesExactInputReadManifest(inputEvidence.files).inputs,
     cliPolicy: {
+      entrypoint: "attested-delegated-executable",
       flags: ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"],
       model: HERMES_STRUCTURED_MODEL,
       provider: HERMES_STRUCTURED_PROVIDER,
@@ -2351,6 +2779,7 @@ export async function prepareHermesExactInputReadCapability({
     manifestBytes,
     contextCacheBytes,
     pluginFiles,
+    authAdapterFiles,
   };
 }
 
@@ -2378,6 +2807,45 @@ function assertHermesExecutionRuntimeMatchesSource(sourceRuntime, executionRunti
   }
 }
 
+async function resolveHermesDelegatedExecutionCommand(runtime) {
+  const wrapper = await regularFileIdentity(runtime.hermesCommand, "Hermes execution wrapper");
+  if (wrapper.sha256 !== runtime.hermesExecutableSha256) {
+    throw new Error("Hermes execution wrapper drifted from its attested bytes.");
+  }
+  const wrapperBytes = await readFile(wrapper.resolvedPath);
+  const delegatedTarget = resolveHermesDelegatedWrapperTarget(wrapperBytes);
+  const delegated = delegatedTarget
+    ? await regularFileIdentity(delegatedTarget, "Hermes delegated execution command")
+    : wrapper;
+  if (delegated.sha256 !== runtime.hermesDelegatedExecutableSha256) {
+    throw new Error("Hermes delegated execution command drifted from its attested bytes.");
+  }
+  await access(delegated.resolvedPath, fsConstants.X_OK);
+  return delegated.resolvedPath;
+}
+
+export function resolveHermesDelegatedWrapperTarget(wrapperBytes) {
+  const text = exactUtf8Text(wrapperBytes, "Hermes execution wrapper");
+  const delegatedFragment = /\bexec\s+["']([^"'\r\n]+)["']\s+["']?\$@["']?/u.exec(text);
+  if (!delegatedFragment) return null;
+
+  // Firefly intentionally bypasses only the current two-line environment
+  // scrubber so its sealed PYTHONPATH can load the auth adapter. Any future
+  // wrapper prelude, guard, activation, or control flow must be reviewed and
+  // represented explicitly instead of being silently skipped.
+  const supported = /^#!\/usr\/bin\/env bash\nunset PYTHONPATH\nunset PYTHONHOME\nexec "([^"\r\n]+)" "\$@"\n?$/u.exec(text);
+  const delegatedTarget = supported?.[1];
+  if (
+    !delegatedTarget
+    || delegatedTarget !== delegatedFragment[1]
+    || !isAbsolute(delegatedTarget)
+    || resolve(delegatedTarget) !== delegatedTarget
+  ) {
+    throw new Error("Hermes delegated execution wrapper has unsupported semantics; refusing to bypass its prelude.");
+  }
+  return delegatedTarget;
+}
+
 async function createExclusiveExecutionFile(path, bytes, label) {
   try {
     await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
@@ -2386,7 +2854,13 @@ async function createExclusiveExecutionFile(path, bytes, label) {
   }
 }
 
-async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runtime, readCapability }) {
+async function createHermesExactInputExecutionCapsule({
+  runRoot,
+  profileId,
+  runtime,
+  readCapability,
+  sourceAuthStoreBoundary,
+}) {
   const tempParent = await realpath(tmpdir());
   let root;
   try {
@@ -2403,12 +2877,14 @@ async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runt
     const profileHome = join(hermesRoot, "profiles", profileId);
     const bundledPluginsRoot = join(root, HERMES_EPHEMERAL_BUNDLED_PLUGINS_DIRECTORY);
     const pluginRoot = join(bundledPluginsRoot, HERMES_READ_ONLY_TOOLSET);
+    const authAdapterRoot = join(root, READ_AUTH_ADAPTER_DIRECTORY);
     const workspace = join(root, "workspace");
     const contextCachePath = join(hermesRoot, "context_length_cache.yaml");
     const manifestPath = join(root, "input-manifest.json");
     await Promise.all([
       mkdir(profileHome, { recursive: true, mode: 0o700 }),
       mkdir(pluginRoot, { recursive: true, mode: 0o700 }),
+      mkdir(authAdapterRoot, { mode: 0o700 }),
       mkdir(workspace, { mode: 0o700 }),
     ]);
     await Promise.all([
@@ -2422,7 +2898,16 @@ async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runt
         file.bytes,
         `Hermes ephemeral plugin ${file.name}`,
       )),
+      ...readCapability.authAdapterFiles.map((file) => createExclusiveExecutionFile(
+        join(authAdapterRoot, file.name),
+        file.bytes,
+        `Hermes ephemeral auth adapter ${file.name}`,
+      )),
     ]);
+    const authStoreBoundary = await loadHermesAuthStoreBoundary(runtime.profileHome, profileId);
+    if (!isDeepStrictEqual(authStoreBoundary, sourceAuthStoreBoundary)) {
+      throw new Error("Hermes authoritative auth-store boundary drifted before capsule execution.");
+    }
     const baseExecutionEnvironment = buildHermesExecutionEnvironment({
       profileHome,
       projectCwd: workspace,
@@ -2433,6 +2918,8 @@ async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runt
       baseExecutionEnvironment,
       manifestPath,
       readCapability.capability.manifest.sha256,
+      authStoreBoundary,
+      authAdapterRoot,
     );
     const executionRuntime = await loadHermesRuntimeEvidence(profileHome, profileId, {
       projectCwd: workspace,
@@ -2445,12 +2932,14 @@ async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runt
       profileHome,
       bundledPluginsRoot,
       pluginRoot,
+      authAdapterRoot,
       workspace,
       contextCachePath,
       manifestPath,
       baseExecutionEnvironment,
       executionEnvironment,
       executionRuntime,
+      authStoreBoundary,
       disposed: false,
     };
   } catch (error) {
@@ -2467,13 +2956,23 @@ async function assertHermesExactInputExecutionCapsuleStable(capsule, sourceRunti
     || rootInfo.dev !== capsule.rootIdentity.dev
     || rootInfo.ino !== capsule.rootIdentity.ino
   ) throw new Error(`${label} root identity drifted.`);
-  const [configBytes, soulBytes, contextCacheBytes, manifestBytes, bundledPluginEntries, pluginEntries, workspaceEntries] = await Promise.all([
+  const [
+    configBytes,
+    soulBytes,
+    contextCacheBytes,
+    manifestBytes,
+    bundledPluginEntries,
+    pluginEntries,
+    authAdapterEntries,
+    workspaceEntries,
+  ] = await Promise.all([
     readFile(join(capsule.profileHome, "config.yaml")),
     readFile(join(capsule.profileHome, "SOUL.md")),
     readFile(capsule.contextCachePath),
     readFile(capsule.manifestPath),
     readdir(capsule.bundledPluginsRoot),
     readdir(capsule.pluginRoot),
+    readdir(capsule.authAdapterRoot),
     readdir(capsule.workspace),
   ]);
   if (
@@ -2483,6 +2982,7 @@ async function assertHermesExactInputExecutionCapsuleStable(capsule, sourceRunti
     || manifestBytes.compare(readCapability.manifestBytes) !== 0
     || !isDeepStrictEqual(bundledPluginEntries.sort(), [HERMES_READ_ONLY_TOOLSET])
     || !isDeepStrictEqual(pluginEntries.sort(), [...READ_PLUGIN_FILES].sort())
+    || !isDeepStrictEqual(authAdapterEntries.sort(), [...READ_AUTH_ADAPTER_FILES].sort())
     || workspaceEntries.length !== 0
   ) throw new Error(`${label} static capability bytes drifted.`);
   for (const file of readCapability.pluginFiles) {
@@ -2490,6 +2990,27 @@ async function assertHermesExactInputExecutionCapsuleStable(capsule, sourceRunti
       throw new Error(`${label} plugin bytes drifted: ${file.name}`);
     }
   }
+  for (const file of readCapability.authAdapterFiles) {
+    if ((await readFile(join(capsule.authAdapterRoot, file.name))).compare(file.bytes) !== 0) {
+      throw new Error(`${label} auth adapter bytes drifted: ${file.name}`);
+    }
+  }
+  const authStoreBoundary = await loadHermesAuthStoreBoundary(sourceRuntime.profileHome, sourceRuntime.profileId);
+  if (!isDeepStrictEqual(authStoreBoundary, capsule.authStoreBoundary)) {
+    throw new Error(`${label} authoritative auth-store boundary drifted.`);
+  }
+  const expectedExecutionEnvironment = buildReadCapabilityEnvironment(
+    capsule.baseExecutionEnvironment,
+    capsule.manifestPath,
+    readCapability.capability.manifest.sha256,
+    authStoreBoundary,
+    capsule.authAdapterRoot,
+  );
+  if (
+    !isDeepStrictEqual(expectedExecutionEnvironment.descriptor, capsule.executionEnvironment.descriptor)
+    || expectedExecutionEnvironment.descriptorSha256 !== capsule.executionEnvironment.descriptorSha256
+    || !isDeepStrictEqual(expectedExecutionEnvironment.env, capsule.executionEnvironment.env)
+  ) throw new Error(`${label} execution environment drifted.`);
   const executionRuntime = await loadHermesRuntimeEvidence(capsule.profileHome, sourceRuntime.profileId, {
     projectCwd: capsule.workspace,
     executionEnvironment: capsule.baseExecutionEnvironment,
@@ -2534,6 +3055,18 @@ async function disposeHermesExactInputExecutionCapsule(capsule) {
     || rootInfo.dev !== capsule.rootIdentity.dev
     || rootInfo.ino !== capsule.rootIdentity.ino
   ) throw new Error("Hermes ephemeral execution cleanup root identity drifted; preserve for manual audit.");
+  let authBoundaryError = null;
+  try {
+    const observedAuthStoreBoundary = await loadHermesAuthStoreBoundary(
+      capsule.authStoreBoundary.sourceProfileHome,
+      basename(capsule.authStoreBoundary.sourceProfileHome),
+    );
+    if (!isDeepStrictEqual(observedAuthStoreBoundary, capsule.authStoreBoundary)) {
+      throw new Error("Hermes authoritative auth-store boundary drifted during execution.");
+    }
+  } catch (error) {
+    authBoundaryError = error;
+  }
   const credentialArtifacts = await findHermesExecutionCredentialArtifacts(capsule.root);
   await rm(capsule.root, { recursive: true, force: false });
   capsule.disposed = true;
@@ -2541,6 +3074,7 @@ async function disposeHermesExactInputExecutionCapsule(capsule) {
   if (credentialArtifacts.length > 0) {
     throw new Error(`Hermes ephemeral execution created a forbidden credential artifact: ${credentialArtifacts.join(", ")}`);
   }
+  if (authBoundaryError) throw authBoundaryError;
 }
 
 function assertInputEvidenceEqual(expected, actual, label = "Hermes structured input") {
@@ -2560,6 +3094,13 @@ function assertReadCapabilityEqual(expected, actual, label = "Hermes exact-input
   ) throw new Error(`${label} changed during structured execution.`);
   if (expected.manifestBytes.compare(actual.manifestBytes) !== 0) throw new Error(`${label} manifest changed.`);
   if (expected.contextCacheBytes.compare(actual.contextCacheBytes) !== 0) throw new Error(`${label} context cache changed.`);
+  if (
+    expected.authAdapterFiles.length !== actual.authAdapterFiles.length
+    || expected.authAdapterFiles.some((file, index) => (
+      file.name !== actual.authAdapterFiles[index]?.name
+      || file.bytes.compare(actual.authAdapterFiles[index].bytes) !== 0
+    ))
+  ) throw new Error(`${label} auth adapter changed.`);
   return true;
 }
 
@@ -2579,6 +3120,7 @@ async function revalidateStructuredRunInputs(input, label) {
     runtime: input.runtime,
     inputEvidence,
     expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
+    expectedAuthAdapterPlanningEvidence: input.expectedAuthAdapterPlanningEvidence,
   });
   assertReadCapabilityEqual(input.readCapability, readCapability, `${label} read capability`);
 }
@@ -3186,6 +3728,7 @@ export async function runHermesStructuredAttempt({
   expectedReadPaths,
   inputDigest,
   expectedPluginPlanningEvidence,
+  expectedAuthAdapterPlanningEvidence,
   outputReserveTokens,
   validateResult,
   progress = () => {},
@@ -3203,6 +3746,12 @@ export async function runHermesStructuredAttempt({
   const sealedPluginPlanningEvidence = expectedPluginPlanningEvidence === undefined
     ? undefined
     : JSON.parse(jsonBytes(validateHermesExactInputPluginPlanningEvidence(expectedPluginPlanningEvidence)).toString("utf8"));
+  if (expectedAuthAdapterPlanningEvidence === undefined) {
+    throw new Error("Hermes auth-store adapter planning evidence is required.");
+  }
+  const sealedAuthAdapterPlanningEvidence = JSON.parse(
+    jsonBytes(validateHermesAuthAdapterPlanningEvidence(expectedAuthAdapterPlanningEvidence)).toString("utf8"),
+  );
   const absoluteRunRoot = resolve(runRoot);
   const absoluteProfileHome = resolve(profileHome);
   const absoluteProjectCwd = resolve(projectCwd);
@@ -3228,22 +3777,25 @@ export async function runHermesStructuredAttempt({
     expectedReadPaths: absoluteExpectedReadPaths,
     inputDigest,
     expectedPluginPlanningEvidence: sealedPluginPlanningEvidence,
+    expectedAuthAdapterPlanningEvidence: sealedAuthAdapterPlanningEvidence,
     outputReserveTokens,
     validateResult,
     progress: async (event) => progress(event),
     executionEnvironment,
     runtime: null,
     inputEvidence: null,
+    authStoreBoundary: null,
     readCapability: null,
   };
   const lock = await acquireStructuredRunLock(input);
   try {
-    [input.runtime, input.inputEvidence] = await Promise.all([
+    [input.runtime, input.inputEvidence, input.authStoreBoundary] = await Promise.all([
       loadHermesRuntimeEvidence(absoluteProfileHome, profileId, {
         projectCwd: absoluteProjectCwd,
         executionEnvironment,
       }),
       loadHermesExactInputEvidence(absoluteExpectedReadPaths, inputDigest),
+      loadHermesAuthStoreBoundary(absoluteProfileHome, profileId),
     ]);
     input.readCapability = await prepareHermesExactInputReadCapability({
       runRoot: input.runRoot,
@@ -3251,6 +3803,7 @@ export async function runHermesStructuredAttempt({
       runtime: input.runtime,
       inputEvidence: input.inputEvidence,
       expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
+      expectedAuthAdapterPlanningEvidence: input.expectedAuthAdapterPlanningEvidence,
     });
     const preflight = planHermesStructuredContextBudget({
       profilePromptContextBytes: input.runtime.profilePromptContextBytes,
@@ -3301,7 +3854,7 @@ export async function runHermesStructuredAttempt({
       input.readCapability.bytes,
       "Hermes exact-input read capability",
     );
-    const hermes = input.runtime.hermesCommand;
+    const hermes = await resolveHermesDelegatedExecutionCommand(input.runtime);
     const immediatelyBeforeExecution = await loadHermesRuntimeEvidence(input.profileHome, input.profileId, {
       projectCwd: input.projectCwd,
       executionEnvironment: input.executionEnvironment,
@@ -3313,6 +3866,7 @@ export async function runHermesStructuredAttempt({
       runtime: input.runtime,
       inputEvidence: input.inputEvidence,
       expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
+      expectedAuthAdapterPlanningEvidence: input.expectedAuthAdapterPlanningEvidence,
     });
     assertReadCapabilityEqual(input.readCapability, immediatelyBeforeCapability, "Hermes pre-execution read capability");
     let capsule;
@@ -3323,6 +3877,7 @@ export async function runHermesStructuredAttempt({
         profileId: input.profileId,
         runtime: input.runtime,
         readCapability: input.readCapability,
+        sourceAuthStoreBoundary: input.authStoreBoundary,
       });
       await input.progress({ event: "attempt-start", attempt: relative(input.runRoot, attemptDir), role });
       await assertHermesExactInputExecutionCapsuleStable(
@@ -3358,6 +3913,7 @@ export async function runHermesStructuredAttempt({
         runtime: input.runtime,
         inputEvidence: input.inputEvidence,
         expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
+        expectedAuthAdapterPlanningEvidence: input.expectedAuthAdapterPlanningEvidence,
       });
       assertReadCapabilityEqual(input.readCapability, immediatelyAfterCapability, "Hermes post-execution read capability");
       await assertHermesExactInputExecutionCapsuleStable(
@@ -3375,7 +3931,8 @@ export async function runHermesStructuredAttempt({
       if (typeof usage.session_id !== "string" || usage.session_id.length < 1) {
         throw new Error("Hermes structured usage has no session ID.");
       }
-      await runCommand(hermes, [
+      const exportHermes = await resolveHermesDelegatedExecutionCommand(input.runtime);
+      await runCommand(exportHermes, [
         "sessions",
         "export",
         paths.tracePath,
@@ -3399,6 +3956,7 @@ export async function runHermesStructuredAttempt({
         runtime: input.runtime,
         inputEvidence: input.inputEvidence,
         expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
+        expectedAuthAdapterPlanningEvidence: input.expectedAuthAdapterPlanningEvidence,
       });
       assertReadCapabilityEqual(input.readCapability, afterCapabilityTraceExport, "Hermes post-export read capability");
       await assertHermesExactInputExecutionCapsuleStable(

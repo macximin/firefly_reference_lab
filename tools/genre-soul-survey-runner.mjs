@@ -11,12 +11,15 @@ import { isDeepStrictEqual } from "node:util";
 
 import { validateSourceRegistryFiles } from "./genre-soul-source-registry.mjs";
 import {
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
   HERMES_READ_ONLY_TOOL,
   HERMES_READ_ONLY_TOOLSET,
   HERMES_STRUCTURED_MODEL,
   HERMES_STRUCTURED_PROVIDER,
   HERMES_STRUCTURED_REASONING,
+  loadHermesAuthAdapterPlanningEvidence,
   runHermesStructuredAttempt,
+  validateHermesAuthAdapterPlanningEvidence,
 } from "./genre-soul-hermes-run-lib.mjs";
 import { verifyHermesExactFileReads } from "./hermes-readback.mjs";
 import {
@@ -33,7 +36,8 @@ const inventoryPath = join(repoRoot, "evidence/genre-souls/male-source-inventory
 const receiptPath = join(repoRoot, "evidence/genre-souls/male-source-registry-receipt.v1.json");
 const profileRoot = join(homedir(), ".hermes/profiles");
 const WINDOW_BYTES = 12_000;
-const SURVEY_RUN_INPUT_SCHEMA = "private-genre-soul-survey-run-input-digest/v2";
+const SURVEY_HISTORICAL_RUN_INPUT_SCHEMA = "private-genre-soul-survey-run-input-digest/v2";
+const SURVEY_RUN_INPUT_SCHEMA = "private-genre-soul-survey-run-input-digest/v3";
 const SURVEY_RUN_MANIFEST_SCHEMA = "private-genre-soul-survey-manifest/v3";
 const SURVEY_LEGACY_CURRENT_POINTER_SCHEMA = "private-hermes-survey-completed-pointer/v1";
 const SURVEY_LEGACY_CURRENT_RECEIPT_SCHEMA = "private-hermes-survey-run-receipt/v2";
@@ -688,9 +692,21 @@ export function buildSurveyRunInputDescriptor(input) {
   if (promptContractVersion !== SURVEY_PROMPT_CONTRACT_VERSION) {
     throw new Error("Survey prompt contract version is unsupported.");
   }
+  // Missing adapter evidence is accepted only to reconstruct historical v2
+  // descriptors for the retained evidence reader. Production always supplies
+  // current evidence and therefore always derives a fresh v3 run root.
+  const authAdapterPlanningEvidence = input.authAdapterPlanningEvidence === undefined
+    ? null
+    : JSON.parse(jsonBytes(validateHermesAuthAdapterPlanningEvidence(input.authAdapterPlanningEvidence)));
   const descriptor = {
-    schemaVersion: SURVEY_RUN_INPUT_SCHEMA,
+    schemaVersion: authAdapterPlanningEvidence
+      ? SURVEY_RUN_INPUT_SCHEMA
+      : SURVEY_HISTORICAL_RUN_INPUT_SCHEMA,
     promptContractVersion,
+    ...(authAdapterPlanningEvidence ? {
+      exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+      authAdapterPlanningEvidence,
+    } : {}),
     genre: input.genre,
     soulId: input.soulId,
     profileId: input.profileId,
@@ -737,6 +753,17 @@ export function buildSurveyRunInputDescriptor(input) {
   ) throw new Error("Survey private run input descriptor is invalid.");
   const bytes = Buffer.from(jsonBytes(descriptor));
   return { descriptor, bytes, inputDigest: sha256(bytes) };
+}
+
+async function assertCurrentSurveyAuthAdapterPlanningEvidence(expected, label) {
+  const sealed = validateHermesAuthAdapterPlanningEvidence(expected);
+  const current = validateHermesAuthAdapterPlanningEvidence(
+    await loadHermesAuthAdapterPlanningEvidence(),
+  );
+  if (!isDeepStrictEqual(current, sealed)) {
+    throw new Error(`${label} drifted from the content-addressed survey run input.`);
+  }
+  return current;
 }
 
 export function deriveSurveyRunCompletedAt(trace) {
@@ -1245,6 +1272,13 @@ async function readLegacyCurrentSurveyRun(input, pointer, pointerBytes) {
 }
 
 async function runCurrentSurveyStructured(input) {
+  if (input.exactInputAuthProjectionContractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT) {
+    throw new Error("Survey exact-input auth projection contract drifted.");
+  }
+  await assertCurrentSurveyAuthAdapterPlanningEvidence(
+    input.authAdapterPlanningEvidence,
+    "Survey auth adapter planning evidence",
+  );
   const prompt = buildCurrentSurveyPrompt(input.manifest);
   const expectedReadPaths = currentSurveyExpectedReadPaths(input.runDir, input.manifest);
   return runHermesStructuredAttempt({
@@ -1255,6 +1289,7 @@ async function runCurrentSurveyStructured(input) {
     prompt,
     expectedReadPaths,
     inputDigest: input.inputDigest,
+    expectedAuthAdapterPlanningEvidence: input.authAdapterPlanningEvidence,
     outputReserveTokens: SURVEY_OUTPUT_RESERVE_TOKENS,
     validateResult: (result) => validatePrivateSurveyResult(result, input.expected),
     projectCwd: repoRoot,
@@ -1369,8 +1404,12 @@ async function readCompletedSurveyRun(input) {
 }
 
 async function runOneSurvey(input) {
-  const initialSource = await readVerifiedSurveySource(input);
-  const initialRuntime = await readProfileRuntime(input.profileId);
+  const [initialSource, initialRuntime, initialAuthAdapterPlanningEvidence] = await Promise.all([
+    readVerifiedSurveySource(input),
+    readProfileRuntime(input.profileId),
+    loadHermesAuthAdapterPlanningEvidence(),
+  ]);
+  validateHermesAuthAdapterPlanningEvidence(initialAuthAdapterPlanningEvidence);
   const windows = surveyWindowInputs(initialSource.sourceBytes, input.selectionEntry.chapterCount);
   const runInput = buildSurveyRunInputDescriptor({
     genre: input.genre,
@@ -1383,6 +1422,7 @@ async function runOneSurvey(input) {
     chapterCount: input.selectionEntry.chapterCount,
     configSha256: sha256(initialRuntime.configBytes),
     soulSha256: sha256(initialRuntime.soulBytes),
+    authAdapterPlanningEvidence: initialAuthAdapterPlanningEvidence,
     windows,
   });
   const sourceRunRootRelative = join(
@@ -1438,6 +1478,8 @@ async function runOneSurvey(input) {
       expected,
       profileId: input.profileId,
       runtime,
+      exactInputAuthProjectionContractVersion: runInput.descriptor.exactInputAuthProjectionContractVersion,
+      authAdapterPlanningEvidence: runInput.descriptor.authAdapterPlanningEvidence,
     };
     const completed = await readCompletedSurveyRun(completedInput);
     if (completed) {

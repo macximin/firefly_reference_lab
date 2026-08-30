@@ -19,13 +19,23 @@ import {
 import {
   assertHermesRuntimeEvidenceEqual,
   buildHermesExecutionEnvironment,
+  buildHistoricalHermesExecutionEnvironmentDescriptorV2,
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
   HERMES_READ_ONLY_TOOL,
   HERMES_READ_ONLY_TOOLSET,
   HERMES_STRUCTURED_MODEL,
   HERMES_STRUCTURED_PROVIDER,
   HERMES_STRUCTURED_REASONING,
+  loadHermesAuthAdapterPlanningEvidence,
   loadHermesRuntimeEvidence,
   runHermesStructuredAttempt,
+  validateHistoricalHermesExactInputReadCapabilityV2,
+  validateHermesAuthAdapterPlanningEvidence,
+  validateHermesExactInputTrace,
+  validateHermesStructuredAttemptEvidenceFileNames,
+  validateHermesStructuredAttemptInputAttestation,
+  validateHermesStructuredReceipt,
+  validateHermesStructuredTrace,
 } from "./genre-soul-hermes-run-lib.mjs";
 import { verifyHermesExactFileReads } from "./hermes-readback.mjs";
 
@@ -43,6 +53,8 @@ const DEEP_READ_CURRENT_PROMPT_CONTRACT = "private-genre-soul-deep-read-segment-
 const DEEP_READ_CURRENT_MANIFEST_SCHEMA = "private-genre-soul-deep-read-segment-manifest/v2";
 const DEEP_READ_CURRENT_RECEIPT_SCHEMA = "private-hermes-deep-read-segment-receipt/v2";
 const DEEP_READ_CURRENT_POINTER_SCHEMA = "private-deep-read-completed-pointer/v2";
+const DEEP_READ_CURRENT_WORK_INPUT_SCHEMA = "private-genre-soul-deep-read-work-input-digest/v3";
+const DEEP_READ_CURRENT_SEGMENT_INPUT_SCHEMA = "private-genre-soul-deep-read-segment-input-digest/v2";
 
 function resolveCanonicalProductionRepositoryRoot(value, label) {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -937,6 +949,21 @@ function currentDeepReadRuntimeFields(runtime) {
   return fields;
 }
 
+function resolveDeepReadAuthAdapterDigestBinding(input) {
+  const contractVersion = input?.exactInputAuthProjectionContractVersion;
+  const planningEvidence = input?.authAdapterPlanningEvidence;
+  if (contractVersion === undefined && planningEvidence === undefined) return null;
+  if (
+    contractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
+    || planningEvidence === undefined
+  ) throw new Error("Deep-read auth projection digest binding drifted.");
+  validateHermesAuthAdapterPlanningEvidence(planningEvidence);
+  return {
+    exactInputAuthProjectionContractVersion: contractVersion,
+    authAdapterPlanningEvidence: planningEvidence,
+  };
+}
+
 export function buildDeepReadWorkInputDescriptor({
   genre,
   soulId,
@@ -945,6 +972,8 @@ export function buildDeepReadWorkInputDescriptor({
   targetBytes,
   segments,
   runtime,
+  exactInputAuthProjectionContractVersion,
+  authAdapterPlanningEvidence,
 }) {
   if (!GENRE_CONFIG[genre] || GENRE_CONFIG[genre].soulId !== soulId || GENRE_CONFIG[genre].profileId !== profileId) {
     throw new Error("Deep-read work input genre, Soul, or profile identity drifted.");
@@ -953,8 +982,14 @@ export function buildDeepReadWorkInputDescriptor({
   if (!Array.isArray(segments) || segments.length < 1) throw new Error("Deep-read work segments must be non-empty.");
   const runtimeEvidence = completedAttemptRuntimeEvidence(runtime);
   const currentRuntime = currentDeepReadRuntimeFields(runtimeEvidence);
+  const authAdapterBinding = resolveDeepReadAuthAdapterDigestBinding({
+    exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence,
+  });
   return {
-    schemaVersion: "private-genre-soul-deep-read-work-input-digest/v2",
+    schemaVersion: authAdapterBinding
+      ? DEEP_READ_CURRENT_WORK_INPUT_SCHEMA
+      : "private-genre-soul-deep-read-work-input-digest/v2",
     source: {
       sourceId: selectionEntry.sourceId,
       sourceSha256: selectionEntry.sourceSha256,
@@ -968,6 +1003,7 @@ export function buildDeepReadWorkInputDescriptor({
     segmentationContractVersion: "natural-chapter-target-bytes/v1",
     promptContractVersion: DEEP_READ_CURRENT_PROMPT_CONTRACT,
     executionContractVersion: "hermes-exact-input-capsule/v1",
+    ...(authAdapterBinding ?? {}),
     outputReserveTokens: DEEP_READ_OUTPUT_RESERVE_TOKENS,
     segments: segments.map((segment) => ({
       segmentId: segment.segmentId,
@@ -1021,17 +1057,30 @@ function deepReadPromptSelectorMode(result) {
   return evidenceRanges ? "evidence-ranges" : "chapter-sequences";
 }
 
-export function buildCurrentDeepReadSegmentInputDigest({ workInputDigest, manifest, prompt }) {
+export function buildCurrentDeepReadSegmentInputDigest({
+  workInputDigest,
+  manifest,
+  prompt,
+  exactInputAuthProjectionContractVersion,
+  authAdapterPlanningEvidence,
+}) {
   assertSha256(workInputDigest, "Deep-read current work input digest");
   if (typeof prompt !== "string" || prompt !== buildCurrentDeepReadSegmentPrompt(manifest)) {
     throw new Error("Deep-read current segment prompt drifted from its canonical contract.");
   }
+  const authAdapterBinding = resolveDeepReadAuthAdapterDigestBinding({
+    exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence,
+  });
   return sha256(Buffer.from(jsonBytes({
-    schemaVersion: "private-genre-soul-deep-read-segment-input-digest/v1",
+    schemaVersion: authAdapterBinding
+      ? DEEP_READ_CURRENT_SEGMENT_INPUT_SCHEMA
+      : "private-genre-soul-deep-read-segment-input-digest/v1",
     workInputDigest,
     promptContractVersion: manifest.promptContractVersion,
     promptSha256: sha256(Buffer.from(prompt)),
     manifestSha256: sha256(Buffer.from(jsonBytes(manifest))),
+    ...(authAdapterBinding ?? {}),
   })));
 }
 
@@ -1061,11 +1110,19 @@ export function buildCurrentDeepReadDomainReceipt({
   structuredCompletedPointerBytes,
   structuredHostReceiptBytes,
   readCapabilityBytes,
+  exactInputAuthProjectionContractVersion,
+  authAdapterPlanningEvidence,
 }) {
   if (
     manifest?.promptContractVersion !== DEEP_READ_CURRENT_PROMPT_CONTRACT
     || prompt !== buildCurrentDeepReadSegmentPrompt(manifest)
-    || segmentInputDigest !== buildCurrentDeepReadSegmentInputDigest({ workInputDigest, manifest, prompt })
+    || segmentInputDigest !== buildCurrentDeepReadSegmentInputDigest({
+      workInputDigest,
+      manifest,
+      prompt,
+      exactInputAuthProjectionContractVersion,
+      authAdapterPlanningEvidence,
+    })
   ) throw new Error("Deep-read domain receipt prompt contract drifted.");
   const receipt = structured.receipt;
   const manifestBytes = Buffer.from(jsonBytes(manifest));
@@ -1171,6 +1228,8 @@ async function runCurrentDeepReadStructured(input) {
     workInputDigest: input.workInputDigest,
     manifest: input.manifest,
     prompt,
+    exactInputAuthProjectionContractVersion: input.exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence: input.authAdapterPlanningEvidence,
   });
   const structured = await runHermesStructuredAttempt({
     role: `genre-soul-deep-read:${input.manifest.sourceId}:${input.manifest.segmentId}`,
@@ -1183,6 +1242,7 @@ async function runCurrentDeepReadStructured(input) {
     outputReserveTokens: DEEP_READ_OUTPUT_RESERVE_TOKENS,
     validateResult: (result) => validatePrivateDeepReadSegment(result, input.expected),
     projectCwd: repoRoot,
+    expectedAuthAdapterPlanningEvidence: input.authAdapterPlanningEvidence,
   });
   return { prompt, segmentInputDigest, structured };
 }
@@ -1200,6 +1260,8 @@ async function sealCurrentDeepReadCompletedAttempt(input, execution) {
     structuredCompletedPointerBytes: evidence.completedPointerBytes,
     structuredHostReceiptBytes: evidence.hostReceiptBytes,
     readCapabilityBytes: evidence.readCapabilityBytes,
+    exactInputAuthProjectionContractVersion: input.exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence: input.authAdapterPlanningEvidence,
   });
   const domainReceiptBytes = Buffer.from(jsonBytes(domainReceipt));
   const pointer = buildCurrentDeepReadCompletedPointer({
@@ -1220,6 +1282,238 @@ async function sealCurrentDeepReadCompletedAttempt(input, execution) {
     "Deep-read completed pointer",
   );
   return { pointer, domainReceipt, domainReceiptBytes };
+}
+
+async function readHistoricalCurrentDeepReadStructured(input, pointer, structuredCompletedPointerBytes) {
+  if (
+    input.exactInputAuthProjectionContractVersion !== undefined
+    || input.authAdapterPlanningEvidence !== undefined
+  ) throw new Error("Historical deep-read readback cannot receive a current auth projection binding.");
+  const prompt = buildCurrentDeepReadSegmentPrompt(input.manifest);
+  const historicalProjectCwd = resolve(input.repositoryRoot ?? repoRoot);
+  const segmentInputDigest = buildCurrentDeepReadSegmentInputDigest({
+    workInputDigest: input.workInputDigest,
+    manifest: input.manifest,
+    prompt,
+  });
+  if (segmentInputDigest !== pointer.inputDigest) {
+    throw new Error(`Historical deep-read segment input digest drifted: ${input.segment.segmentId}`);
+  }
+  const structuredRunRoot = join(input.segmentDir, pointer.structuredRunRoot);
+  const attemptDir = resolve(structuredRunRoot, pointer.structuredAttempt);
+  const attemptsRoot = resolve(structuredRunRoot, "attempts");
+  if (
+    !attemptDir.startsWith(`${attemptsRoot}${sep}`)
+    || dirname(attemptDir) !== attemptsRoot
+    || relative(structuredRunRoot, attemptDir) !== pointer.structuredAttempt
+  ) throw new Error("Historical deep-read structured attempt escapes its attempts directory.");
+  await assertNoSymlinkBelow(input.segmentDir, attemptDir, "Historical deep-read structured attempt");
+  validateHermesStructuredAttemptEvidenceFileNames(await readdir(attemptDir));
+  const paths = {
+    candidateOutput: join(attemptDir, "candidate-output.txt"),
+    attemptCompletion: join(attemptDir, "completed.json"),
+    hostReceipt: join(attemptDir, "host-receipt.json"),
+    inputAttestation: join(attemptDir, "input-attestation.json"),
+    readCapability: join(attemptDir, "read-capability.json"),
+    result: join(attemptDir, "result.json"),
+    trace: join(attemptDir, "session.jsonl"),
+    usage: join(attemptDir, "usage.json"),
+  };
+  const [
+    candidateOutputBytes,
+    attemptCompletionBytes,
+    hostReceiptBytes,
+    inputAttestationBytes,
+    readCapabilityBytes,
+    resultBytes,
+    traceBytes,
+    usageBytes,
+  ] = await Promise.all(Object.entries(paths).map(([name, path]) => (
+    readStableRegularFileBelow(input.segmentDir, path, `Historical deep-read ${name}`)
+  )));
+  const structuredPointer = JSON.parse(structuredCompletedPointerBytes.toString("utf8"));
+  assertExactObjectKeys(structuredPointer, [
+    "schemaVersion", "role", "attempt", "attemptCompletionSha256", "hostReceiptSha256",
+  ], "Historical deep-read structured completed pointer");
+  const role = `genre-soul-deep-read:${input.manifest.sourceId}:${input.manifest.segmentId}`;
+  if (
+    structuredCompletedPointerBytes.compare(Buffer.from(jsonBytes(structuredPointer))) !== 0
+    || structuredPointer.schemaVersion !== "private-hermes-structured-completed-pointer/v1"
+    || structuredPointer.role !== role
+    || structuredPointer.attempt !== pointer.structuredAttempt
+    || structuredPointer.attemptCompletionSha256 !== sha256(attemptCompletionBytes)
+    || structuredPointer.hostReceiptSha256 !== sha256(hostReceiptBytes)
+  ) throw new Error(`Historical deep-read structured pointer drifted: ${input.segment.segmentId}`);
+  const receipt = JSON.parse(hostReceiptBytes.toString("utf8"));
+  const result = JSON.parse(resultBytes.toString("utf8"));
+  const usage = JSON.parse(usageBytes.toString("utf8"));
+  const traceLines = traceBytes.toString("utf8").trim().split("\n").filter(Boolean);
+  if (traceLines.length !== 1) throw new Error("Historical deep-read structured trace must contain one session.");
+  const trace = JSON.parse(traceLines[0]);
+  const expectedFiles = [
+    {
+      inputId: "input-001",
+      path: resolve(input.manifestPath),
+      sha256: sha256(input.manifestBytes),
+      sizeBytes: input.manifestBytes.byteLength,
+    },
+    ...input.chapterFiles.map((file) => ({
+      inputId: input.manifest.chapterFiles.find((entry) => entry.fileId === file.fileId)?.inputId,
+      path: resolve(file.path),
+      sha256: file.sha256,
+      sizeBytes: file.endByte - file.startByte,
+    })),
+  ];
+  const expectedInputs = expectedFiles.map(({ inputId, path, sha256: fileSha256, sizeBytes }) => ({
+    inputId,
+    path,
+    sha256: fileSha256,
+    sizeBytes,
+  }));
+  const expectedInputSha256 = sha256(Buffer.from(jsonBytes(expectedInputs.map(({ path, sha256: fileSha256 }) => ({
+    path,
+    sha256: fileSha256,
+  })))));
+  const { capability } = validateHistoricalHermesExactInputReadCapabilityV2({
+    bytes: readCapabilityBytes,
+    expectedFiles,
+    sourceRuntimeIdentitySha256: input.runtime.hermesRuntimeIdentitySha256,
+  });
+  const runtime = completedAttemptRuntimeEvidence(input.runtime);
+  const runtimeFields = currentDeepReadRuntimeFields(runtime);
+  validateHermesStructuredReceipt(receipt, {
+    role,
+    profileId: input.profileId,
+    promptSha256: sha256(Buffer.from(prompt)),
+    inputDigest: segmentInputDigest,
+    inputSha256: expectedInputSha256,
+    profileConfigSha256: runtime.profileConfigSha256,
+    contextLimitEntrySha256: runtime.contextLimitEntrySha256,
+    contextLimit: runtime.contextLimit,
+    ...runtimeFields,
+    readCapabilitySha256: sha256(readCapabilityBytes),
+    readExecutionEnvironmentSha256: capability.executionEnvironmentSha256,
+    readExecutionRuntimeIdentitySha256: capability.executionRuntimeIdentitySha256,
+    readManifestSha256: capability.manifest.sha256,
+    candidateOutputSha256: sha256(candidateOutputBytes),
+    resultSha256: sha256(resultBytes),
+    usageSha256: sha256(usageBytes),
+    traceSha256: sha256(traceBytes),
+    expectedReadCount: expectedFiles.length,
+    exactReadCount: expectedFiles.length,
+    exactReadSha256s: expectedFiles.map((file) => file.sha256),
+  });
+  if (hostReceiptBytes.compare(Buffer.from(jsonBytes(receipt))) !== 0) {
+    throw new Error(`Historical deep-read host receipt is not canonical: ${input.segment.segmentId}`);
+  }
+  validatePrivateDeepReadSegment(result, input.expected);
+  if (!isDeepStrictEqual(parseHermesJson(candidateOutputBytes.toString("utf8")), result)) {
+    throw new Error(`Historical deep-read candidate output drifted: ${input.segment.segmentId}`);
+  }
+  const traceEvidence = validateHermesStructuredTrace({
+    trace,
+    usage,
+    profileId: input.profileId,
+    prompt,
+    soulText: runtime.soulText,
+    expectedReadPaths: expectedFiles.map((file) => file.path),
+    result,
+    contextLimit: runtime.contextLimit,
+    inputEvidenceBytes: expectedFiles.reduce((total, file) => total + file.sizeBytes, 0),
+    outputReserveTokens: DEEP_READ_OUTPUT_RESERVE_TOKENS,
+  });
+  if (
+    receipt.runId !== usage.session_id
+    || receipt.effectiveSystemPromptSha256 !== traceEvidence.effectiveSystemPromptSha256
+    || receipt.contextInputProxyTokens !== traceEvidence.contextInputProxyTokens
+    || receipt.contextOutputReserveTokens !== traceEvidence.contextOutputReserveTokens
+    || receipt.contextBudgetUpperBoundTokens !== traceEvidence.contextBudgetUpperBoundTokens
+    || receipt.inputTokens !== usage.input_tokens
+    || receipt.outputTokens !== usage.output_tokens
+    || receipt.reasoningTokens !== usage.reasoning_tokens
+    || receipt.totalTokens !== usage.total_tokens
+    || receipt.apiCalls !== usage.api_calls
+    || receipt.cumulativeCacheReadTokens !== usage.cache_read_tokens
+    || receipt.cacheWriteTokens !== usage.cache_write_tokens
+    || receipt.completedAt !== new Date(traceEvidence.endedAt * 1000).toISOString()
+  ) throw new Error(`Historical deep-read trace receipt drifted: ${input.segment.segmentId}`);
+  const exactReadback = await validateHermesExactInputTrace({ trace, expectedFiles });
+  if (
+    exactReadback.exactReadCount !== receipt.exactReadCount
+    || !isDeepStrictEqual(exactReadback.exactReadSha256s, receipt.exactReadSha256s)
+  ) throw new Error(`Historical deep-read exact readback drifted: ${input.segment.segmentId}`);
+  validateHermesStructuredAttemptInputAttestation({
+    bytes: inputAttestationBytes,
+    attemptDir,
+    expected: {
+      role,
+      profileHome: resolve(input.runtime.profileHome),
+      projectCwd: historicalProjectCwd,
+      profileId: input.profileId,
+      promptSha256: sha256(Buffer.from(prompt)),
+      inputDigest: segmentInputDigest,
+      inputSha256: expectedInputSha256,
+      expectedReads: expectedFiles.map(({ path, sha256: fileSha256, sizeBytes }) => ({
+        path,
+        sha256: fileSha256,
+        sizeBytes,
+      })),
+      outputReserveTokens: DEEP_READ_OUTPUT_RESERVE_TOKENS,
+      executionEnvironmentSha256: buildHistoricalHermesExecutionEnvironmentDescriptorV2({
+        profileHome: input.runtime.profileHome,
+        projectCwd: historicalProjectCwd,
+      }).descriptorSha256,
+      readCapabilitySha256: sha256(readCapabilityBytes),
+      runtime: {
+        runtimeAttestation: input.runtime.runtimeAttestation,
+        profileId: input.profileId,
+        profileConfigSha256: runtime.profileConfigSha256,
+        soulSha256: runtime.soulSha256,
+        contentNeutralContractId: runtime.contentNeutralContractId,
+        contentNeutralContractSha256: runtime.contentNeutralContractSha256,
+        contentNeutralSoulSectionSha256: runtime.contentNeutralSoulSectionSha256,
+        contextLimit: runtime.contextLimit,
+        contextLimitEntrySha256: runtime.contextLimitEntrySha256,
+        hermesCommand: input.runtime.hermesCommand,
+        hermesExecutableSha256: runtime.hermesExecutableSha256,
+        hermesDelegatedExecutableSha256: runtime.hermesDelegatedExecutableSha256,
+        hermesVersionSha256: runtime.hermesVersionSha256,
+        hermesImplementationSha256: runtime.hermesImplementationSha256,
+        hermesDependencySha256: runtime.hermesDependencySha256,
+        hermesProfileContextSha256: runtime.hermesProfileContextSha256,
+        hermesProjectContextSha256: runtime.hermesProjectContextSha256,
+        hermesRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+      },
+    },
+  });
+  const attemptCompletion = JSON.parse(attemptCompletionBytes.toString("utf8"));
+  assertExactObjectKeys(attemptCompletion, [
+    "schemaVersion", "role", "attemptId", "runId", "hostReceiptSha256", "completed",
+  ], "Historical deep-read attempt completion");
+  if (
+    attemptCompletionBytes.compare(Buffer.from(jsonBytes(attemptCompletion))) !== 0
+    || attemptCompletion.schemaVersion !== "private-hermes-structured-attempt-completion/v1"
+    || attemptCompletion.role !== role
+    || attemptCompletion.attemptId !== basename(attemptDir)
+    || attemptCompletion.runId !== receipt.runId
+    || attemptCompletion.hostReceiptSha256 !== sha256(hostReceiptBytes)
+    || attemptCompletion.completed !== true
+  ) throw new Error(`Historical deep-read attempt completion drifted: ${input.segment.segmentId}`);
+  return {
+    prompt,
+    segmentInputDigest,
+    structured: {
+      status: "reused",
+      reused: true,
+      recovered: false,
+      attempt: pointer.structuredAttempt,
+      attemptDir,
+      receipt,
+      result,
+      usage,
+      trace,
+    },
+  };
 }
 
 async function validateCurrentDeepReadCompletedAttempt(input, pointer, pointerBytes) {
@@ -1256,7 +1550,9 @@ async function validateCurrentDeepReadCompletedAttempt(input, pointer, pointerBy
     sha256(structuredCompletedPointerBytes) !== pointer.structuredCompletedPointerSha256
     || sha256(domainReceiptBytes) !== pointer.domainReceiptSha256
   ) throw new Error(`Deep-read current pointer hashes drifted: ${input.segment.segmentId}`);
-  const execution = await runCurrentDeepReadStructured(input);
+  const execution = input.authAdapterPlanningEvidence === undefined
+    ? await readHistoricalCurrentDeepReadStructured(input, pointer, structuredCompletedPointerBytes)
+    : await runCurrentDeepReadStructured(input);
   if (
     execution.segmentInputDigest !== pointer.inputDigest
     || execution.structured.attempt !== pointer.structuredAttempt
@@ -1272,6 +1568,8 @@ async function validateCurrentDeepReadCompletedAttempt(input, pointer, pointerBy
     structuredCompletedPointerBytes: evidence.completedPointerBytes,
     structuredHostReceiptBytes: evidence.hostReceiptBytes,
     readCapabilityBytes: evidence.readCapabilityBytes,
+    exactInputAuthProjectionContractVersion: input.exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence: input.authAdapterPlanningEvidence,
   });
   const expectedDomainReceiptBytes = Buffer.from(jsonBytes(domainReceipt));
   const expectedPointer = buildCurrentDeepReadCompletedPointer({
@@ -1548,6 +1846,7 @@ async function runSegment(input) {
   };
   const completedPath = join(segmentDir, "completed.json");
   const validationInput = {
+    repositoryRoot: repoRoot,
     segmentDir,
     completedPath,
     manifest,
@@ -1558,6 +1857,8 @@ async function runSegment(input) {
     expected,
     profileId: input.profileId,
     runtime: input.runtime,
+    exactInputAuthProjectionContractVersion: input.exactInputAuthProjectionContractVersion,
+    authAdapterPlanningEvidence: input.authAdapterPlanningEvidence,
     chapterFiles,
     manifestBytes,
   };
@@ -1920,7 +2221,11 @@ async function runOneWork(input, progress) {
   await assertNoSymlinkAncestorsBelow(repoRoot, workDir, `Deep-read work root ${input.selectionEntry.sourceId}`);
   const targetBytes = input.targetBytes ?? TARGET_SEGMENT_BYTES;
   const segments = buildDeepReadSegments(sourceBytes, input.selectionEntry.chapterCount, targetBytes);
-  const runtime = await loadRuntimeProfile(input.profileId, repoRoot);
+  const [runtime, authAdapterPlanningEvidence] = await Promise.all([
+    loadRuntimeProfile(input.profileId, repoRoot),
+    loadHermesAuthAdapterPlanningEvidence(),
+  ]);
+  validateHermesAuthAdapterPlanningEvidence(authAdapterPlanningEvidence);
   const analysisRoot = join(repoRoot, "analyses/genre_souls", input.soulId, "v1");
   const artifactPath = join(analysisRoot, "work-studies", `${input.selectionEntry.sourceId}.deep-read.json`);
   const leakReceiptPath = join(analysisRoot, "leak-scan-receipts", `${input.selectionEntry.sourceId}.deep-read.json`);
@@ -1932,6 +2237,8 @@ async function runOneWork(input, progress) {
     targetBytes,
     segments,
     runtime,
+    exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterPlanningEvidence,
   };
   const workInputDescriptor = buildDeepReadWorkInputDescriptor(descriptorInput);
   const workInputDigest = sha256(Buffer.from(jsonBytes(workInputDescriptor)));
@@ -1944,11 +2251,18 @@ async function runOneWork(input, progress) {
     await assertNoSymlinkBelow(repoRoot, sourcePath, `Locked deep-read source ${input.selectionEntry.sourceId}`);
     const lockedSourceBytes = await readFile(sourcePath);
     if (lockedSourceBytes.compare(sourceBytes) !== 0) throw new Error(`Deep-read source changed while acquiring its work lock: ${input.selectionEntry.sourceId}`);
-    const lockedRuntime = await loadHermesRuntimeEvidence(runtime.profileHome, input.profileId, {
-      projectCwd: repoRoot,
-      executionEnvironment: runtime.executionEnvironment,
-    });
+    const [lockedRuntime, lockedAuthAdapterPlanningEvidence] = await Promise.all([
+      loadHermesRuntimeEvidence(runtime.profileHome, input.profileId, {
+        projectCwd: repoRoot,
+        executionEnvironment: runtime.executionEnvironment,
+      }),
+      loadHermesAuthAdapterPlanningEvidence(),
+    ]);
     assertHermesRuntimeEvidenceEqual(runtime, lockedRuntime, "Deep-read locked runtime");
+    validateHermesAuthAdapterPlanningEvidence(lockedAuthAdapterPlanningEvidence);
+    if (!isDeepStrictEqual(authAdapterPlanningEvidence, lockedAuthAdapterPlanningEvidence)) {
+      throw new Error("Deep-read locked auth adapter planning evidence drifted.");
+    }
     const legacyBundlePath = join(workDir, "deep-read-receipt.json");
     const legacySegmentsPath = join(workDir, "segments");
     const currentRunsPath = join(workDir, "runs");
@@ -2029,16 +2343,25 @@ async function runOneWork(input, progress) {
         runDir,
         workInputDigest,
         runtime,
+        exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+        authAdapterPlanningEvidence,
         allowWrite: !legacyMode,
       });
       outputs.push(output);
       progress({ event: "segment-complete", sourceId: input.selectionEntry.sourceId, segmentId: segment.segmentId, runId: output.receipt.runId, index: index + 1, total: segments.length });
     }
-    const runtimeAfterSegments = await loadHermesRuntimeEvidence(runtime.profileHome, input.profileId, {
-      projectCwd: repoRoot,
-      executionEnvironment: runtime.executionEnvironment,
-    });
+    const [runtimeAfterSegments, authAdapterPlanningEvidenceAfterSegments] = await Promise.all([
+      loadHermesRuntimeEvidence(runtime.profileHome, input.profileId, {
+        projectCwd: repoRoot,
+        executionEnvironment: runtime.executionEnvironment,
+      }),
+      loadHermesAuthAdapterPlanningEvidence(),
+    ]);
     assertHermesRuntimeEvidenceEqual(runtime, runtimeAfterSegments, "Deep-read pre-bundle runtime");
+    validateHermesAuthAdapterPlanningEvidence(authAdapterPlanningEvidenceAfterSegments);
+    if (!isDeepStrictEqual(authAdapterPlanningEvidence, authAdapterPlanningEvidenceAfterSegments)) {
+      throw new Error("Deep-read pre-bundle auth adapter planning evidence drifted.");
+    }
     const runtimeAttestations = [...new Set(outputs.map((output) => output.runtimeAttestation))];
     if (runtimeAttestations.length !== 1) {
       throw new Error(`Deep-read work mixes runtime attestation states before bundle publication: ${runtimeAttestations.join(", ")}`);

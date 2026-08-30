@@ -55,6 +55,21 @@ function jsonBytes(value) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 }
 
+function fakeAuthAdapterPlanningEvidence(label = "default") {
+  const adapterBytes = Buffer.from(`fixture-hermes-auth-adapter-${label}`);
+  const descriptor = {
+    schemaVersion: "hermes-auth-store-adapter-planning-evidence/v1",
+    contractVersion: "hermes-global-auth-store-adapter/v1",
+    files: [{
+      name: "sitecustomize.py",
+      sha256: sha256(adapterBytes),
+      sizeBytes: adapterBytes.byteLength,
+    }],
+    totalBytes: adapterBytes.byteLength,
+  };
+  return { ...descriptor, sha256: sha256(jsonBytes(descriptor)) };
+}
+
 async function writeBytes(path, bytes) {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, bytes);
@@ -613,12 +628,27 @@ function buildFixtureReadCapability(options, runtime, inputBytes) {
     sha256: sha256(`fixture-plugin-${index}`),
     sizeBytes: index + 1,
   }));
+  const authAdapterFiles = options.expectedAuthAdapterPlanningEvidence?.files
+    ?? (() => {
+      const authAdapterBytes = Buffer.from("fixture-hermes-auth-adapter");
+      return [{
+        name: "sitecustomize.py",
+        sha256: sha256(authAdapterBytes),
+        sizeBytes: authAdapterBytes.byteLength,
+      }];
+    })();
   const executionPolicy = {
-    schemaVersion: "hermes-exact-input-execution-policy/v2",
+    schemaVersion: "hermes-exact-input-execution-policy/v3",
     homeScope: "ephemeral-system-temp",
     workspaceScope: "empty-ephemeral-system-temp",
     cleanup: "required-before-finalization",
-    credentialPersistence: "forbidden",
+    capsuleCredentialPersistence: "forbidden",
+    credentialCopyIntoCapsule: "forbidden",
+    authoritativeAuthStoreScope: "source-profile-global-root",
+    authoritativeAuthStoreMutation: "provider-managed-under-auth-lock",
+    authProjectionContractVersion: "hermes-global-auth-store-adapter/v1",
+    authProjectionActivationProof: "sealed-reader-ready-contract",
+    ambientDotenvAndExternalSecretLoading: "disabled-by-bootstrap-adapter",
     pluginDiscovery: "ephemeral-bundled-root",
     readProtocol: "sequential-cursor-chunks-v2",
     resultSchema: "firefly-hermes-read-result/v2",
@@ -632,21 +662,30 @@ function buildFixtureReadCapability(options, runtime, inputBytes) {
     gitOptionalLocks: "0",
   };
   const executionEnvironmentSha256 = sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-environment-template/v2",
+    schemaVersion: "hermes-exact-input-environment-template/v3",
     executionPolicy,
     baseEnvironmentKeys: ["HERMES_BUNDLED_PLUGINS"],
     manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
-    addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
+    addedEnvironmentKeys: [
+      "FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT",
+      "FIREFLY_HERMES_AUTH_STORE",
+      "FIREFLY_HERMES_CAPSULE_HOME",
+      "FIREFLY_READ_MANIFEST",
+      "FIREFLY_READ_MANIFEST_SHA256",
+      "PYTHONPATH",
+    ],
   }));
   const executionRuntimeIdentitySha256 = sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-runtime-identity/v2",
+    schemaVersion: "hermes-exact-input-runtime-identity/v3",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
     manifestSha256: sha256(manifestBytes),
     pluginFiles,
+    authProjectionContractVersion: "hermes-global-auth-store-adapter/v1",
+    authAdapterFiles,
     executionEnvironmentSha256,
   }));
   const capability = {
-    schemaVersion: "private-hermes-exact-input-read-capability/v2",
+    schemaVersion: "private-hermes-exact-input-read-capability/v3",
     toolset: "firefly-source-read",
     tool: "firefly_read_source",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
@@ -654,8 +693,11 @@ function buildFixtureReadCapability(options, runtime, inputBytes) {
     executionEnvironmentSha256,
     manifest: { sha256: sha256(manifestBytes), sizeBytes: manifestBytes.byteLength },
     pluginFiles,
+    authProjectionContractVersion: "hermes-global-auth-store-adapter/v1",
+    authAdapterFiles,
     expectedInputs,
     cliPolicy: {
+      entrypoint: "attested-delegated-executable",
       flags: ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"],
       model: "gpt-5.6-sol",
       provider: "openai-codex",
@@ -792,6 +834,7 @@ function runnerOptions(fixture, overrides = {}) {
     genre: GENRE,
     testOnlyLoadEvidence: async () => fixture.evidence,
     testOnlyRuntimeLoader: async () => fakeRuntime(),
+    testOnlyAuthAdapterPlanningEvidenceLoader: async () => fakeAuthAdapterPlanningEvidence(),
     testOnlyProfileCompletionReadback: async () => ({ status: "fixture-completed" }),
     testOnly: true,
     testOnlyRunStructured: fakeRun(),
@@ -2010,5 +2053,97 @@ test("full runtime and exact prompt bytes change the structured manager run dige
     await rm(firstFixture.root, { recursive: true, force: true });
     await rm(secondFixture.root, { recursive: true, force: true });
     await rm(promptFixture.root, { recursive: true, force: true });
+  }
+});
+
+test("manager run digest and immutable capability bind the exact auth adapter planning evidence", async () => {
+  const firstFixture = await setupFixture();
+  const secondFixture = await setupFixture();
+  const firstEvidence = fakeAuthAdapterPlanningEvidence("first");
+  const secondEvidence = fakeAuthAdapterPlanningEvidence("second");
+  let executorEvidence;
+  try {
+    const first = await runGenreSoulManagerQa(runnerOptions(firstFixture, {
+      testOnlyAuthAdapterPlanningEvidenceLoader: async () => firstEvidence,
+      testOnlyRunStructured: async (options) => {
+        executorEvidence = options.expectedAuthAdapterPlanningEvidence;
+        return fakeRun()(options);
+      },
+    }));
+    const second = await runGenreSoulManagerQa(runnerOptions(secondFixture, {
+      testOnlyAuthAdapterPlanningEvidenceLoader: async () => secondEvidence,
+    }));
+    assert.deepEqual(executorEvidence, firstEvidence);
+    assert.equal(first.privateInputPath, second.privateInputPath);
+    assert.notEqual(first.inputDigest, second.inputDigest);
+
+    const descriptorPath = join(
+      firstFixture.root,
+      dirname(first.privateInputPath),
+      "structured-runs",
+      first.inputDigest,
+      "run-descriptor.json",
+    );
+    const descriptor = JSON.parse(await readFile(descriptorPath, "utf8"));
+    assert.equal(descriptor.schemaVersion, "private-genre-soul-manager-qa-run-input-digest/v4");
+    assert.equal(
+      descriptor.exactInputAuthProjectionContractVersion,
+      "hermes-global-auth-store-adapter/v1",
+    );
+    assert.deepEqual(descriptor.authAdapterPlanningEvidence, firstEvidence);
+  } finally {
+    await rm(firstFixture.root, { recursive: true, force: true });
+    await rm(secondFixture.root, { recursive: true, force: true });
+  }
+});
+
+test("manager rejects a self-consistent Hermes auth adapter capability that differs from its run plan", async () => {
+  const fixture = await setupFixture();
+  const planned = fakeAuthAdapterPlanningEvidence("planned");
+  const drifted = fakeAuthAdapterPlanningEvidence("drifted");
+  try {
+    await assert.rejects(
+      runGenreSoulManagerQa(runnerOptions(fixture, {
+        testOnlyAuthAdapterPlanningEvidenceLoader: async () => planned,
+        testOnlyRunStructured: async (options) => fakeRun()({
+          ...options,
+          expectedAuthAdapterPlanningEvidence: drifted,
+        }),
+      })),
+      /Manager QA Hermes auth-store adapter drifted from the sealed planning evidence/u,
+    );
+    await assert.rejects(
+      readFile(join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`)),
+      /ENOENT/u,
+    );
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("manager revalidates its exact run descriptor and prompt after structured execution", async () => {
+  for (const [filename, label] of [
+    ["run-descriptor.json", "run descriptor"],
+    ["prompt.txt", "exact prompt"],
+  ]) {
+    const fixture = await setupFixture();
+    try {
+      await assert.rejects(
+        runGenreSoulManagerQa(runnerOptions(fixture, {
+          testOnlyRunStructured: async (options) => {
+            const run = await fakeRun()(options);
+            await writeFile(join(options.runRoot, filename), Buffer.from(`drifted-${filename}\n`));
+            return run;
+          },
+        })),
+        new RegExp(`Manager QA ${label} changed during structured execution`, "u"),
+      );
+      await assert.rejects(
+        readFile(join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`)),
+        /ENOENT/u,
+      );
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
   }
 });

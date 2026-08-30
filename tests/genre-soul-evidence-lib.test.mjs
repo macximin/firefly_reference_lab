@@ -18,9 +18,11 @@ import {
 } from "../tools/genre-soul-deep-read-runner.mjs";
 import {
   buildHermesExecutionEnvironment,
+  buildHistoricalHermesExecutionEnvironmentDescriptorV2,
   buildHermesStructuredAttemptInputAttestation,
   FICTION_CONTENT_CONTRACT_ID,
   FICTION_CONTENT_CONTRACT_SHA256,
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
   HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_RUNTIME_KEYS,
   HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
   loadHermesRuntimeEvidence,
@@ -88,7 +90,25 @@ function jsonBytes(value) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function buildFixtureReadCapability(expectedFiles, runtime) {
+function fixtureAuthAdapterPlanningEvidence(fileSha256 = sha256(Buffer.from("fixture-hermes-auth-adapter"))) {
+  const descriptor = {
+    schemaVersion: "hermes-auth-store-adapter-planning-evidence/v1",
+    contractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    files: [{
+      name: "sitecustomize.py",
+      sha256: fileSha256,
+      sizeBytes: Buffer.byteLength("fixture-hermes-auth-adapter"),
+    }],
+    totalBytes: Buffer.byteLength("fixture-hermes-auth-adapter"),
+  };
+  return { ...descriptor, sha256: sha256(jsonBytes(descriptor)) };
+}
+
+function buildFixtureReadCapability(
+  expectedFiles,
+  runtime,
+  authAdapterPlanningEvidence = fixtureAuthAdapterPlanningEvidence(),
+) {
   const expectedInputs = expectedFiles.map(({ inputId, path, sha256: fileSha256, sizeBytes }) => ({
     inputId,
     path: resolve(path),
@@ -104,7 +124,11 @@ function buildFixtureReadCapability(expectedFiles, runtime) {
     sha256: sha256(`fixture-plugin-${index}`),
     sizeBytes: index + 1,
   }));
-  const executionPolicy = {
+  const historical = authAdapterPlanningEvidence === null;
+  const authAdapterFiles = historical
+    ? null
+    : structuredClone(authAdapterPlanningEvidence.files);
+  const executionPolicy = historical ? {
     schemaVersion: "hermes-exact-input-execution-policy/v2",
     homeScope: "ephemeral-system-temp",
     workspaceScope: "empty-ephemeral-system-temp",
@@ -121,23 +145,65 @@ function buildFixtureReadCapability(expectedFiles, runtime) {
     forbiddenCredentialNames: [".anthropic_oauth.json", ".env", "auth.json", "credentials.json", "oauth.json", "tokens.json"],
     pythonDontWriteBytecode: "1",
     gitOptionalLocks: "0",
+  } : {
+    schemaVersion: "hermes-exact-input-execution-policy/v3",
+    homeScope: "ephemeral-system-temp",
+    workspaceScope: "empty-ephemeral-system-temp",
+    cleanup: "required-before-finalization",
+    capsuleCredentialPersistence: "forbidden",
+    credentialCopyIntoCapsule: "forbidden",
+    authoritativeAuthStoreScope: "source-profile-global-root",
+    authoritativeAuthStoreMutation: "provider-managed-under-auth-lock",
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authProjectionActivationProof: "sealed-reader-ready-contract",
+    ambientDotenvAndExternalSecretLoading: "disabled-by-bootstrap-adapter",
+    pluginDiscovery: "ephemeral-bundled-root",
+    readProtocol: "sequential-cursor-chunks-v2",
+    resultSchema: "firefly-hermes-read-result/v2",
+    cursorProtocol: "firefly-hermes-read-cursor/v1",
+    maxSourceBytes: 4_500_000,
+    maxEncodedContentChars: 75_000,
+    maxResultChars: 80_000,
+    preflightAccounting: "deterministic-chunk-transcript",
+    forbiddenCredentialNames: [".anthropic_oauth.json", ".env", "auth.json", "credentials.json", "oauth.json", "tokens.json"],
+    pythonDontWriteBytecode: "1",
+    gitOptionalLocks: "0",
   };
   const executionEnvironmentSha256 = sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-environment-template/v2",
+    schemaVersion: historical
+      ? "hermes-exact-input-environment-template/v2"
+      : "hermes-exact-input-environment-template/v3",
     executionPolicy,
     baseEnvironmentKeys: ["HERMES_BUNDLED_PLUGINS"],
     manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
-    addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
+    addedEnvironmentKeys: historical
+      ? ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"]
+      : [
+        "FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT",
+        "FIREFLY_HERMES_AUTH_STORE",
+        "FIREFLY_HERMES_CAPSULE_HOME",
+        "FIREFLY_READ_MANIFEST",
+        "FIREFLY_READ_MANIFEST_SHA256",
+        "PYTHONPATH",
+      ],
   }));
   const executionRuntimeIdentitySha256 = sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-runtime-identity/v2",
+    schemaVersion: historical
+      ? "hermes-exact-input-runtime-identity/v2"
+      : "hermes-exact-input-runtime-identity/v3",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
     manifestSha256: sha256(manifestBytes),
     pluginFiles,
+    ...(historical ? {} : {
+      authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+      authAdapterFiles,
+    }),
     executionEnvironmentSha256,
   }));
   const capability = {
-    schemaVersion: "private-hermes-exact-input-read-capability/v2",
+    schemaVersion: historical
+      ? "private-hermes-exact-input-read-capability/v2"
+      : "private-hermes-exact-input-read-capability/v3",
     toolset: "firefly-source-read",
     tool: "firefly_read_source",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
@@ -145,8 +211,13 @@ function buildFixtureReadCapability(expectedFiles, runtime) {
     executionEnvironmentSha256,
     manifest: { sha256: sha256(manifestBytes), sizeBytes: manifestBytes.byteLength },
     pluginFiles,
+    ...(historical ? {} : {
+      authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+      authAdapterFiles,
+    }),
     expectedInputs,
     cliPolicy: {
+      ...(historical ? {} : { entrypoint: "attested-delegated-executable" }),
       flags: ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"],
       model: "gpt-5.6-sol",
       provider: "openai-codex",
@@ -174,10 +245,16 @@ function buildFixtureStructuredInputAttestation(input) {
     inputSha256: sha256(jsonBytes(expectedReads.map(({ path, sha256: fileSha256 }) => ({ path, sha256: fileSha256 })))),
     expectedReads,
     outputReserveTokens: 48_000,
-    executionEnvironmentSha256: buildHermesExecutionEnvironment({
-      profileHome: input.runtime.profileHome,
-      projectCwd: input.repositoryRoot,
-    }).descriptorSha256,
+    executionEnvironmentSha256: (input.readCapability.capability.schemaVersion
+      === "private-hermes-exact-input-read-capability/v2"
+      ? buildHistoricalHermesExecutionEnvironmentDescriptorV2({
+        profileHome: input.runtime.profileHome,
+        projectCwd: input.repositoryRoot,
+      })
+      : buildHermesExecutionEnvironment({
+        profileHome: input.runtime.profileHome,
+        projectCwd: input.repositoryRoot,
+      })).descriptorSha256,
     readCapabilitySha256: sha256(input.readCapability.bytes),
     runtime: Object.fromEntries(
       HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_RUNTIME_KEYS
@@ -291,10 +368,15 @@ async function writeFixtureStructuredAttempt(input) {
     runId,
     completedAt,
     repositoryRoot,
+    authAdapterPlanningEvidence,
   } = input;
   const resultBytes = jsonBytes(result);
   const candidateOutputBytes = Buffer.from(JSON.stringify(result));
-  const readCapability = buildFixtureReadCapability(expectedFiles, runtime);
+  const readCapability = buildFixtureReadCapability(
+    expectedFiles,
+    runtime,
+    authAdapterPlanningEvidence,
+  );
   const inputAttestationBytes = buildFixtureStructuredInputAttestation({
     expectedFiles,
     runtime,
@@ -496,6 +578,11 @@ async function writeFixtureStructuredAttempt(input) {
 
 async function writePrivateCurrentV2Work(root, input, privateRegistrySha256, observedSourceSetSha256) {
   const { source, selected, soulId, profileId, genre, runtime } = input;
+  const authAdapterPlanningEvidence = fixtureAuthAdapterPlanningEvidence();
+  const authAdapterBinding = input.historicalAuthUnbound === true ? {} : {
+    exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterPlanningEvidence,
+  };
   const baseWorkRoot = join(root, "exports/genre-souls", soulId, "v1/deep-read-runs", selected.sourceId);
   const targetSegmentBytes = source.chapters[2].endByte;
   const canonicalSegments = buildDeepReadSegments(source.bytes, selected.chapterCount, targetSegmentBytes);
@@ -507,6 +594,7 @@ async function writePrivateCurrentV2Work(root, input, privateRegistrySha256, obs
     targetBytes: targetSegmentBytes,
     segments: canonicalSegments,
     runtime,
+    ...authAdapterBinding,
   };
   const workInputDescriptor = buildDeepReadWorkInputDescriptor(descriptorInput);
   const workInputDigest = buildDeepReadWorkInputDigest(descriptorInput);
@@ -553,7 +641,12 @@ async function writePrivateCurrentV2Work(root, input, privateRegistrySha256, obs
     const manifestPath = join(segmentDir, "manifest.json");
     await writeBytes(manifestPath, manifestBytes);
     const prompt = buildCurrentDeepReadSegmentPrompt(manifest);
-    const segmentInputDigest = buildCurrentDeepReadSegmentInputDigest({ workInputDigest, manifest, prompt });
+    const segmentInputDigest = buildCurrentDeepReadSegmentInputDigest({
+      workInputDigest,
+      manifest,
+      prompt,
+      ...authAdapterBinding,
+    });
     const observationFixtures = [
       ["commercial-engine", `상업 엔진 관찰 ${segment.segmentId}`, "상업 기능", 0],
       ["protagonist-action", `주인공 행동 관찰 ${segment.segmentId}`, "행동 기능", 1],
@@ -598,6 +691,11 @@ async function writePrivateCurrentV2Work(root, input, privateRegistrySha256, obs
       runId: `deep-v2-${selected.providerFileId}-${segment.segmentId}`,
       completedAt,
       repositoryRoot: root,
+      authAdapterPlanningEvidence: input.historicalAuthUnbound === true
+        ? null
+        : input.authAdapterCapabilityDrift === true
+          ? fixtureAuthAdapterPlanningEvidence("f".repeat(64))
+          : authAdapterPlanningEvidence,
     });
     const domainReceipt = buildCurrentDeepReadDomainReceipt({
       workInputDigest,
@@ -609,6 +707,7 @@ async function writePrivateCurrentV2Work(root, input, privateRegistrySha256, obs
       structuredCompletedPointerBytes: execution.structuredCompletedPointerBytes,
       structuredHostReceiptBytes: execution.structuredHostReceiptBytes,
       readCapabilityBytes: execution.readCapabilityBytes,
+      ...authAdapterBinding,
     });
     const domainReceiptBytes = jsonBytes(domainReceipt);
     const pointer = buildCurrentDeepReadCompletedPointer({
@@ -1444,6 +1543,7 @@ async function writePrivateCurrentV2SurveyWork(root, input) {
 
 async function writePrivateCurrentV3SurveyWork(root, input) {
   const { source, selected, soulId, profileId, genre, runtime } = input;
+  const authAdapterPlanningEvidence = fixtureAuthAdapterPlanningEvidence();
   const sourceRunRoot = join(root, "exports/genre-souls", soulId, "v1/survey-runs", selected.sourceId);
   const chapterIndexes = [0, 2, 4, 6, 8];
   const phases = ["opening", "distributed-1", "distributed-2", "distributed-3", "ending"];
@@ -1475,6 +1575,7 @@ async function writePrivateCurrentV3SurveyWork(root, input) {
     soulSha256: runtime.soulSha256,
     windowBytes: 12_000,
     windows: sourceWindows,
+    ...(input.historicalAuthUnbound === true ? {} : { authAdapterPlanningEvidence }),
   });
   const runRoot = join(sourceRunRoot, "runs", runInput.inputDigest);
   const windows = sourceWindows.map(({ bytes, filename, ...window }, index) => ({
@@ -1539,7 +1640,15 @@ async function writePrivateCurrentV3SurveyWork(root, input) {
       bytes: window.bytes,
     })),
   ];
-  const readCapability = buildFixtureReadCapability(expectedFiles, runtime);
+  const readCapability = buildFixtureReadCapability(
+    expectedFiles,
+    runtime,
+    input.historicalAuthUnbound === true
+      ? null
+      : input.authAdapterCapabilityDrift === true
+        ? fixtureAuthAdapterPlanningEvidence("f".repeat(64))
+        : authAdapterPlanningEvidence,
+  );
   const prompt = buildCurrentSurveyPrompt(manifest);
   const role = `genre-soul-survey:${selected.sourceId}`;
   const inputAttestationBytes = buildFixtureStructuredInputAttestation({
@@ -1788,7 +1897,9 @@ async function buildFixture(t, options = {}) {
   if (
     options.currentAttested === true
     || options.surveyCurrentV3 === true
+    || options.surveyHistoricalV2 === true
     || options.deepCurrentV2 === true
+    || options.deepHistoricalV2 === true
   ) {
     runtime = await loadHermesRuntimeEvidence(
       join(hermesProfileRoot, profileId),
@@ -1927,7 +2038,7 @@ async function buildFixture(t, options = {}) {
   }));
   const selected = genres["fantasy-ko"];
   const surveyEntries = [];
-  const writeSurveyWork = options.surveyCurrentV3 === true
+  const writeSurveyWork = options.surveyCurrentV3 === true || options.surveyHistoricalV2 === true
     ? writePrivateCurrentV3SurveyWork
     : options.surveyCurrentV2 === true
       ? writePrivateCurrentV2SurveyWork
@@ -1940,6 +2051,8 @@ async function buildFixture(t, options = {}) {
       profileId: PROFILE_IDS[entry.genre],
       genre: entry.genre,
       runtime,
+      historicalAuthUnbound: options.surveyHistoricalV2 === true,
+      authAdapterCapabilityDrift: options.surveyAuthAdapterCapabilityDrift === true,
     }));
   }
   const survey = {
@@ -1973,7 +2086,7 @@ async function buildFixture(t, options = {}) {
     automaticReject: false,
   }));
   for (const entry of sources.filter((source) => source.genre === "fantasy-ko")) {
-    const writeDeepWork = options.deepCurrentV2 === true
+    const writeDeepWork = options.deepCurrentV2 === true || options.deepHistoricalV2 === true
       ? writePrivateCurrentV2Work
       : writePrivateWork;
     await writeDeepWork(root, {
@@ -1983,6 +2096,8 @@ async function buildFixture(t, options = {}) {
       profileId: PROFILE_IDS[entry.genre],
       genre: entry.genre,
       runtime,
+      historicalAuthUnbound: options.deepHistoricalV2 === true,
+      authAdapterCapabilityDrift: options.deepAuthAdapterCapabilityDrift === true,
     }, sha256(registryBytes), observedSourceSetSha256);
   }
   return { root, selected, hermesProfileRoot };
@@ -2220,6 +2335,13 @@ async function rewriteFreshDeepTrace(fixture, mutate, sourceId = fixture.selecte
   const readCapabilityBytes = await readFile(join(attemptDir, "read-capability.json"));
   const prompt = buildCurrentDeepReadSegmentPrompt(manifest);
   const workInputDigest = runRoot.split("/").at(-1);
+  const workInput = JSON.parse(await readFile(join(runRoot, "work-input.json"), "utf8"));
+  const authAdapterBinding = workInput.schemaVersion === "private-genre-soul-deep-read-work-input-digest/v3"
+    ? {
+        exactInputAuthProjectionContractVersion: workInput.exactInputAuthProjectionContractVersion,
+        authAdapterPlanningEvidence: workInput.authAdapterPlanningEvidence,
+      }
+    : {};
   const domainReceipt = buildCurrentDeepReadDomainReceipt({
     workInputDigest,
     segmentInputDigest: outerPointer.inputDigest,
@@ -2235,6 +2357,7 @@ async function rewriteFreshDeepTrace(fixture, mutate, sourceId = fixture.selecte
     structuredCompletedPointerBytes: structuredPointerBytes,
     structuredHostReceiptBytes: sharedReceiptBytes,
     readCapabilityBytes,
+    ...authAdapterBinding,
   });
   const domainReceiptBytes = jsonBytes(domainReceipt);
   const rebuiltPointer = buildCurrentDeepReadCompletedPointer({
@@ -2357,6 +2480,51 @@ test("loads the fresh current-v3 survey domain seal and exact single-tool struct
   const evidence = await loadFixtureEvidence(fixture);
   assert.equal(evidence.bindings.length, 3);
   assert.equal(evidence.metadata.survey.sha256.length, 64);
+  for (const selected of fixture.selected) {
+    const runRoot = await currentSurveyV2RunRoot(fixture, selected.sourceId);
+    const runInput = JSON.parse(await readFile(join(runRoot, "run-input.json"), "utf8"));
+    assert.equal(runInput.schemaVersion, "private-genre-soul-survey-run-input-digest/v3");
+    assert.equal(
+      runInput.exactInputAuthProjectionContractVersion,
+      HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    );
+  }
+});
+
+test("retains the historical Survey v2 digest reader without inventing an auth binding", async (t) => {
+  const fixture = await buildFixture(t, { surveyHistoricalV2: true });
+  const evidence = await loadFixtureEvidence(fixture);
+  assert.equal(evidence.bindings.length, 3);
+  for (const selected of fixture.selected) {
+    const runRoot = await currentSurveyV2RunRoot(fixture, selected.sourceId);
+    const runInput = JSON.parse(await readFile(join(runRoot, "run-input.json"), "utf8"));
+    assert.equal(runInput.schemaVersion, "private-genre-soul-survey-run-input-digest/v2");
+    assert.equal("authAdapterPlanningEvidence" in runInput, false);
+  }
+});
+
+test("rejects a fresh Survey v3 capability whose auth adapter files drift from the run input", async (t) => {
+  const fixture = await buildFixture(t, {
+    surveyCurrentV3: true,
+    surveyAuthAdapterCapabilityDrift: true,
+  });
+  await assert.rejects(
+    loadFixtureEvidence(fixture),
+    /read capability auth adapter drifted from the sealed planning evidence/u,
+  );
+});
+
+test("rejects malformed Survey v3 auth adapter planning evidence before digest reuse", async (t) => {
+  const fixture = await buildFixture(t, { surveyCurrentV3: true });
+  const runRoot = await currentSurveyV2RunRoot(fixture, fixture.selected[0].sourceId);
+  const runInputPath = join(runRoot, "run-input.json");
+  const runInput = JSON.parse(await readFile(runInputPath, "utf8"));
+  runInput.authAdapterPlanningEvidence.sha256 = "0".repeat(64);
+  await writeFile(runInputPath, jsonBytes(runInput));
+  await assert.rejects(
+    loadFixtureEvidence(fixture),
+    /auth-store adapter planning evidence digest drifted/u,
+  );
 });
 
 test("rejects an extra tool in fresh current-v3 survey evidence after every outer seal is refreshed", async (t) => {
@@ -2536,7 +2704,7 @@ test("validates and exposes strict current-attested deep-read bundles", async (t
   )));
 });
 
-test("loads fresh current-v2 deep-read domain seals with exact single-tool structured evidence", async (t) => {
+test("loads fresh deep-read work-v3 and segment-v2 auth-bound evidence", async (t) => {
   const fixture = await buildFixture(t, { deepCurrentV2: true });
   const evidence = await loadFixtureEvidence(fixture);
   assert.equal(evidence.bindings.length, 3);
@@ -2545,6 +2713,12 @@ test("loads fresh current-v2 deep-read domain seals with exact single-tool struc
   )));
   for (const selected of fixture.selected) {
     const runRoot = await currentRunRoot(fixture, selected.sourceId);
+    const workInput = JSON.parse(await readFile(join(runRoot, "work-input.json"), "utf8"));
+    assert.equal(workInput.schemaVersion, "private-genre-soul-deep-read-work-input-digest/v3");
+    assert.equal(
+      workInput.exactInputAuthProjectionContractVersion,
+      HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    );
     for (const segmentId of ["s0001", "s0002", "s0003"]) {
       const receipt = JSON.parse(await readFile(join(runRoot, "segments", segmentId, "domain-receipt.json"), "utf8"));
       assert.equal(receipt.schemaVersion, "private-hermes-deep-read-segment-receipt/v2");
@@ -2552,6 +2726,29 @@ test("loads fresh current-v2 deep-read domain seals with exact single-tool struc
       assert.equal(receipt.readCapabilityToolset, "firefly-source-read");
     }
   }
+});
+
+test("retains historical deep-read work-v2 and segment-v1 digest readers", async (t) => {
+  const fixture = await buildFixture(t, { deepHistoricalV2: true });
+  const evidence = await loadFixtureEvidence(fixture);
+  assert.equal(evidence.bindings.length, 3);
+  for (const selected of fixture.selected) {
+    const runRoot = await currentRunRoot(fixture, selected.sourceId);
+    const workInput = JSON.parse(await readFile(join(runRoot, "work-input.json"), "utf8"));
+    assert.equal(workInput.schemaVersion, "private-genre-soul-deep-read-work-input-digest/v2");
+    assert.equal("authAdapterPlanningEvidence" in workInput, false);
+  }
+});
+
+test("rejects deep-read capability auth adapter drift from the work-v3 binding", async (t) => {
+  const fixture = await buildFixture(t, {
+    deepCurrentV2: true,
+    deepAuthAdapterCapabilityDrift: true,
+  });
+  await assert.rejects(
+    loadFixtureEvidence(fixture),
+    /read capability auth adapter drifted from the sealed planning evidence/u,
+  );
 });
 
 test("rejects an extra tool in fresh current-v2 deep-read evidence after every outer seal is refreshed", async (t) => {

@@ -20,6 +20,7 @@ import {
   validatePrivateWorkSynthesisResult,
 } from "../tools/genre-soul-profile-runner.mjs";
 import {
+  HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
   HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
   buildHermesExecutionEnvironment,
   buildHermesStructuredAttemptInputAttestation,
@@ -102,12 +103,24 @@ function buildFixtureReadCapability(input, runtime, inputBytes) {
       sha256: hash(`fixture-plugin-${index}`),
       sizeBytes: index + 1,
     }));
+  const authAdapterFiles = input.expectedAuthAdapterPlanningEvidence?.files
+    ?? [{
+      name: "sitecustomize.py",
+      sha256: hash("fixture-auth-adapter"),
+      sizeBytes: 1,
+    }];
   const executionPolicy = {
-    schemaVersion: "hermes-exact-input-execution-policy/v2",
+    schemaVersion: "hermes-exact-input-execution-policy/v3",
     homeScope: "ephemeral-system-temp",
     workspaceScope: "empty-ephemeral-system-temp",
     cleanup: "required-before-finalization",
-    credentialPersistence: "forbidden",
+    capsuleCredentialPersistence: "forbidden",
+    credentialCopyIntoCapsule: "forbidden",
+    authoritativeAuthStoreScope: "source-profile-global-root",
+    authoritativeAuthStoreMutation: "provider-managed-under-auth-lock",
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authProjectionActivationProof: "sealed-reader-ready-contract",
+    ambientDotenvAndExternalSecretLoading: "disabled-by-bootstrap-adapter",
     pluginDiscovery: "ephemeral-bundled-root",
     readProtocol: "sequential-cursor-chunks-v2",
     resultSchema: "firefly-hermes-read-result/v2",
@@ -121,21 +134,30 @@ function buildFixtureReadCapability(input, runtime, inputBytes) {
     gitOptionalLocks: "0",
   };
   const executionEnvironmentSha256 = hash(jsonBytes({
-    schemaVersion: "hermes-exact-input-environment-template/v2",
+    schemaVersion: "hermes-exact-input-environment-template/v3",
     executionPolicy,
     baseEnvironmentKeys: ["HERMES_BUNDLED_PLUGINS"],
     manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
-    addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
+    addedEnvironmentKeys: [
+      "FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT",
+      "FIREFLY_HERMES_AUTH_STORE",
+      "FIREFLY_HERMES_CAPSULE_HOME",
+      "FIREFLY_READ_MANIFEST",
+      "FIREFLY_READ_MANIFEST_SHA256",
+      "PYTHONPATH",
+    ],
   }));
   const executionRuntimeIdentitySha256 = hash(jsonBytes({
-    schemaVersion: "hermes-exact-input-runtime-identity/v2",
+    schemaVersion: "hermes-exact-input-runtime-identity/v3",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
     manifestSha256: hash(manifestBytes),
     pluginFiles,
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterFiles,
     executionEnvironmentSha256,
   }));
   const capability = {
-    schemaVersion: "private-hermes-exact-input-read-capability/v2",
+    schemaVersion: "private-hermes-exact-input-read-capability/v3",
     toolset: "firefly-source-read",
     tool: "firefly_read_source",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
@@ -143,8 +165,11 @@ function buildFixtureReadCapability(input, runtime, inputBytes) {
     executionEnvironmentSha256,
     manifest: { sha256: hash(manifestBytes), sizeBytes: manifestBytes.byteLength },
     pluginFiles,
+    authProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    authAdapterFiles,
     expectedInputs,
     cliPolicy: {
+      entrypoint: "attested-delegated-executable",
       flags: ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"],
       model: "gpt-5.6-sol",
       provider: "openai-codex",
@@ -1301,10 +1326,22 @@ test("publishes only scanned candidates, keeps raw private, and reuses the immut
       root,
       `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${first.inputDigest}/manifest.json`,
     ), "utf8"));
-    assert.equal(manifest.schemaVersion, "private-genre-soul-profile-run-input-digest/v2");
+    assert.equal(manifest.schemaVersion, "private-genre-soul-profile-run-input-digest/v3");
     assert.equal(manifest.contextBudgetContractVersion, "genre-soul-profile-context-budget/v1");
     assert.equal(manifest.outputReserveTokens, 48_000);
     assert.equal(manifest.exactInputPluginPlanningEvidence.schemaVersion, "hermes-exact-input-plugin-planning-evidence/v1");
+    assert.equal(
+      manifest.exactInputAuthProjectionContractVersion,
+      HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    );
+    assert.equal(
+      manifest.authAdapterPlanningEvidence.schemaVersion,
+      "hermes-auth-store-adapter-planning-evidence/v1",
+    );
+    assert.equal(
+      manifest.authAdapterPlanningEvidence.contractVersion,
+      HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    );
     assert.ok(manifest.workInputs.every((work) => work.parts.every((part) => (
       part.contextBudget?.schemaVersion === "genre-soul-private-input-context-budget/v1"
       && part.contextBudget.contextPlan?.fits === true
@@ -1415,6 +1452,50 @@ test("rejects a consistently sealed Hermes capability that differs from the prof
       },
       testOnlyScanner: async (input) => passingScan(input),
     }), /sealed plugin capability drifted from the sealed planning evidence/u);
+    assert.equal(counter.calls, 1);
+    assert.equal(await pathExists(join(
+      root,
+      "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
+    )), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects a consistently sealed Hermes auth adapter that differs from the profile run plan", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-auth-adapter-plan-drift-"));
+  const evidence = makeEvidence();
+  const counter = { calls: 0 };
+  const baseExecutor = makeFakeExecutor(counter);
+  try {
+    await assert.rejects(runGenreSoulProfile({
+      testOnlyRepositoryRoot: root,
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => evidence,
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: async (input) => {
+        const planned = input.expectedAuthAdapterPlanningEvidence;
+        const driftedDescriptor = {
+          schemaVersion: planned.schemaVersion,
+          contractVersion: planned.contractVersion,
+          files: planned.files.map((file, index) => (
+            index === 0 ? { ...file, sha256: hash("transient-auth-adapter-bytes") } : file
+          )),
+          totalBytes: planned.totalBytes,
+        };
+        return baseExecutor({
+          ...input,
+          expectedAuthAdapterPlanningEvidence: {
+            ...driftedDescriptor,
+            sha256: hash(jsonBytes(driftedDescriptor)),
+          },
+        });
+      },
+      testOnlyScanner: async (input) => passingScan(input),
+    }), /sealed auth adapter capability drifted from the sealed planning evidence/u);
     assert.equal(counter.calls, 1);
     assert.equal(await pathExists(join(
       root,

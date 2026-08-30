@@ -49,7 +49,7 @@ session trace, profile config, usage와 결과를 ignored `exports/`에 보존�
 신규 실행은 경로를 프롬프트에 노출하지 않고 opaque input ID별
 `firefly_read_source` 응답을 각 private window 원본과 exact byte 비교한다. 기존
 `read_file` trace는 역사적 receipt 검증에서만 line-number wrapper를 복원해 읽는다.
-현재 exact-input capability v2는 플러그인을 임시 bundled root에서만 발견하고,
+현재 exact-input capability v3는 플러그인을 임시 bundled root에서만 발견하고,
 큰 UTF-8 입력을 결정론적 cursor chunk로 순차 전달한다. 모델은 직전 응답의
 `nextInputId`·`nextCursor`만 따라가며, host는 누락·병렬·재분할·재정렬·변조를
 거절한 뒤 모든 chunk를 원본 SHA와 byte 크기로 재조립한다. 당시 플러그인을
@@ -60,7 +60,7 @@ session trace, profile config, usage와 결과를 ignored `exports/`에 보존�
 
 `tools/genre-soul-deep-read-runner.mjs`는 자연 회차 파일을 bounded segment로
 묶고 opaque input ID별 `firefly_read_source` 응답을 모든 chapter 원본과 exact
-byte 검증한다. 동일한 capability v2 cursor chain을 쓰며 실패 attempt는
+byte 검증한다. 동일한 capability v3 cursor chain을 쓰며 실패 attempt는
 삭제·덮어쓰기 없이 보존하며, 전 구간이 gap-free이고 trace에 compaction이
 없을 때만 raw 없는 work-study receipt와 zero-match 누출 영수증을 만든다. 기존
 9편의 역사적 receipt는 `legacy-unattested`로만 읽으며 current 증거로 재표기하지
@@ -81,13 +81,27 @@ lock 아래 zero-match support receipt를 먼저 쓰고 work-study visibility ma
 available corpus 누출 검사 통과 후에만 함께 게시한다. 미해결 충돌이 있으면
 후보를 게시하지 않는다.
 
-이 상한은 raw 파일 크기의 근사치가 아니라 실제 capability v2 cursor chain의
+이 상한은 raw 파일 크기의 근사치가 아니라 실제 capability v3 cursor chain의
 assistant/tool transcript를 결정론적으로 직렬화한 값이다. profile context,
 bundled plugin, stage prompt, static reserve와 output reserve까지 공용 Hermes
 preflight와 같은 공식으로 합산하고 `budget < contextLimit`일 때만 실행한다.
-각 work partition은 provider 호출 전에 이 영수증을 run-input digest v2에 봉인하고
+각 work partition은 provider 호출 전에 이 영수증을 run-input digest v3에 봉인하고
 실행 직전에 다시 계산한다. 이전 공식으로 만들어진 미완료 run은 수정하거나
 재사용하지 않고 audit trail로 남기며, 새 budget 계약은 새 digest/run root를 쓴다.
+
+capability v3는 원문·세션·state DB·plugin을 system-temp capsule에 유지하면서,
+provider 인증 상태만 source profile tree의 canonical global `auth.json`으로 라우팅한다. 인증 파일은
+capsule에 복사하거나 symlink하지 않고, provider가 소유하는 credential lifecycle 및
+auth-state 변경(refresh, cooldown, pool sync·정규화·pruning)은 기존 global
+`auth.lock` 아래 수행한다. attested delegated Hermes를 직접 실행해 wrapper의
+`PYTHONPATH` 제거를 우회하고, 봉인된 bootstrap adapter bytes, 현재 Hermes private-hook
+consumer 호환성 probe, reader의 READY contract가 실제 trace에서 함께 통과해야 한다.
+survey·deep-read·profile·Manager QA의 current structured run은 모두 이 adapter planning
+evidence를 입력 digest와 executable capability에 결속한다. project/managed dotenv와
+Codex CLI credential 자동 수입은 exact run에서 비활성화된다. Hermes v0.19의 일반 profile
+process는 global singleton refresh 때 같은 root lock을 항상 공유하지 않으므로,
+exact profile synthesis와 별도 비-adapter Soul 실행을 동시에 돌리지 않는 것을
+현 운영 전제로 둔다.
 
 `tools/genre-soul-manager-qa-runner.mjs`는 프로필 합성 run을 재사용하지 않는다.
 별도 `gpt-5.6-sol/high` manager run이 각 작품의 early·middle·late 원문

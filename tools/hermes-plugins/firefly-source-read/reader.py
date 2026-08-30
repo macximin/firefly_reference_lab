@@ -25,6 +25,7 @@ _MAX_RESULT_CHARS = 80_000
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _INPUT_ID = re.compile(r"^input-[0-9]{3}$")
 _CURSOR = re.compile(r"^cursor-[a-f0-9]{64}$")
+_AUTH_ADAPTER_CONTRACT = "hermes-global-auth-store-adapter/v1"
 
 READ_SOURCE_SCHEMA = {
     "name": "firefly_read_source",
@@ -61,6 +62,18 @@ def _json(value: object) -> str:
 
 def _error(message: str) -> str:
     return _json({"error": message})
+
+
+def _assert_bootstrap_boundary() -> None:
+    capsule_home = os.environ.get("FIREFLY_HERMES_CAPSULE_HOME", "")
+    if (
+        os.environ.get("FIREFLY_HERMES_AUTH_ADAPTER_READY") != _AUTH_ADAPTER_CONTRACT
+        or not capsule_home
+        or os.environ.get("HERMES_HOME") != capsule_home
+        or os.path.abspath(capsule_home) != capsule_home
+        or os.path.realpath(capsule_home) != capsule_home
+    ):
+        raise ValueError("host bootstrap capability is not active")
 
 
 def _open_absolute_no_symlinks(path: str) -> int:
@@ -216,6 +229,7 @@ def _cursor(input_id: str, source_sha256: str, chunk_index: int) -> str:
 def read_source(args: dict, **_kwargs) -> str:
     """Return one inline chunk from the exact bound UTF-8 cursor chain."""
     try:
+        _assert_bootstrap_boundary()
         if not isinstance(args, dict) or set(args) not in ({"inputId"}, {"inputId", "cursor"}):
             raise ValueError("tool arguments keys drifted")
         input_id = args["inputId"]

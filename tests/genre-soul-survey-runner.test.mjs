@@ -15,6 +15,8 @@ import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT } from "../tools/genre-soul-hermes-run-lib.mjs";
+
 import {
   acquireSurveySourceLock,
   assertSurveyAdmissible,
@@ -45,6 +47,19 @@ const GENRE_TARGETS = new Map([
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function authAdapterPlanningEvidence(fileSha256 = "9".repeat(64)) {
+  const descriptor = {
+    schemaVersion: "hermes-auth-store-adapter-planning-evidence/v1",
+    contractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+    files: [{ name: "sitecustomize.py", sha256: fileSha256, sizeBytes: 321 }],
+    totalBytes: 321,
+  };
+  return {
+    ...descriptor,
+    sha256: sha256(Buffer.from(`${JSON.stringify(descriptor, null, 2)}\n`)),
+  };
 }
 
 function publishPaths(root, genre = "modern-fantasy-ko") {
@@ -209,6 +224,7 @@ test("content-addresses survey inputs across source, profile Soul, and exact win
     chapterCount: 100,
     configSha256: "b".repeat(64),
     soulSha256: "c".repeat(64),
+    authAdapterPlanningEvidence: authAdapterPlanningEvidence(),
     windows: Array.from({ length: 5 }, (_, index) => ({
       windowId: `w0${index + 1}`,
       filename: `w0${index + 1}.txt`,
@@ -222,14 +238,39 @@ test("content-addresses survey inputs across source, profile Soul, and exact win
   };
   const first = buildSurveyRunInputDescriptor(base);
   const identical = buildSurveyRunInputDescriptor(structuredClone(base));
+  const historicalV2Input = structuredClone(base);
+  delete historicalV2Input.authAdapterPlanningEvidence;
+  const historicalV2 = buildSurveyRunInputDescriptor(historicalV2Input);
   const changedSource = buildSurveyRunInputDescriptor({ ...base, sourceSha256: "d".repeat(64) });
   const changedSoul = buildSurveyRunInputDescriptor({ ...base, soulSha256: "e".repeat(64) });
+  const changedAdapter = buildSurveyRunInputDescriptor({
+    ...base,
+    authAdapterPlanningEvidence: authAdapterPlanningEvidence("8".repeat(64)),
+  });
 
+  assert.equal(first.descriptor.schemaVersion, "private-genre-soul-survey-run-input-digest/v3");
+  assert.equal(
+    first.descriptor.exactInputAuthProjectionContractVersion,
+    HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+  );
+  assert.deepEqual(first.descriptor.authAdapterPlanningEvidence, base.authAdapterPlanningEvidence);
+  assert.equal(historicalV2.descriptor.schemaVersion, "private-genre-soul-survey-run-input-digest/v2");
+  assert.equal("authAdapterPlanningEvidence" in historicalV2.descriptor, false);
+  assert.equal("exactInputAuthProjectionContractVersion" in historicalV2.descriptor, false);
+  assert.notEqual(first.inputDigest, historicalV2.inputDigest);
   assert.equal(first.bytes.compare(identical.bytes), 0);
   assert.equal(first.inputDigest, identical.inputDigest);
   assert.notEqual(first.inputDigest, changedSource.inputDigest);
   assert.notEqual(first.inputDigest, changedSoul.inputDigest);
+  assert.notEqual(first.inputDigest, changedAdapter.inputDigest);
   assert.match(first.inputDigest, /^[a-f0-9]{64}$/u);
+  assert.throws(() => buildSurveyRunInputDescriptor({
+    ...base,
+    authAdapterPlanningEvidence: {
+      ...base.authAdapterPlanningEvidence,
+      sha256: "0".repeat(64),
+    },
+  }), /auth-store adapter planning evidence digest drifted/u);
 });
 
 test("fresh survey prompts and domain seals bind only opaque exact inputs", () => {

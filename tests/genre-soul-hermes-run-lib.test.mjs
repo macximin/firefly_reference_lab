@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmod,
+  link,
   lstat,
   mkdir,
   mkdtemp,
@@ -16,7 +17,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -27,15 +28,18 @@ import {
   HERMES_STRUCTURED_ATTEMPT_EVIDENCE_FILENAMES,
   HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
   buildHermesExecutionEnvironment,
+  buildHistoricalHermesExecutionEnvironmentDescriptorV2,
   buildHermesExactInputReadManifest,
   buildHermesStructuredAttemptInputAttestation,
   extractHermesContextLimitEntry,
+  loadHermesAuthAdapterPlanningEvidence,
   loadHermesBinaryRuntimeEvidence,
   loadHermesExactInputEvidence,
   loadHermesExactInputPluginPlanningEvidence,
   loadHermesRuntimeEvidence,
   measureHermesExactInputTranscript,
   planHermesStructuredContextBudget,
+  resolveHermesDelegatedWrapperTarget,
   runHermesStructuredAttempt,
   validateHermesStructuredAttemptEvidenceFileNames,
   validateHermesProfileRuntime,
@@ -636,6 +640,47 @@ test("allows only the capsule-owned bundled plugin discovery root", { concurrenc
   }
 });
 
+test("reconstructs the historical v2 base descriptor without weakening current execution sanitization", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-historical-base-env-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const profileHome = join(root, "profiles", "inkos_test_profile");
+  const projectCwd = join(root, "workspace");
+  const current = buildHermesExecutionEnvironment({ profileHome, projectCwd });
+  const historical = buildHistoricalHermesExecutionEnvironmentDescriptorV2({
+    profileHome,
+    projectCwd,
+  });
+  const expectedHistoricalDescriptor = {
+    profileHome,
+    projectCwd,
+    contextCachePath: join(dirname(dirname(profileHome)), "context_length_cache.yaml"),
+    terminalCwd: projectCwd,
+    terminalEnvironment: "local",
+    pythonDontWriteBytecode: "1",
+    gitOptionalLocks: "0",
+    pathSha256: digest(Buffer.from(process.env.PATH ?? "")),
+    homeSha256: digest(Buffer.from(process.env.HOME ?? "")),
+    configuredTimeZone: (process.env.TZ ?? "").trim() || null,
+    canonicalOverrideKeys: ["HERMES_CONTEXT_CACHE_PATH", "HERMES_HOME", "TERMINAL_CWD", "TERMINAL_ENV"],
+    removedDynamicPrefixes: [
+      "ANTHROPIC_", "CODEX_", "DYLD_", "GIT_", "HERMES_", "OPENAI_", "OPENROUTER_",
+      "PYTHON", "TERMINAL_", "_CODEX_", "_HERMES_",
+    ],
+    removedProxyVariablesCaseInsensitive: ["ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"],
+    removedExactVariables: [
+      "AWS_CA_BUNDLE", "BASH_ENV", "CURL_CA_BUNDLE", "DENO_CERT", "ENV",
+      "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH", "LD_LIBRARY_PATH", "LD_PRELOAD",
+      "NODE_EXTRA_CA_CERTS", "NODE_OPTIONS", "NODE_PATH", "NPM_CONFIG_CAFILE",
+      "OPENSSL_CONF", "PIP_CERT", "REQUESTS_CA_BUNDLE", "SSL_CERT_DIR", "SSL_CERT_FILE",
+    ].sort(),
+  };
+  assert.equal(current.descriptor.removedDynamicPrefixes.includes("FIREFLY_HERMES_"), true);
+  assert.deepEqual(historical.descriptor, expectedHistoricalDescriptor);
+  assert.equal(historical.descriptorSha256, digest(jsonBytes(expectedHistoricalDescriptor)));
+  assert.equal(Object.hasOwn(historical, "env"), false);
+  assert.notEqual(historical.descriptorSha256, current.descriptorSha256);
+});
+
 test("the installed plugin API delivers a live-size deterministic cursor chain inline", async (t) => {
   const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-chunked-reader-")));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -696,6 +741,9 @@ print(json.dumps({"arguments": arguments, "payloads": payloads}, ensure_ascii=Fa
       ...process.env,
       FIREFLY_READ_MANIFEST: manifestPath,
       FIREFLY_READ_MANIFEST_SHA256: digest(manifestBytes),
+      FIREFLY_HERMES_AUTH_ADAPTER_READY: "hermes-global-auth-store-adapter/v1",
+      FIREFLY_HERMES_CAPSULE_HOME: root,
+      HERMES_HOME: root,
       PYTHONDONTWRITEBYTECODE: "1",
     },
     maxBuffer: 4 * 1024 * 1024,
@@ -760,6 +808,270 @@ print(json.dumps({"arguments": arguments, "payloads": payloads}, ensure_ascii=Fa
     validateHermesExactInputTrace({ trace: parallel, expectedFiles: evidence.files }),
     /one sequential tool call/u,
   );
+});
+
+test("the attested delegated Python activates the auth adapter and rejects unsafe stores", { concurrency: false }, async (t) => {
+  let wrapperPath;
+  try {
+    wrapperPath = (await execFileAsync("which", ["hermes"])).stdout.trim();
+  } catch {
+    t.skip("Hermes is not installed in PATH.");
+    return;
+  }
+  const wrapperBytes = await readFile(wrapperPath);
+  const delegatedMatch = /\bexec\s+["']([^"']+)["']\s+["']?\$@["']?/u.exec(wrapperBytes.toString("utf8"));
+  const delegatedHermes = delegatedMatch?.[1] ?? wrapperPath;
+  const delegatedPython = join(dirname(delegatedHermes), "python");
+  const runtime = await loadHermesBinaryRuntimeEvidence(wrapperPath);
+  assert.equal(digest(await readFile(delegatedHermes)), runtime.hermesDelegatedExecutableSha256);
+
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-auth-adapter-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const sourceRoot = join(root, "source-hermes");
+  const sourceAuthPath = join(sourceRoot, "auth.json");
+  const capsuleHome = join(root, "capsule", "hermes", "profiles", "inkos_test_profile");
+  const fakeHome = join(root, "home");
+  const decoyProjectEnv = join(root, "decoy.env");
+  const adapterSourceRoot = fileURLToPath(new URL("../tools/hermes-runtime/firefly-auth-store", import.meta.url));
+  const adapterRoot = join(root, "hermes-auth-adapter");
+  await Promise.all([
+    mkdir(sourceRoot, { recursive: true, mode: 0o700 }),
+    mkdir(capsuleHome, { recursive: true, mode: 0o700 }),
+    mkdir(fakeHome, { recursive: true, mode: 0o700 }),
+    mkdir(adapterRoot, { mode: 0o700 }),
+  ]);
+  const adapterPath = join(adapterRoot, "sitecustomize.py");
+  await writeFile(
+    adapterPath,
+    await readFile(join(adapterSourceRoot, "sitecustomize.py")),
+    { mode: 0o600 },
+  );
+  await Promise.all([
+    chmod(sourceRoot, 0o700),
+    chmod(adapterRoot, 0o700),
+    chmod(adapterPath, 0o600),
+  ]);
+  const jwtPart = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const accessCanary = `${jwtPart({ alg: "none", typ: "JWT" })}.${jwtPart({
+    exp: 4_102_444_800,
+    "https://api.openai.com/auth": { chatgpt_account_id: "firefly-test-account" },
+  })}.signature-canary`;
+  const refreshCanary = "refresh-token-must-never-be-printed";
+  const sourceAuthBytes = jsonBytes({
+    version: 1,
+    providers: {},
+    credential_pool: {
+      "openai-codex": [{
+        id: "source1",
+        label: "firefly-source-canary",
+        auth_type: "oauth",
+        priority: 0,
+        source: "manual:device_code",
+        access_token: accessCanary,
+        refresh_token: refreshCanary,
+        last_status: null,
+        last_status_at: null,
+        last_error_code: null,
+        last_error_reason: null,
+        last_error_message: null,
+        last_error_reset_at: null,
+        request_count: 0,
+      }],
+    },
+  });
+  await Promise.all([
+    writeFile(sourceAuthPath, sourceAuthBytes, { mode: 0o600 }),
+    writeFile(join(capsuleHome, "config.yaml"), configBytes(), { mode: 0o600 }),
+    writeFile(join(capsuleHome, "SOUL.md"), soulBytes("inkos_test_profile"), { mode: 0o600 }),
+    writeFile(decoyProjectEnv, "HERMES_HOME=/tmp/forbidden-escape\nOPENAI_API_KEY=forbidden\n", { mode: 0o600 }),
+  ]);
+  const adapterEnvironment = {
+    ...process.env,
+    HOME: fakeHome,
+    HERMES_HOME: capsuleHome,
+    FIREFLY_HERMES_AUTH_STORE: sourceAuthPath,
+    FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT: "hermes-global-auth-store-adapter/v1",
+    FIREFLY_HERMES_AUTH_ADAPTER_READY: "forged-parent-ready",
+    FIREFLY_HERMES_CAPSULE_HOME: capsuleHome,
+    PYTHONPATH: adapterRoot,
+    PYTHONDONTWRITEBYTECODE: "1",
+  };
+  const probe = String.raw`
+import json, os
+from pathlib import Path
+import agent.credential_pool as credential_pool
+import hermes_cli.auth as auth
+import hermes_cli.env_loader as env_loader
+import hermes_cli.main as hermes_main
+from hermes_cli.profiles import get_active_profile_name
+store = Path(os.environ["FIREFLY_HERMES_AUTH_STORE"])
+payload = json.loads(store.read_text(encoding="utf-8"))
+expected = payload["credential_pool"]["openai-codex"][0]
+assert os.environ["FIREFLY_HERMES_AUTH_ADAPTER_READY"] == "hermes-global-auth-store-adapter/v1"
+assert auth._auth_file_path() == store
+assert auth._global_auth_file_path() is None
+assert get_active_profile_name() == "inkos_test_profile"
+assert env_loader.load_hermes_dotenv(project_env=Path(${JSON.stringify(decoyProjectEnv)})) == []
+assert hermes_main.load_hermes_dotenv is env_loader.load_hermes_dotenv
+assert credential_pool.auth_mod is auth
+assert credential_pool._load_auth_store is auth._load_auth_store
+assert credential_pool.read_credential_pool is auth.read_credential_pool
+assert credential_pool.write_credential_pool is auth.write_credential_pool
+assert os.environ["HERMES_HOME"] == ${JSON.stringify(capsuleHome)}
+pool = credential_pool.load_pool("openai-codex")
+entry = pool.peek()
+assert entry is not None and entry.label == "firefly-source-canary"
+creds = auth.resolve_codex_runtime_credentials(refresh_if_expiring=False)
+assert creds["api_key"] == expected["access_token"]
+assert creds["source"] == "credential_pool"
+assert auth._import_codex_cli_tokens() is None
+print(json.dumps({"ready": True, "label": entry.label}, separators=(",", ":")))
+`;
+  const probed = await execFileAsync(delegatedPython, ["-c", probe], {
+    env: adapterEnvironment,
+    maxBuffer: 1024 * 1024,
+  });
+  assert.deepEqual(JSON.parse(probed.stdout), { ready: true, label: "firefly-source-canary" });
+  assert.equal(probed.stdout.includes(accessCanary), false);
+  assert.equal(probed.stdout.includes(refreshCanary), false);
+  assert.equal(probed.stderr.includes(accessCanary), false);
+  assert.equal(probed.stderr.includes(refreshCanary), false);
+  assert.deepEqual(await readFile(sourceAuthPath), sourceAuthBytes);
+
+  const listed = await execFileAsync(delegatedHermes, ["auth", "list", "openai-codex"], {
+    env: adapterEnvironment,
+    maxBuffer: 1024 * 1024,
+  });
+  assert.match(listed.stdout, /firefly-source-canary/u);
+  assert.equal(listed.stdout.includes(accessCanary), false);
+  assert.equal(listed.stdout.includes(refreshCanary), false);
+  assert.deepEqual(await readFile(sourceAuthPath), sourceAuthBytes);
+  await assert.rejects(lstat(join(capsuleHome, "auth.json")), { code: "ENOENT" });
+
+  const codexHome = join(fakeHome, ".codex");
+  const externalDecoy = "external-codex-decoy-must-not-be-imported";
+  await mkdir(codexHome, { recursive: true, mode: 0o700 });
+  await writeFile(join(codexHome, "auth.json"), jsonBytes({
+    tokens: { access_token: externalDecoy, refresh_token: "external-refresh-decoy" },
+  }), { mode: 0o600 });
+  const emptySourceAuthBytes = jsonBytes({ version: 1, providers: {}, credential_pool: {} });
+  await writeFile(sourceAuthPath, emptySourceAuthBytes);
+  const noExternalImportProbe = String.raw`
+import json, os
+from pathlib import Path
+import hermes_cli.auth as auth
+before = Path(os.environ["FIREFLY_HERMES_AUTH_STORE"]).read_bytes()
+try:
+    auth.resolve_codex_runtime_credentials(refresh_if_expiring=False)
+    raise AssertionError("external Codex credential was imported")
+except auth.AuthError:
+    pass
+assert Path(os.environ["FIREFLY_HERMES_AUTH_STORE"]).read_bytes() == before
+print(json.dumps({"externalImportBlocked": True}, separators=(",", ":")))
+`;
+  const noExternalImport = await execFileAsync(delegatedPython, ["-c", noExternalImportProbe], {
+    env: adapterEnvironment,
+    maxBuffer: 1024 * 1024,
+  });
+  assert.deepEqual(JSON.parse(noExternalImport.stdout), { externalImportBlocked: true });
+  assert.equal(noExternalImport.stdout.includes(externalDecoy), false);
+  assert.deepEqual(await readFile(sourceAuthPath), emptySourceAuthBytes);
+  await writeFile(sourceAuthPath, sourceAuthBytes);
+
+  const assertExit78 = async (environment) => {
+    await assert.rejects(
+      execFileAsync(delegatedPython, ["-c", "print('forbidden-marker')"], { env: environment }),
+      (error) => {
+        assert.equal(error.code, 78);
+        assert.equal(error.stdout.includes("forbidden-marker"), false);
+        assert.match(error.stderr, /^Firefly Hermes auth-store adapter failed closed\.\n$/u);
+        assert.equal(error.stderr.includes(sourceAuthPath), false);
+        assert.equal(error.stderr.includes(refreshCanary), false);
+        return true;
+      },
+    );
+  };
+  const runManualActivationProbe = async (mutation) => {
+    const inactiveEnvironment = { ...adapterEnvironment };
+    for (const name of [
+      "FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT",
+      "FIREFLY_HERMES_AUTH_ADAPTER_READY",
+      "FIREFLY_HERMES_AUTH_STORE",
+      "FIREFLY_HERMES_CAPSULE_HOME",
+      "PYTHONPATH",
+    ]) delete inactiveEnvironment[name];
+    const manualProbe = String.raw`
+import importlib.util, os
+${mutation}
+os.environ["FIREFLY_HERMES_AUTH_STORE"] = ${JSON.stringify(sourceAuthPath)}
+os.environ["FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT"] = "hermes-global-auth-store-adapter/v1"
+os.environ["FIREFLY_HERMES_CAPSULE_HOME"] = ${JSON.stringify(capsuleHome)}
+os.environ["PYTHONPATH"] = ${JSON.stringify(adapterRoot)}
+spec = importlib.util.spec_from_file_location(
+    "firefly_sitecustomize_probe",
+    ${JSON.stringify(join(adapterRoot, "sitecustomize.py"))},
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+print("forbidden-marker")
+`;
+    await assert.rejects(
+      execFileAsync(delegatedPython, ["-c", manualProbe], { env: inactiveEnvironment }),
+      (error) => {
+        assert.equal(error.code, 78);
+        assert.equal(error.stdout.includes("forbidden-marker"), false);
+        assert.match(error.stderr, /^Firefly Hermes auth-store adapter failed closed\.\n$/u);
+        return true;
+      },
+    );
+  };
+
+  await runManualActivationProbe("import hermes_cli.auth as auth\nauth._auth_file_path = None");
+  await runManualActivationProbe(String.raw`
+import hermes_cli.auth as auth
+def bypassed_load_auth_store(_auth_file=None):
+    _auth_file_path
+    return {"version": 1, "providers": {}}
+auth._load_auth_store = bypassed_load_auth_store
+`);
+  await runManualActivationProbe(String.raw`
+import agent.credential_pool as credential_pool
+credential_pool._load_auth_store = lambda _auth_file=None: {"version": 1, "providers": {}}
+`);
+  await runManualActivationProbe(String.raw`
+import sys, types
+import hermes_cli.env_loader as env_loader
+stale_main = types.ModuleType("hermes_cli.main")
+stale_main.load_hermes_dotenv = env_loader.load_hermes_dotenv
+sys.modules["hermes_cli.main"] = stale_main
+`);
+
+  const pythonPathSeparator = process.platform === "win32" ? ";" : ":";
+  await assertExit78({
+    ...adapterEnvironment,
+    PYTHONPATH: `${adapterRoot}${pythonPathSeparator}${fakeHome}`,
+  });
+  await assertExit78({ ...adapterEnvironment, FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT: "wrong-contract" });
+  await chmod(adapterPath, 0o644);
+  await assertExit78(adapterEnvironment);
+  await chmod(adapterPath, 0o600);
+  const adapterHardLinkPath = join(root, "adapter-hardlink.py");
+  await link(adapterPath, adapterHardLinkPath);
+  await assertExit78(adapterEnvironment);
+  await unlink(adapterHardLinkPath);
+  await chmod(sourceAuthPath, 0o644);
+  await assertExit78(adapterEnvironment);
+  await chmod(sourceAuthPath, 0o600);
+  const hardLinkPath = join(sourceRoot, "auth-hardlink.json");
+  await link(sourceAuthPath, hardLinkPath);
+  await assertExit78(adapterEnvironment);
+  await unlink(hardLinkPath);
+  const realAuthPath = join(sourceRoot, "auth-real.json");
+  await rename(sourceAuthPath, realAuthPath);
+  await symlink(realAuthPath, sourceAuthPath);
+  await assertExit78(adapterEnvironment);
+  await unlink(sourceAuthPath);
+  await rename(realAuthPath, sourceAuthPath);
 });
 
 test("binds the delegated Hermes implementation behind a stable wrapper", async (t) => {
@@ -831,6 +1143,40 @@ fi
     loadHermesBinaryRuntimeEvidence(wrapper),
     /changed across hash\/version\/hash attestation/u,
   );
+});
+
+test("bypasses only the exact reviewed Hermes environment scrubber wrapper", () => {
+  const delegated = "/opt/hermes/venv/bin/hermes";
+  const canonical = Buffer.from(`#!/usr/bin/env bash
+unset PYTHONPATH
+unset PYTHONHOME
+exec "${delegated}" "$@"
+`);
+  assert.equal(resolveHermesDelegatedWrapperTarget(canonical), delegated);
+  assert.equal(
+    resolveHermesDelegatedWrapperTarget(Buffer.from("#!/usr/bin/env node\nprocess.exit(0);\n")),
+    null,
+  );
+
+  for (const changed of [
+    `#!/usr/bin/env bash
+unset PYTHONPATH
+unset PYTHONHOME
+export HERMES_SECURITY_PRELUDE=required
+exec "${delegated}" "$@"
+`,
+    `#!/usr/bin/env bash
+if [[ -x "${delegated}" ]]; then
+  exec "${delegated}" "$@"
+fi
+`,
+    "#!/usr/bin/env bash\nunset PYTHONPATH\nunset PYTHONHOME\nexec \"../venv/bin/hermes\" \"$@\"\n",
+  ]) {
+    assert.throws(
+      () => resolveHermesDelegatedWrapperTarget(Buffer.from(changed)),
+      /unsupported semantics; refusing to bypass its prelude/u,
+    );
+  }
 });
 
 test("keeps project runtime identity stable across volatile Git/date state and binds policy bytes", { concurrency: false }, async () => {
@@ -972,6 +1318,10 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     CODEX_HOME: "/tmp/forged-codex-home",
     CODEX_MODEL: "forged-model",
     CURL_CA_BUNDLE: "/tmp/forged-curl-ca.pem",
+    FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT: "forged-contract",
+    FIREFLY_HERMES_AUTH_ADAPTER_READY: "forged-ready",
+    FIREFLY_HERMES_AUTH_STORE: "/tmp/forged-auth.json",
+    FIREFLY_HERMES_CAPSULE_HOME: "/tmp/forged-capsule-home",
     HERMES_UNEXPECTED_OVERRIDE: "must-not-reach-Hermes",
     HTTPS_PROXY: "http://127.0.0.1:9",
     NODE_EXTRA_CA_CERTS: "/tmp/forged-node-ca.pem",
@@ -979,6 +1329,7 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     OPENAI_API_KEY: "forged-openai-key",
     OPENAI_BASE_URL: "https://forged-openai.invalid",
     OPENROUTER_API_KEY: "forged-openrouter-key",
+    PYTHONPATH: "/tmp/forged-python-path",
     REQUESTS_CA_BUNDLE: "/tmp/forged-requests-ca.pem",
     SSL_CERT_FILE: "/tmp/forged-ssl-ca.pem",
     TERMINAL_UNEXPECTED_OVERRIDE: "must-not-reach-Hermes",
@@ -991,7 +1342,9 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
   );
   try {
     await mkdir(profileHome, { recursive: true });
+    await chmod(join(root, "hermes"), 0o700);
     await Promise.all([
+      writeFile(join(root, "hermes", "auth.json"), "{\"version\":1,\"providers\":{},\"credential_pool\":{}}\n", { mode: 0o600 }),
       writeFile(join(profileHome, "config.yaml"), configBytes()),
       writeFile(join(profileHome, "SOUL.md"), soulBytes(profileId)),
       writeFile(join(root, "hermes", "context_length_cache.yaml"), "context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000\n"),
@@ -1034,9 +1387,20 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
 		  if (process.env.HERMES_BUNDLED_PLUGINS !== join(executionRoot, "hermes-bundled-plugins")) throw new Error("bundled plugin discovery root drifted");
 		  if (process.env.FIREFLY_READ_MANIFEST !== join(executionRoot, "input-manifest.json")) throw new Error("read manifest path drifted");
 		  if (!/^[a-f0-9]{64}$/.test(process.env.FIREFLY_READ_MANIFEST_SHA256 ?? "")) throw new Error("read manifest digest missing");
+		  if (process.env.FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT !== "hermes-global-auth-store-adapter/v1") throw new Error("auth adapter contract drifted");
+		  if (process.env.FIREFLY_HERMES_AUTH_ADAPTER_READY !== undefined) throw new Error("host forged auth adapter readiness");
+		  if (process.env.FIREFLY_HERMES_AUTH_STORE !== join(process.env.MOCK_HERMES_FORBIDDEN_ROOT, "hermes", "auth.json")) throw new Error("authoritative auth store drifted");
+		  if (process.env.FIREFLY_HERMES_CAPSULE_HOME !== process.env.HERMES_HOME) throw new Error("capsule home contract drifted");
+		  if (process.env.PYTHONPATH !== join(executionRoot, "hermes-auth-adapter")) throw new Error("auth adapter import path drifted");
 		  appendFileSync(process.env.MOCK_HERMES_CAPSULE_LOG, process.env.HERMES_HOME + "\\n");
 		  if (process.env.HERMES_ENVIRONMENT_HINT || process.env.HERMES_PLATFORM || process.env.HERMES_IGNORE_RULES) throw new Error("prompt override leaked");
-		  for (const key of ${JSON.stringify(Object.keys(hostileEnvironment))}) {
+		  for (const key of ${JSON.stringify(Object.keys(hostileEnvironment).filter((key) => ![
+        "FIREFLY_HERMES_AUTH_ADAPTER_CONTRACT",
+        "FIREFLY_HERMES_AUTH_ADAPTER_READY",
+        "FIREFLY_HERMES_AUTH_STORE",
+        "FIREFLY_HERMES_CAPSULE_HOME",
+        "PYTHONPATH",
+      ].includes(key)))}) {
 		    if (process.env[key] !== undefined) throw new Error("forbidden environment override leaked: " + key);
 		  }
 		  if (process.env.PYTHONDONTWRITEBYTECODE !== "1") throw new Error("bytecode guard missing");
@@ -1088,6 +1452,12 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
       progress: (event) => progress.push(event.event),
     };
     const pluginPlanningEvidence = await loadHermesExactInputPluginPlanningEvidence();
+    const authAdapterPlanningEvidence = await loadHermesAuthAdapterPlanningEvidence();
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /auth-store adapter planning evidence is required/u,
+    );
+    options.expectedAuthAdapterPlanningEvidence = authAdapterPlanningEvidence;
     const driftedPlanningDescriptor = {
       schemaVersion: pluginPlanningEvidence.schemaVersion,
       files: pluginPlanningEvidence.files.map((file, index) => (
@@ -1113,6 +1483,30 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     assert.equal(preflightInvocations.filter((entry) => entry === "--oneshot").length, 0);
     await assert.rejects(lstat(join(pluginPlanningDriftRunRoot, ".readonly-capability")), { code: "ENOENT" });
     options.expectedPluginPlanningEvidence = pluginPlanningEvidence;
+    const driftedAuthAdapterDescriptor = {
+      schemaVersion: authAdapterPlanningEvidence.schemaVersion,
+      contractVersion: authAdapterPlanningEvidence.contractVersion,
+      files: authAdapterPlanningEvidence.files.map((file, index) => (
+        index === 0 ? { ...file, sha256: digest("canonical-but-not-live-auth-adapter") } : file
+      )),
+      totalBytes: authAdapterPlanningEvidence.totalBytes,
+    };
+    const authAdapterPlanningDriftRunRoot = join(root, "auth-adapter-planning-drift-run");
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: authAdapterPlanningDriftRunRoot,
+        expectedAuthAdapterPlanningEvidence: {
+          ...driftedAuthAdapterDescriptor,
+          sha256: digest(jsonBytes(driftedAuthAdapterDescriptor)),
+        },
+        progress: () => {},
+      }),
+      /auth adapter.*drifted from the sealed planning evidence/u,
+    );
+    await assert.rejects(lstat(join(authAdapterPlanningDriftRunRoot, ".readonly-capability")), { code: "ENOENT" });
+    const sourceAuthPath = join(root, "hermes", "auth.json");
+    const sourceAuthBytes = await readFile(sourceAuthPath);
     const first = await runHermesStructuredAttempt(options);
     assert.equal(first.status, "completed");
     assert.equal(first.reused, false);
@@ -1143,6 +1537,15 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     });
     assert.equal(validatedReadCapability.sha256, first.receipt.readCapabilitySha256);
     assert.equal(validatedReadCapability.capability.tool, "firefly_read_source");
+    assert.equal(
+      validatedReadCapability.capability.authProjectionContractVersion,
+      "hermes-global-auth-store-adapter/v1",
+    );
+    assert.deepEqual(
+      validatedReadCapability.capability.authAdapterFiles,
+      authAdapterPlanningEvidence.files,
+    );
+    assert.deepEqual(await readFile(sourceAuthPath), sourceAuthBytes);
     const originalInputAttestationBytes = await readFile(inputAttestationPath);
     const inputAttestation = JSON.parse(originalInputAttestationBytes.toString("utf8"));
     const inputAttestationSha256 = digest(originalInputAttestationBytes);
@@ -1171,6 +1574,7 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     const authCapsuleRoot = join(capsuleHomes.at(-1), "../../..");
     await assert.rejects(lstat(authCapsuleRoot), { code: "ENOENT" });
     await assert.rejects(readFile(join(authArtifactRunRoot, "completed.json")), { code: "ENOENT" });
+    assert.deepEqual(await readFile(sourceAuthPath), sourceAuthBytes);
 
     const firstReleasedLockName = (await readdir(runRoot))
       .find((name) => name.startsWith(".structured-run.lock.released-"));
