@@ -85,7 +85,7 @@ available corpus 누출 검사 통과 후에만 함께 게시한다. 미해결 �
 assistant/tool transcript를 결정론적으로 직렬화한 값이다. profile context,
 bundled plugin, stage prompt, static reserve와 output reserve까지 공용 Hermes
 preflight와 같은 공식으로 합산하고 `budget < contextLimit`일 때만 실행한다.
-각 work partition은 provider 호출 전에 이 영수증을 run-input digest v3에 봉인하고
+각 work partition은 provider 호출 전에 이 영수증을 run-input digest v4에 봉인하고
 실행 직전에 다시 계산한다. 이전 공식으로 만들어진 미완료 run은 수정하거나
 재사용하지 않고 audit trail로 남기며, 새 budget 계약은 새 digest/run root를 쓴다.
 
@@ -113,22 +113,30 @@ SHA·private 입력 SHA·run ID·zero-match 영수증이 모두 닫혀야 candid
 판정은 ignored 실행 경로의 immutable `manager-decision.json`으로 보존하고 tracked
 PASS marker나 누출 검사는 만들지 않는다. top-level profile `completed` seal이 없으면 하위 support 파일이
 모두 보여도 Manager QA를 시작하거나 재사용하지 않는다. QA 통과도 InkOS canon
-반영이나 Soul 승급은 아니며 owner 결정을 대체하지 않는다. 각 표본은 게시 직전 live private source의 selector와
-byte SHA에 다시 결속한다. 선정 제목·저자, 직함에 결속된 인명, 식별 가능한
-조직 표면은 tracked 비교문에서 즉시 차단한다. 원문과 후보에 함께 나타난 맨몸
-2~4음절 성씨형 표현은 코드가 인명·일반어를 추측하지 않고 ignored `exports/`에
-private `pending_hil` 요청만 남긴다. 이 상태에서는 tracked 후보·누출 영수증·
-visibility marker·top-level completion seal을 쓰지 않는다. 기존 Storyyard
+반영이나 Soul 승급은 아니며 owner 결정을 대체하지 않는다. 각 표본은 게시 직전
+live private source의 selector와 byte SHA에 다시 결속한다. 연속 5-token 복사와
+선정 메타데이터의 제목·저자처럼 별도 구조로 결정론적으로 확정된 표면은 즉시
+차단한다. 샘플 텍스트에서 형태만 추정한 인용·Latin 식별자·조직 전체형을 포함해
+구두점·조사·일반 어휘·조직 접미사·맨몸
+2~4음절 인명형처럼 문맥 판단이 필요한 항목은 코드가 차단 여부를 추측하지 않고
+bounded raw window 후보만 추출한다. 작품별 consolidation과 장르 합성의 중간
+결과에서는 구조·근거 검증만 수행하고, 프로필의 최종 tracked 후보와 Manager의
+최종 receipt 후보에서 각각 한 번만 별도 role/run의 `gpt-5.6-sol/high` semantic
+reviewer를 실행한다. reviewer가 `generic-overlap`으로 판정하면 자동 통과하고,
+`protected-identity`면 차단하며, `uncertain`만 `surface-review/owner-hil/` 아래
+v3 `pending_hil` 요청으로 보낸다. reviewer input·result·host receipt·trace는
+producer run/receipt와 함께 immutable private evidence로 봉인하고, 성공한
+completion의 재사용 때 prompt와 exact-read chain을 다시 만든다. pending 상태에서는 tracked 후보·누출
+영수증·visibility marker·top-level completion seal을 쓰지 않는다. 현재 Manager
+tracked receipt는 `genre-soul-manager-qa/v2`이며 clean 후보도 deterministic proof를
+필수로 가진다. semantic proof는 Manager input digest, canonical candidate bytes,
+finding decision/result SHA, 실제 private evidence readback에 함께 결속되고 현재
+receipt에는 legacy v1 proof를 넣을 수 없다. 기존 Storyyard
 `firefly_review_packet/v2`는 InkOS 원고 두 후보 전용이므로 이 분석 판정에
-재라벨해 쓰지 않는다. 반면 `대기업` 같은 4-token 이하의 일반 상업 메커니즘
-문구는 짧다는 이유만으로 자동 거절하지 않는다. 조직 접미사에서 파생된 bare
-stem도 반대쪽에 조직 전체형·소유격·방식/전략/문화형 identity 귀속 문맥이 함께
-있을 때만 즉시 차단한다. 문장부호 너머 인접 토큰은 조직 구조에서 제외하고, 문맥
-없는 stem-only 교차는 일반어 stoplist 없이 새 조직 stem finding의 private
-`pending_hil`로 보낸다. 성씨형·조직 stem finding은 같은 v2 request에서 rule별로
-결속되고, 동일 조직 전체형과 나머지 고신뢰 표면 차단은 유지한다. 이 v2 의미는 새
-digest와 request/decision v2 schema를 만들고, 완료된 v1 검토 영수증만 역사 증거로
-읽으며 v1 pending 요청·결정을 새 판단으로 재사용하지 않는다. 실행
+재라벨해 쓰지 않는다. 반면 `대기업` 같은 짧은 일반 상업 메커니즘 문구는 길이만으로
+자동 거절하지 않는다. 문장부호 너머 인접 토큰은 조직 구조에서 제외하고, 불완전한
+window coverage는 semantic reviewer가 반드시 `uncertain`으로 남긴다. v1/v2
+pending 요청·결정은 v3 판단으로 재사용하지 않는다. 실행
 digest는 exact prompt bytes와 현재 attested Hermes
 binary·implementation·dependency·profile/project context 전체를 포함하며, 실제
 attempt의 trace·usage·result·host receipt·completion pointer가 모두 일치해야 한다.

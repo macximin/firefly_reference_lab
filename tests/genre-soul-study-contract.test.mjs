@@ -22,6 +22,7 @@ import {
 
 const hash = (character) => character.repeat(64);
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+const jsonBytes = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 const sourceText = "주인공은 회사를 샀다. 경쟁자는 계약을 막았다. 주인공은 현금과 지분으로 보상을 받았다. ".repeat(20);
 const profileSourceIds = ["gdrive-commercial", "gdrive-breadth", "gdrive-surface"];
 const profileDimensions = [
@@ -261,6 +262,127 @@ function makeManagerQaReceipt() {
     },
     result: "pass",
   };
+}
+
+function makeCurrentManagerQaReceipt(surfaceMode = "deterministic-clean") {
+  const receipt = makeManagerQaReceipt();
+  receipt.schemaVersion = "genre-soul-manager-qa/v2";
+  receipt.manager.inputDigest = hash("b");
+  const structuredRoot = `${receipt.privateInput.path.slice(0, -"/input.json".length)}/structured-runs/${receipt.manager.inputDigest}`;
+  const surfaceRoot = `${structuredRoot}/surface-review`;
+  const candidateBytes = jsonBytes({
+    schemaVersion: "genre-soul-manager-surface-candidate/v1",
+    genre: receipt.genre,
+    soulId: receipt.soulId,
+    profile: {
+      sha256: receipt.profile.sha256,
+      synthesisRunId: receipt.profile.synthesisRunId,
+    },
+    manager: {
+      runId: receipt.manager.runId,
+      outputSha256: receipt.manager.outputSha256,
+    },
+    engineComparisons: receipt.engineComparisons,
+  });
+  const candidate = {
+    path: `${surfaceRoot}/candidate.json`,
+    sha256: sha256(candidateBytes),
+    sizeBytes: candidateBytes.byteLength,
+  };
+  const authority = {
+    scope: "reference-lab-analysis-surface-only",
+    mayWriteInkOSCanon: false,
+    mayPromoteSoul: false,
+  };
+  const deterministic = {
+    status: "pass",
+    privateEvidence: {
+      sourceSetSha256: hash("c"),
+      sampleSetSha256: hash("d"),
+    },
+    findingSetSha256: null,
+    findingIds: [],
+  };
+  receipt.surfaceReview = {
+    schemaVersion: "genre-soul-manager-surface-review-proof/v2",
+    gateVersion: "genre-soul-protected-surface-hil/v3",
+    extractorVersion: "genre-soul-surface-candidate-extractor/v3",
+    mode: "deterministic-clean",
+    candidate,
+    deterministic,
+    semantic: null,
+    ownerDecision: null,
+    authority,
+  };
+  if (surfaceMode === "deterministic-clean") return receipt;
+
+  const findingId = `surface-finding-${"1".repeat(24)}`;
+  const semanticInputSha256 = hash("e");
+  const verdict = surfaceMode === "semantic-auto-passed" ? "generic-overlap" : "uncertain";
+  const decision = {
+    findingId,
+    verdict,
+    reasonCode: verdict === "generic-overlap" ? "common-lexeme" : "ambiguous-identity-use",
+    evidenceWindowIds: [
+      `surface-window-${"2".repeat(24)}`,
+      `surface-window-${"3".repeat(24)}`,
+    ],
+  };
+  const semanticResultBytes = jsonBytes({
+    schemaVersion: "private-genre-soul-surface-semantic-review-result/v1",
+    gateVersion: "genre-soul-protected-surface-hil/v3",
+    stage: "manager-qa",
+    genre: receipt.genre,
+    soulId: receipt.soulId,
+    inputDigest: receipt.manager.inputDigest,
+    reviewRequestSha256: semanticInputSha256,
+    findingDecisions: [decision],
+    authority,
+  });
+  receipt.surfaceReview.deterministic = {
+    ...deterministic,
+    status: "pending_semantic_review",
+    findingSetSha256: hash("f"),
+    findingIds: [findingId],
+  };
+  receipt.surfaceReview.mode = surfaceMode;
+  receipt.surfaceReview.semantic = {
+    input: boundReference(`${surfaceRoot}/input.json`, "e", 1_000),
+    result: {
+      path: `${surfaceRoot}/semantic/accepted.json`,
+      sha256: sha256(semanticResultBytes),
+      sizeBytes: semanticResultBytes.byteLength,
+    },
+    receipt: boundReference(`${surfaceRoot}/semantic/accepted-host-receipt.json`, "1", 1_001),
+    reviewer: {
+      role: `genre-soul-surface-semantic-review:manager-qa:${semanticInputSha256.slice(0, 24)}`,
+      runId: "manager-surface-review-run-1",
+      model: "gpt-5.6-sol",
+      provider: "openai-codex",
+      reasoningEffort: "high",
+      promptSha256: hash("2"),
+    },
+    findingDecisions: [decision],
+    verdictCounts: {
+      genericOverlap: verdict === "generic-overlap" ? 1 : 0,
+      protectedIdentity: 0,
+      uncertain: verdict === "uncertain" ? 1 : 0,
+    },
+    outcome: verdict === "generic-overlap" ? "auto-passed" : "owner-approved",
+  };
+  if (surfaceMode === "semantic-owner-approved") {
+    const requestSha256 = hash("3");
+    receipt.surfaceReview.ownerDecision = {
+      request: boundReference(`${surfaceRoot}/owner-hil/requests/${requestSha256}.json`, "3", 1_002),
+      decision: {
+        ...boundReference(`${surfaceRoot}/owner-hil/decisions/${requestSha256}.json`, "4", 1_003),
+        decisionId: `surface-decision-${"5".repeat(24)}`,
+        outcome: "approved",
+        decidedByRole: "owner",
+      },
+    };
+  }
+  return receipt;
 }
 
 function makeManagerQaValidationContext(receipt, profile = makeGenreProfile()) {
@@ -588,6 +710,53 @@ test("manager QA fails closed on shared synthesis runs, missing raw spans, and i
   const unauthorized = makeManagerQaReceipt();
   unauthorized.authority.mayPromoteSoul = true;
   assert.throws(() => validateManagerQaReceipt(unauthorized), /owner-separated/u);
+});
+
+test("current Manager QA v2 requires an exact deterministic, semantic, or owner surface proof", () => {
+  for (const mode of [
+    "deterministic-clean",
+    "semantic-auto-passed",
+    "semantic-owner-approved",
+  ]) {
+    assert.equal(validateManagerQaReceipt(makeCurrentManagerQaReceipt(mode)), true, mode);
+  }
+
+  const missingProof = makeCurrentManagerQaReceipt();
+  delete missingProof.surfaceReview;
+  assert.throws(() => validateManagerQaReceipt(missingProof), /keys must be exactly/u);
+
+  const legacySubstitution = makeCurrentManagerQaReceipt();
+  legacySubstitution.surfaceReview = {
+    schemaVersion: "genre-soul-manager-surface-review-proof/v1",
+    gateVersion: "genre-soul-protected-surface-hil/v2",
+    candidate: boundReference("exports/legacy/surface-hil/candidate.json", "1"),
+    request: boundReference(`exports/legacy/surface-hil/requests/${hash("2")}.json`, "2"),
+    decision: {
+      ...boundReference(`exports/legacy/surface-hil/decisions/${hash("2")}.json`, "3"),
+      decisionId: `surface-decision-${"4".repeat(24)}`,
+      outcome: "approved",
+      decidedByRole: "owner",
+    },
+    authority: {
+      scope: "reference-lab-analysis-surface-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+    },
+  };
+  assert.throws(() => validateManagerQaReceipt(legacySubstitution), /schema or gate version drifted/u);
+
+  const resultDrift = makeCurrentManagerQaReceipt("semantic-auto-passed");
+  resultDrift.surfaceReview.semantic.result.sha256 = hash("0");
+  assert.throws(() => validateManagerQaReceipt(resultDrift), /result bytes drifted/u);
+
+  const countDrift = makeCurrentManagerQaReceipt("semantic-auto-passed");
+  countDrift.surfaceReview.semantic.verdictCounts.genericOverlap = 0;
+  assert.throws(() => validateManagerQaReceipt(countDrift), /verdict counts drifted/u);
+
+  const ownerPathDrift = makeCurrentManagerQaReceipt("semantic-owner-approved");
+  ownerPathDrift.surfaceReview.ownerDecision.decision.path = ownerPathDrift.surfaceReview.ownerDecision.decision.path
+    .replace("/owner-hil/decisions/", "/owner-hil/requests/");
+  assert.throws(() => validateManagerQaReceipt(ownerPathDrift), /require(?:s)? an exact approved owner decision/u);
 });
 
 test("manager QA live context rebinds the actual profile engines, synthesis run, and Hermes receipt", () => {

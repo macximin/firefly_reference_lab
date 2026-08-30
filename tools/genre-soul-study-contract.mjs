@@ -616,9 +616,13 @@ export function validateGenreProfileArtifact(profile) {
 }
 
 export function validateManagerQaReceipt(receipt, context = {}) {
-  if (!isObject(receipt) || receipt.schemaVersion !== "genre-soul-manager-qa/v1") {
-    throw new Error("Manager QA must use genre-soul-manager-qa/v1.");
+  if (
+    !isObject(receipt)
+    || !new Set(["genre-soul-manager-qa/v1", "genre-soul-manager-qa/v2"]).has(receipt.schemaVersion)
+  ) {
+    throw new Error("Manager QA must use genre-soul-manager-qa/v1 or v2.");
   }
+  const currentSurfaceContract = receipt.schemaVersion === "genre-soul-manager-qa/v2";
   const receiptKeys = [
     "schemaVersion",
     "state",
@@ -636,7 +640,7 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     "authority",
     "result",
   ];
-  if (Object.hasOwn(receipt, "surfaceReview")) receiptKeys.push("surfaceReview");
+  if (currentSurfaceContract || Object.hasOwn(receipt, "surfaceReview")) receiptKeys.push("surfaceReview");
   assertExactKeys(receipt, receiptKeys, "managerQa");
   if (receipt.state !== "candidate-qa-passed" || receipt.result !== "pass") {
     throw new Error("Manager QA state and result must remain candidate-qa-passed/pass.");
@@ -690,7 +694,7 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     throw new Error("Manager QA requires exactly three sources and nine raw samples.");
   }
 
-  assertExactKeys(receipt.manager, [
+  const managerKeys = [
     "actorId",
     "role",
     "runId",
@@ -700,10 +704,13 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     "configSha256",
     "traceReceiptSha256",
     "outputSha256",
-  ], "managerQa.manager");
+  ];
+  if (currentSurfaceContract) managerKeys.push("inputDigest");
+  assertExactKeys(receipt.manager, managerKeys, "managerQa.manager");
   if (receipt.manager.role !== "manager") throw new Error("Manager QA requires manager role.");
   assertNonEmptyString(receipt.manager.actorId, "managerQa.manager.actorId");
   assertNonEmptyString(receipt.manager.runId, "managerQa.manager.runId");
+  if (currentSurfaceContract) assertSha(receipt.manager.inputDigest, "managerQa.manager.inputDigest");
   if (receipt.manager.runId === receipt.profile.synthesisRunId) {
     throw new Error("Manager QA must use a run separate from profile synthesis.");
   }
@@ -721,54 +728,244 @@ export function validateManagerQaReceipt(receipt, context = {}) {
 
   if (receipt.surfaceReview !== undefined) {
     const review = receipt.surfaceReview;
-    assertExactKeys(review, [
-      "schemaVersion", "gateVersion", "candidate", "request", "decision", "authority",
-    ], "managerQa.surfaceReview");
-    if (
-      review.schemaVersion !== "genre-soul-manager-surface-review-proof/v1"
-      || !new Set([
+    const managerRunRoot = receipt.privateInput.path.slice(0, -privateInputSuffix.length);
+    const structuredPrefix = `${managerRunRoot}/structured-runs/`;
+    if (!currentSurfaceContract && review.schemaVersion === "genre-soul-manager-surface-review-proof/v1") {
+      assertExactKeys(review, [
+        "schemaVersion", "gateVersion", "candidate", "request", "decision", "authority",
+      ], "managerQa.surfaceReview");
+      if (!new Set([
         "genre-soul-protected-surface-hil/v1",
         "genre-soul-protected-surface-hil/v2",
-      ]).has(review.gateVersion)
-    ) throw new Error("Manager QA surface review proof schema or gate version drifted.");
-    assertExactKeys(review.candidate, ["path", "sha256", "sizeBytes"], "managerQa.surfaceReview.candidate");
-    assertExactKeys(review.request, ["path", "sha256", "sizeBytes"], "managerQa.surfaceReview.request");
-    assertExactKeys(review.decision, [
-      "path", "sha256", "sizeBytes", "decisionId", "outcome", "decidedByRole",
-    ], "managerQa.surfaceReview.decision");
-    for (const [label, reference] of [
-      ["candidate", review.candidate],
-      ["request", review.request],
-      ["decision", review.decision],
-    ]) {
-      assertRepoRelativePath(reference.path, `managerQa.surfaceReview.${label}.path`);
-      assertSha(reference.sha256, `managerQa.surfaceReview.${label}.sha256`);
-      assertPositiveInteger(reference.sizeBytes, `managerQa.surfaceReview.${label}.sizeBytes`);
+      ]).has(review.gateVersion)) {
+        throw new Error("Manager QA surface review proof schema or gate version drifted.");
+      }
+      assertBoundReference(review.candidate, "managerQa.surfaceReview.candidate");
+      assertBoundReference(review.request, "managerQa.surfaceReview.request");
+      assertBoundReference(review.decision, "managerQa.surfaceReview.decision", [
+        "decisionId", "outcome", "decidedByRole",
+      ]);
+      const candidateSuffix = "/surface-hil/candidate.json";
+      if (
+        !review.candidate.path.startsWith(structuredPrefix)
+        || !review.candidate.path.endsWith(candidateSuffix)
+      ) throw new Error("Manager QA surface review candidate path is not bound to this private Manager run.");
+      const structuredRunDigest = review.candidate.path.slice(
+        structuredPrefix.length,
+        -candidateSuffix.length,
+      );
+      if (!SHA256.test(structuredRunDigest)) {
+        throw new Error("Manager QA surface review candidate path has an invalid structured-run digest.");
+      }
+      const surfaceRoot = review.candidate.path.slice(0, -"/candidate.json".length);
+      if (
+        review.request.path !== `${surfaceRoot}/requests/${review.request.sha256}.json`
+        || review.decision.path !== `${surfaceRoot}/decisions/${review.request.sha256}.json`
+      ) throw new Error("Manager QA surface review request or decision path is not bound to its exact candidate request.");
+      if (
+        !/^surface-decision-[0-9a-f]{24}$/u.test(review.decision.decisionId ?? "")
+        || review.decision.outcome !== "approved"
+        || review.decision.decidedByRole !== "owner"
+      ) throw new Error("Manager QA surface review proof requires an exact approved owner decision.");
+    } else if (currentSurfaceContract && review.schemaVersion === "genre-soul-manager-surface-review-proof/v2") {
+      assertExactKeys(review, [
+        "schemaVersion", "gateVersion", "extractorVersion", "mode", "candidate", "deterministic",
+        "semantic", "ownerDecision", "authority",
+      ], "managerQa.surfaceReview");
+      if (
+        review.gateVersion !== "genre-soul-protected-surface-hil/v3"
+        || review.extractorVersion !== "genre-soul-surface-candidate-extractor/v3"
+      ) {
+        throw new Error("Manager QA surface review proof schema or gate version drifted.");
+      }
+      assertBoundReference(review.candidate, "managerQa.surfaceReview.candidate");
+      const structuredRunRoot = `${structuredPrefix}${receipt.manager.inputDigest}`;
+      const surfaceRoot = `${structuredRunRoot}/surface-review`;
+      if (review.candidate.path !== `${surfaceRoot}/candidate.json`) {
+        throw new Error("Manager QA surface review candidate path is not bound to the current Manager input digest.");
+      }
+      const expectedCandidateBytes = canonicalJsonBytes({
+        schemaVersion: "genre-soul-manager-surface-candidate/v1",
+        genre: receipt.genre,
+        soulId: receipt.soulId,
+        profile: {
+          sha256: receipt.profile.sha256,
+          synthesisRunId: receipt.profile.synthesisRunId,
+        },
+        manager: {
+          runId: receipt.manager.runId,
+          outputSha256: receipt.manager.outputSha256,
+        },
+        engineComparisons: receipt.engineComparisons,
+      });
+      if (
+        review.candidate.sha256 !== sha256(expectedCandidateBytes)
+        || review.candidate.sizeBytes !== expectedCandidateBytes.byteLength
+      ) throw new Error("Manager QA surface candidate bytes are not bound to the current tracked receipt.");
+      assertExactKeys(review.deterministic, [
+        "status", "privateEvidence", "findingSetSha256", "findingIds",
+      ], "managerQa.surfaceReview.deterministic");
+      assertExactKeys(review.deterministic.privateEvidence, [
+        "sourceSetSha256", "sampleSetSha256",
+      ], "managerQa.surfaceReview.deterministic.privateEvidence");
+      assertSha(
+        review.deterministic.privateEvidence.sourceSetSha256,
+        "managerQa.surfaceReview.deterministic.privateEvidence.sourceSetSha256",
+      );
+      assertSha(
+        review.deterministic.privateEvidence.sampleSetSha256,
+        "managerQa.surfaceReview.deterministic.privateEvidence.sampleSetSha256",
+      );
+      if (!Array.isArray(review.deterministic.findingIds)) {
+        throw new Error("Manager QA deterministic findingIds must be an array.");
+      }
+      const findingIds = review.deterministic.findingIds;
+      if (
+        findingIds.some((value) => !/^surface-finding-[0-9a-f]{24}$/u.test(value ?? ""))
+        || new Set(findingIds).size !== findingIds.length
+        || findingIds.some((value, index) => value !== [...findingIds].sort()[index])
+      ) throw new Error("Manager QA deterministic findingIds must be unique and sorted.");
+      if (review.deterministic.status === "pass") {
+        if (
+          review.mode !== "deterministic-clean"
+          || review.deterministic.findingSetSha256 !== null
+          || findingIds.length !== 0
+          || review.semantic !== null
+          || review.ownerDecision !== null
+        ) throw new Error("Manager QA deterministic-clean proof drifted.");
+      } else if (review.deterministic.status === "pending_semantic_review") {
+        assertSha(review.deterministic.findingSetSha256, "managerQa.surfaceReview.deterministic.findingSetSha256");
+        if (findingIds.length < 1 || !isObject(review.semantic)) {
+          throw new Error("Manager QA pending semantic proof requires its exact finding set and reviewer evidence.");
+        }
+      } else {
+        throw new Error("Manager QA deterministic surface status is unsupported.");
+      }
+      if (review.semantic !== null) {
+        assertExactKeys(review.semantic, [
+          "input", "result", "receipt", "reviewer", "findingDecisions", "verdictCounts", "outcome",
+        ], "managerQa.surfaceReview.semantic");
+        for (const key of ["input", "result", "receipt"]) {
+          assertBoundReference(review.semantic[key], `managerQa.surfaceReview.semantic.${key}`);
+        }
+        if (
+          review.semantic.input.path !== `${surfaceRoot}/input.json`
+          || review.semantic.result.path !== `${surfaceRoot}/semantic/accepted.json`
+          || review.semantic.receipt.path !== `${surfaceRoot}/semantic/accepted-host-receipt.json`
+        ) throw new Error("Manager QA semantic review evidence paths are not bound to the current structured run.");
+        assertExactKeys(review.semantic.reviewer, [
+          "role", "runId", "model", "provider", "reasoningEffort", "promptSha256",
+        ], "managerQa.surfaceReview.semantic.reviewer");
+        const expectedReviewerRole = `genre-soul-surface-semantic-review:manager-qa:${review.semantic.input.sha256.slice(0, 24)}`;
+        if (
+          review.semantic.reviewer.role !== expectedReviewerRole
+          || typeof review.semantic.reviewer.runId !== "string"
+          || review.semantic.reviewer.runId.length < 1
+          || review.semantic.reviewer.runId === receipt.manager.runId
+          || review.semantic.reviewer.runId === receipt.profile.synthesisRunId
+          || review.semantic.reviewer.model !== "gpt-5.6-sol"
+          || review.semantic.reviewer.provider !== "openai-codex"
+          || review.semantic.reviewer.reasoningEffort !== "high"
+        ) throw new Error("Manager QA semantic reviewer identity or run separation drifted.");
+        assertSha(review.semantic.reviewer.promptSha256, "managerQa.surfaceReview.semantic.reviewer.promptSha256");
+        if (!Array.isArray(review.semantic.findingDecisions) || review.semantic.findingDecisions.length !== findingIds.length) {
+          throw new Error("Manager QA semantic finding decisions must cover the deterministic finding set exactly.");
+        }
+        const reasonCodes = new Map([
+          ["generic-overlap", new Set([
+            "common-lexeme", "compound-suffix", "contextual-role-not-identity",
+            "grammatical-particle", "punctuation-boundary",
+          ])],
+          ["protected-identity", new Set([
+            "same-organization-identity", "same-person-identity", "same-private-identity",
+          ])],
+          ["uncertain", new Set([
+            "ambiguous-identity-use", "conflicting-context", "insufficient-context",
+          ])],
+        ]);
+        const decisions = review.semantic.findingDecisions.map((decision, index) => {
+          assertExactKeys(decision, [
+            "findingId", "verdict", "reasonCode", "evidenceWindowIds",
+          ], `managerQa.surfaceReview.semantic.findingDecisions[${index}]`);
+          if (
+            decision.findingId !== findingIds[index]
+            || !reasonCodes.get(decision.verdict)?.has(decision.reasonCode)
+            || !Array.isArray(decision.evidenceWindowIds)
+            || decision.evidenceWindowIds.length < 2
+            || decision.evidenceWindowIds.some((value) => !/^surface-window-[0-9a-f]{24}$/u.test(value ?? ""))
+            || new Set(decision.evidenceWindowIds).size !== decision.evidenceWindowIds.length
+            || decision.evidenceWindowIds.some((value, windowIndex) => (
+              value !== [...decision.evidenceWindowIds].sort()[windowIndex]
+            ))
+          ) throw new Error("Manager QA semantic finding decision drifted from its exact finding set.");
+          return {
+            findingId: decision.findingId,
+            verdict: decision.verdict,
+            reasonCode: decision.reasonCode,
+            evidenceWindowIds: [...decision.evidenceWindowIds],
+          };
+        });
+        const expectedResultBytes = canonicalJsonBytes({
+          schemaVersion: "private-genre-soul-surface-semantic-review-result/v1",
+          gateVersion: "genre-soul-protected-surface-hil/v3",
+          stage: "manager-qa",
+          genre: receipt.genre,
+          soulId: receipt.soulId,
+          inputDigest: receipt.manager.inputDigest,
+          reviewRequestSha256: review.semantic.input.sha256,
+          findingDecisions: decisions,
+          authority: {
+            scope: "reference-lab-analysis-surface-only",
+            mayWriteInkOSCanon: false,
+            mayPromoteSoul: false,
+          },
+        });
+        if (
+          review.semantic.result.sha256 !== sha256(expectedResultBytes)
+          || review.semantic.result.sizeBytes !== expectedResultBytes.byteLength
+        ) throw new Error("Manager QA semantic result bytes drifted from the tracked finding decisions.");
+        const expectedCounts = {
+          genericOverlap: decisions.filter((entry) => entry.verdict === "generic-overlap").length,
+          protectedIdentity: decisions.filter((entry) => entry.verdict === "protected-identity").length,
+          uncertain: decisions.filter((entry) => entry.verdict === "uncertain").length,
+        };
+        assertExactKeys(review.semantic.verdictCounts, [
+          "genericOverlap", "protectedIdentity", "uncertain",
+        ], "managerQa.surfaceReview.semantic.verdictCounts");
+        if (JSON.stringify(review.semantic.verdictCounts) !== JSON.stringify(expectedCounts)) {
+          throw new Error("Manager QA semantic verdict counts drifted from the exact semantic result.");
+        }
+        if (expectedCounts.protectedIdentity !== 0) {
+          throw new Error("Manager QA semantic surface proof cannot contain a protected identity.");
+        }
+        if (expectedCounts.uncertain === 0) {
+          if (
+            review.mode !== "semantic-auto-passed"
+            || review.ownerDecision !== null
+            || review.semantic.outcome !== "auto-passed"
+          ) throw new Error("Manager QA generic semantic findings must auto-pass without an owner decision.");
+        } else {
+          assertExactKeys(review.ownerDecision, ["request", "decision"], "managerQa.surfaceReview.ownerDecision");
+          assertBoundReference(review.ownerDecision.request, "managerQa.surfaceReview.ownerDecision.request");
+          assertBoundReference(review.ownerDecision.decision, "managerQa.surfaceReview.ownerDecision.decision", [
+            "decisionId", "outcome", "decidedByRole",
+          ]);
+          if (
+            review.mode !== "semantic-owner-approved"
+            || review.semantic.outcome !== "owner-approved"
+            || review.ownerDecision.request.path
+              !== `${surfaceRoot}/owner-hil/requests/${review.ownerDecision.request.sha256}.json`
+            || review.ownerDecision.decision.path
+              !== `${surfaceRoot}/owner-hil/decisions/${review.ownerDecision.request.sha256}.json`
+            || !/^surface-decision-[0-9a-f]{24}$/u.test(review.ownerDecision.decision.decisionId ?? "")
+            || review.ownerDecision.decision.outcome !== "approved"
+            || review.ownerDecision.decision.decidedByRole !== "owner"
+          ) throw new Error("Manager QA uncertain semantic findings require an exact approved owner decision.");
+        }
+      }
+    } else {
+      throw new Error("Manager QA surface review proof schema or gate version drifted.");
     }
-    const managerRunRoot = receipt.privateInput.path.slice(0, -privateInputSuffix.length);
-    const candidateSuffix = "/surface-hil/candidate.json";
-    const structuredPrefix = `${managerRunRoot}/structured-runs/`;
-    if (
-      !review.candidate.path.startsWith(structuredPrefix)
-      || !review.candidate.path.endsWith(candidateSuffix)
-    ) throw new Error("Manager QA surface review candidate path is not bound to this private Manager run.");
-    const structuredRunDigest = review.candidate.path.slice(
-      structuredPrefix.length,
-      -candidateSuffix.length,
-    );
-    if (!SHA256.test(structuredRunDigest)) {
-      throw new Error("Manager QA surface review candidate path has an invalid structured-run digest.");
-    }
-    const surfaceRoot = review.candidate.path.slice(0, -"/candidate.json".length);
-    if (
-      review.request.path !== `${surfaceRoot}/requests/${review.request.sha256}.json`
-      || review.decision.path !== `${surfaceRoot}/decisions/${review.request.sha256}.json`
-    ) throw new Error("Manager QA surface review request or decision path is not bound to its exact candidate request.");
-    if (
-      !/^surface-decision-[0-9a-f]{24}$/u.test(review.decision.decisionId ?? "")
-      || review.decision.outcome !== "approved"
-      || review.decision.decidedByRole !== "owner"
-    ) throw new Error("Manager QA surface review proof requires an exact approved owner decision.");
     assertExactKeys(review.authority, [
       "scope", "mayWriteInkOSCanon", "mayPromoteSoul",
     ], "managerQa.surfaceReview.authority");
@@ -959,6 +1156,7 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     const run = runContext.receipt ?? runContext;
     assertNonEmptyString(run.profileId, "Manager QA expected run profileId");
     assertNonEmptyString(run.runId, "Manager QA expected run runId");
+    if (currentSurfaceContract) assertSha(run.inputDigest, "Manager QA expected run inputDigest");
     assertSha(run.profileConfigSha256, "Manager QA expected run profileConfigSha256");
     assertSha(run.resultSha256, "Manager QA expected run resultSha256");
     const hostReceiptSha256 = runContext.hostReceiptSha256 ?? runContext.traceReceiptSha256;
@@ -966,6 +1164,7 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     if (
       receipt.manager.actorId !== `hermes:${run.profileId}:${run.runId}`
       || receipt.manager.runId !== run.runId
+      || (currentSurfaceContract && receipt.manager.inputDigest !== run.inputDigest)
       || receipt.manager.model !== run.model
       || receipt.manager.provider !== run.provider
       || receipt.manager.reasoningEffort !== run.reasoningEffort

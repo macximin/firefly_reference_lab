@@ -11,7 +11,7 @@ import {
 } from "./genre-soul-surface-hil-lib.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const REQUEST_PATH = /^exports\/genre-souls\/(male-(?:modern-fantasy-ko|fantasy-ko|murim-ko))\/v1\/(?:profile-runs\/[0-9a-f]{64}\/genre|manager-qa-runs\/[0-9a-f]{64}\/structured-runs\/[0-9a-f]{64})\/surface-hil\/requests\/([0-9a-f]{64})\.json$/u;
+const REQUEST_PATH = /^exports\/genre-souls\/(male-(?:modern-fantasy-ko|fantasy-ko|murim-ko))\/v1\/(?:profile-runs\/[0-9a-f]{64}\/genre|manager-qa-runs\/[0-9a-f]{64}\/structured-runs\/[0-9a-f]{64})\/surface-review\/owner-hil\/requests\/([0-9a-f]{64})\.json$/u;
 const DECISION_BY_CLI = new Map([
   ["approve", "generic-overlap-approved"],
   ["reject", "protected-reject"],
@@ -130,7 +130,10 @@ export async function writePrivateGenreSoulSurfaceHilDecision(options) {
     decidedByRole: "owner",
     decidedAt: options.decidedAt ?? new Date().toISOString(),
   });
-  const decisionPath = options.requestPath.replace("/surface-hil/requests/", "/surface-hil/decisions/");
+  const decisionPath = options.requestPath.replace(
+    "/surface-review/owner-hil/requests/",
+    "/surface-review/owner-hil/decisions/",
+  );
   const decisionAbsolute = resolve(root, decisionPath);
   await assertNoSymlinkAncestors(root, decisionAbsolute, "Surface HIL decision");
   await mkdir(dirname(decisionAbsolute), { recursive: true, mode: 0o700 });

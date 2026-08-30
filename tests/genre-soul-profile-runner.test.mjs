@@ -261,6 +261,56 @@ function firstWorkPartAttemptArtifact(run, suffix) {
   return artifact.path;
 }
 
+function surfaceReviewAttemptArtifact(run, suffix) {
+  const artifact = run.completion.artifacts.find((entry) => (
+    entry.path.includes("/genre/surface-review/hermes/attempts/")
+    && entry.path.endsWith(`/${suffix}`)
+  ));
+  assert.ok(artifact, `missing surface-review Hermes ${suffix}`);
+  return artifact.path;
+}
+
+async function rewriteSealedSurfaceReviewTrace(root, run, mutate) {
+  const tracePath = surfaceReviewAttemptArtifact(run, "session.jsonl");
+  const attemptRoot = dirname(tracePath);
+  const hermesRoot = dirname(dirname(attemptRoot));
+  const groupRoot = dirname(hermesRoot);
+  const paths = {
+    trace: tracePath,
+    receipt: `${attemptRoot}/host-receipt.json`,
+    attemptCompletion: `${attemptRoot}/completed.json`,
+    pointer: `${hermesRoot}/completed.json`,
+    acceptedReceipt: `${groupRoot}/accepted-host-receipt.json`,
+  };
+  const trace = JSON.parse((await readFile(join(root, paths.trace), "utf8")).trim());
+  const receipt = JSON.parse(await readFile(join(root, paths.receipt), "utf8"));
+  await mutate({ trace, receipt });
+  const traceBytes = Buffer.from(`${JSON.stringify(trace)}\n`);
+  receipt.traceSha256 = hash(traceBytes);
+  receipt.contextInputProxyTokens = Math.ceil((
+    Buffer.byteLength(trace.system_prompt, "utf8")
+    + Buffer.byteLength(JSON.stringify(trace.messages.slice(0, -1)), "utf8")
+  ) / 2);
+  receipt.contextBudgetUpperBoundTokens = receipt.contextInputProxyTokens
+    + Math.max(receipt.contextOutputReserveTokens, receipt.outputTokens);
+  const receiptBytes = jsonBytes(receipt);
+  const attemptCompletion = JSON.parse(await readFile(join(root, paths.attemptCompletion), "utf8"));
+  attemptCompletion.hostReceiptSha256 = hash(receiptBytes);
+  const attemptCompletionBytes = jsonBytes(attemptCompletion);
+  const pointer = JSON.parse(await readFile(join(root, paths.pointer), "utf8"));
+  pointer.hostReceiptSha256 = hash(receiptBytes);
+  pointer.attemptCompletionSha256 = hash(attemptCompletionBytes);
+  const pointerBytes = jsonBytes(pointer);
+  await Promise.all([
+    writeFile(join(root, paths.trace), traceBytes),
+    writeFile(join(root, paths.receipt), receiptBytes),
+    writeFile(join(root, paths.attemptCompletion), attemptCompletionBytes),
+    writeFile(join(root, paths.pointer), pointerBytes),
+    writeFile(join(root, paths.acceptedReceipt), receiptBytes),
+  ]);
+  await refreshProfileCompletionSeal(root, run, Object.values(paths));
+}
+
 async function rewriteSealedWorkPartAttempt(root, run, mutate) {
   const tracePath = firstWorkPartAttemptArtifact(run, "session.jsonl");
   const attemptRoot = dirname(tracePath);
@@ -458,6 +508,22 @@ function makeEvidence() {
   };
 }
 
+function makeAmbiguousSurfaceEvidence() {
+  const evidence = makeEvidence();
+  const surfaceWork = evidence.bindings.find((binding) => binding.sourceId === "gdrive-surface");
+  bindTestSourceText(
+    surfaceWork.observations[0].selectors[0],
+    "차도윤과 함께 움직였다. 일반 행동 묘사가 이어졌다.",
+  );
+  return evidence;
+}
+
+function injectAmbiguousWorkSurface(result, input) {
+  if (input.role === "genre-soul-work-consolidation:gdrive-surface") {
+    result.primaryCommercialEngine.mechanism.pressure = "차도윤 방식은 기회가 닫히기 전에 압박을 회수한다";
+  }
+}
+
 function bindTestSourceText(selector, sourceText) {
   selector.testSourceText = sourceText;
   selector.endByte = selector.startByte + Buffer.byteLength(sourceText);
@@ -541,7 +607,7 @@ function workResult(work, observationCatalog) {
   };
 }
 
-function makeFakeExecutor(counter, runtime = runtimeEvidence(), mutateResult = null) {
+function makeFakeExecutor(counter, runtime = runtimeEvidence(), mutateResult = null, runIdForInput = null) {
   return async (input) => {
     const completedPath = join(input.runRoot, "completed.json");
     if (await pathExists(completedPath)) {
@@ -605,6 +671,30 @@ function makeFakeExecutor(counter, runtime = runtimeEvidence(), mutateResult = n
         sourceSha256: privateInput.sourceSha256,
         selectionBasis: privateInput.selectionBasis,
       }, privateInput.observationCatalog);
+    } else if (input.role.startsWith("genre-soul-surface-semantic-review:")) {
+      result = {
+        schemaVersion: "private-genre-soul-surface-semantic-review-result/v1",
+        gateVersion: privateInput.gateVersion,
+        stage: privateInput.stage,
+        genre: privateInput.genre,
+        soulId: privateInput.soulId,
+        inputDigest: privateInput.inputDigest,
+        reviewRequestSha256: hash(inputBytes),
+        findingDecisions: privateInput.findings.map((finding) => ({
+          findingId: finding.findingId,
+          verdict: "generic-overlap",
+          reasonCode: "common-lexeme",
+          evidenceWindowIds: [
+            finding.candidateWindows[0].windowId,
+            finding.privateSourceWindows[0].windowId,
+          ].sort(),
+        })),
+        authority: {
+          scope: "reference-lab-analysis-surface-only",
+          mayWriteInkOSCanon: false,
+          mayPromoteSoul: false,
+        },
+      };
     } else {
       const works = privateInput.works;
       result = {
@@ -637,7 +727,7 @@ function makeFakeExecutor(counter, runtime = runtimeEvidence(), mutateResult = n
     }
     if (mutateResult) mutateResult(result, input);
     await input.validateResult(result);
-    const runId = `fake-run-${counter.calls}`;
+    const runId = runIdForInput?.(input, counter.calls) ?? `fake-run-${counter.calls}`;
     const candidateOutputBytes = Buffer.from(JSON.stringify(result));
     const resultBytes = jsonBytes(result);
     const usage = {
@@ -1414,11 +1504,16 @@ test("publishes only scanned candidates, keeps raw private, and reuses the immut
     });
     assert.equal(first.status, "completed");
     assert.equal(counter.calls, 7);
+    assert.equal(first.surfaceReview, undefined);
     const manifest = JSON.parse(await readFile(join(
       root,
       `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${first.inputDigest}/manifest.json`,
     ), "utf8"));
-    assert.equal(manifest.schemaVersion, "private-genre-soul-profile-run-input-digest/v3");
+    assert.equal(manifest.schemaVersion, "private-genre-soul-profile-run-input-digest/v4");
+    assert.equal(
+      manifest.semanticReviewPromptContractVersion,
+      "genre-soul-surface-semantic-review-prompt/v1",
+    );
     assert.equal(manifest.contextBudgetContractVersion, "genre-soul-profile-context-budget/v1");
     assert.equal(manifest.outputReserveTokens, 48_000);
     assert.equal(manifest.exactInputPluginPlanningEvidence.schemaVersion, "hermes-exact-input-plugin-planning-evidence/v1");
@@ -2329,19 +2424,19 @@ test("tracked semantic lint rejects selection identity and private-sample proper
   }, bindings, privateSampleBlobs), true);
   assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
     mechanism: "차도윤 방식은 압박을 선제 행동으로 전환한다",
-  }, bindings, privateSampleBlobs), /pending_hil/u);
+  }, bindings, privateSampleBlobs), /pending_semantic_review/u);
   assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
     routing: "태성그룹의 자원 회수 순서를 기준으로 삼는다",
-  }, bindings, privateSampleBlobs), /protected private surface/u);
+  }, bindings, privateSampleBlobs), /pending_semantic_review/u);
   assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
     mechanism: "김철 방식은 압박을 선제 행동으로 전환한다",
-  }, bindings, privateSampleBlobs), /pending_hil/u);
+  }, bindings, privateSampleBlobs), /pending_semantic_review/u);
   assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
     mechanism: "김광 방식은 압박을 선제 행동으로 전환한다",
-  }, bindings, privateSampleBlobs), /pending_hil/u);
+  }, bindings, privateSampleBlobs), /pending_semantic_review/u);
   assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
     routing: "태성 방식의 자원 회수 순서를 기준으로 삼는다",
-  }, bindings, privateSampleBlobs), /protected private surface/u);
+  }, bindings, privateSampleBlobs), /pending_semantic_review/u);
   for (const [index, sourceText] of [
     "김철이는 먼저 움직였다.",
     "김철이가 먼저 움직였다.",
@@ -2351,12 +2446,12 @@ test("tracked semantic lint rejects selection identity and private-sample proper
   ].entries()) {
     assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
       mechanism: "김철 방식은 압박을 선제 행동으로 전환한다",
-    }, bindings, [{ selectorId: `selector-name-form-${index}`, sourceText }]), /pending_hil/u);
+    }, bindings, [{ selectorId: `selector-name-form-${index}`, sourceText }]), /pending_semantic_review/u);
   }
   for (const [index, sourceText] of ["태성그룹이라는 회사다.", "상대는 태성그룹이었다."].entries()) {
     assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
       routing: "태성 방식의 자원 회수 순서를 기준으로 삼는다",
-    }, bindings, [{ selectorId: `selector-org-form-${index}`, sourceText }]), /protected private surface/u);
+    }, bindings, [{ selectorId: `selector-org-form-${index}`, sourceText }]), /pending_semantic_review/u);
   }
   assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
     guidance: "계약을 뒤집어 현금을 즉시 확보했다",
@@ -2384,7 +2479,7 @@ test("tracked semantic lint rejects selection identity and private-sample proper
   }, bindings, privateSampleBlobs), true);
   assert.throws(() => assertNoSelectionSurfaceInTrackedCandidate({
     mechanism: "공개 방식은 압박 회수 순서를 바꾼다",
-  }, bindings, [{ selectorId: "selector-ambiguous-public", sourceText: "공개는 다음 보상을 바꾼다." }]), /pending_hil/u);
+  }, bindings, [{ selectorId: "selector-ambiguous-public", sourceText: "공개는 다음 보상을 바꾼다." }]), /pending_semantic_review/u);
   for (const [index, genericNoun] of ["변화", "한계", "권한"].entries()) {
     assert.equal(assertNoSelectionSurfaceInTrackedCandidate({
       mechanism: `${genericNoun} 방식은 압박 회수 순서를 바꾼다`,
@@ -2392,7 +2487,7 @@ test("tracked semantic lint rejects selection identity and private-sample proper
   }
 });
 
-test("high-confidence protected work surfaces fail before a structured profile result can be sealed", async () => {
+test("high-confidence protected work surfaces fail only at the final tracked profile gate", async () => {
   const root = await mkdtemp(join(tmpdir(), "genre-profile-preseal-surface-"));
   const counter = { calls: 0 };
   try {
@@ -2410,18 +2505,24 @@ test("high-confidence protected work surfaces fail before a structured profile r
         }
       }),
       testOnlyScanner: async (input) => passingScan(input),
-    }), /Work consolidation gdrive-commercial contains a protected private surface/u);
+    }), /Tracked profile semantic candidate contains a protected private surface/u);
     const [runDigest] = await readdir(join(
       root,
       "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
     ));
     assert.ok(runDigest);
-    await assert.rejects(readFile(join(
+    assert.equal(await pathExists(join(
       root,
       "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
       runDigest,
       "works/gdrive-commercial/consolidation/hermes/completed.json",
-    )), /ENOENT/u);
+    )), true);
+    assert.equal(await pathExists(join(
+      root,
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+      runDigest,
+      "genre/hermes/completed.json",
+    )), true);
     await assert.rejects(readFile(join(
       root,
       "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
@@ -2431,7 +2532,7 @@ test("high-confidence protected work surfaces fail before a structured profile r
   }
 });
 
-test("high-confidence protected genre surfaces fail before the final synthesis can be sealed", async () => {
+test("high-confidence protected genre surfaces fail after the producer synthesis is privately sealed", async () => {
   const root = await mkdtemp(join(tmpdir(), "genre-profile-preseal-genre-surface-"));
   const counter = { calls: 0 };
   try {
@@ -2449,24 +2550,268 @@ test("high-confidence protected genre surfaces fail before the final synthesis c
         }
       }),
       testOnlyScanner: async (input) => passingScan(input),
-    }), /Genre profile synthesis contains a protected private surface/u);
+    }), /Tracked profile semantic candidate contains a protected private surface/u);
     const [runDigest] = await readdir(join(
       root,
       "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
     ));
     assert.ok(runDigest);
-    await assert.rejects(readFile(join(
+    assert.equal(await pathExists(join(
       root,
       "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
       runDigest,
       "genre/hermes/completed.json",
-    )), /ENOENT/u);
+    )), true);
     await assert.rejects(readFile(join(
       root,
       "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
     )), /ENOENT/u);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile semantic reviewer auto-passes generic overlap once and seals its independent evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-pass-"));
+  const counter = { calls: 0 };
+  const evidence = makeAmbiguousSurfaceEvidence();
+  let semanticPromptCount = 0;
+  const mutateResult = (result, input) => {
+    injectAmbiguousWorkSurface(result, input);
+    if (input.role.startsWith("genre-soul-surface-semantic-review:")) {
+      semanticPromptCount += 1;
+      assert.match(input.prompt, /independent private surface-semantic reviewer/u);
+      assert.match(input.prompt, /Fictional crime, coercion, violence, bias, morality, and commercial intensity are irrelevant/u);
+      assert.match(input.prompt, /Do not propose rewrites and do not echo/u);
+    }
+  };
+  const executor = makeFakeExecutor(counter, runtimeEvidence(), mutateResult);
+  const options = {
+    testOnlyRepositoryRoot: root,
+    genre: "modern-fantasy-ko",
+    testOnly: true,
+    testOnlySoulText: TEST_SOUL_TEXT,
+    testOnlyEvidenceLoader: async () => evidence,
+    testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+    testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+    testOnlyExecutor: executor,
+    testOnlyScanner: async (input) => passingScan(input),
+  };
+  try {
+    const completed = await runGenreSoulProfile(options);
+    assert.equal(completed.status, "completed");
+    assert.equal(counter.calls, 8);
+    assert.equal(semanticPromptCount, 1);
+    assert.equal(completed.surfaceReview.status, "pass");
+    assert.equal(completed.surfaceHil, undefined);
+    assert.match(completed.surfaceReview.receipt.role, /^genre-soul-surface-semantic-review:profile:/u);
+    for (const path of [
+      completed.surfaceReview.candidatePath,
+      completed.surfaceReview.inputPath,
+      completed.surfaceReview.acceptedPath,
+      completed.surfaceReview.acceptedReceiptPath,
+    ]) assert.ok(completed.completion.artifacts.some((artifact) => artifact.path === path), path);
+    const reviewArtifacts = completed.completion.artifacts.filter((artifact) => (
+      artifact.path.includes("/genre/surface-review/")
+    ));
+    assert.ok(reviewArtifacts.some((artifact) => artifact.path.endsWith("/hermes/completed.json")));
+    assert.ok(reviewArtifacts.some((artifact) => artifact.path.endsWith("/session.jsonl")));
+    assert.ok(reviewArtifacts.every((artifact) => !artifact.path.includes("/owner-hil/")));
+
+    const profilePath = "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json";
+    const readback = await readCompletedGenreSoulProfileRun({
+      repositoryRoot: root,
+      profilePath,
+      profileBytes: await readFile(join(root, profilePath)),
+      profile: completed.profile,
+      soulText: TEST_SOUL_TEXT,
+    });
+    assert.equal(readback.inputDigest, completed.inputDigest);
+
+    const reused = await runGenreSoulProfile(options);
+    assert.equal(reused.status, "reused");
+    assert.equal(reused.surfaceReview.status, "pass");
+    assert.equal(counter.calls, 8);
+    assert.equal(semanticPromptCount, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile semantic reviewer preserves sealed evidence but blocks a protected identity before publication", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-block-"));
+  const counter = { calls: 0 };
+  const evidence = makeAmbiguousSurfaceEvidence();
+  const mutateResult = (result, input) => {
+    injectAmbiguousWorkSurface(result, input);
+    if (input.role.startsWith("genre-soul-surface-semantic-review:")) {
+      for (const finding of result.findingDecisions) {
+        finding.verdict = "protected-identity";
+        finding.reasonCode = "same-person-identity";
+      }
+    }
+  };
+  try {
+    await assert.rejects(runGenreSoulProfile({
+      testOnlyRepositoryRoot: root,
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => evidence,
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), mutateResult),
+      testOnlyScanner: async (input) => passingScan(input),
+    }), /semantic reviewer found a protected private identity/u);
+    assert.equal(counter.calls, 8);
+    const [runDigest] = await readdir(join(
+      root,
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+    ));
+    const reviewRoot = join(
+      root,
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+      runDigest,
+      "genre/surface-review",
+    );
+    for (const path of [
+      "candidate.json",
+      "input.json",
+      "accepted.json",
+      "accepted-host-receipt.json",
+      "hermes/completed.json",
+    ]) assert.equal(await pathExists(join(reviewRoot, path)), true, path);
+    assert.equal(await pathExists(join(
+      root,
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+      runDigest,
+      "completed.json",
+    )), false);
+    assert.equal(await pathExists(join(
+      root,
+      "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
+    )), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile semantic reviewer rejects missing or extra finding decisions before publication", async () => {
+  for (const [label, mutateDecisions] of [
+    ["missing", (decisions) => { decisions.pop(); }],
+    ["extra", (decisions) => { decisions.push(structuredClone(decisions[0])); }],
+  ]) {
+    const root = await mkdtemp(join(tmpdir(), `genre-profile-semantic-${label}-`));
+    const counter = { calls: 0 };
+    const evidence = makeAmbiguousSurfaceEvidence();
+    const mutateResult = (result, input) => {
+      injectAmbiguousWorkSurface(result, input);
+      if (input.role.startsWith("genre-soul-surface-semantic-review:")) {
+        mutateDecisions(result.findingDecisions);
+      }
+    };
+    try {
+      await assert.rejects(runGenreSoulProfile({
+        testOnlyRepositoryRoot: root,
+        genre: "modern-fantasy-ko",
+        testOnly: true,
+        testOnlySoulText: TEST_SOUL_TEXT,
+        testOnlyEvidenceLoader: async () => evidence,
+        testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+        testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+        testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), mutateResult),
+        testOnlyScanner: async (input) => passingScan(input),
+      }), /exact finding set/u);
+      assert.equal(counter.calls, 8);
+      assert.equal(await pathExists(join(
+        root,
+        "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
+      )), false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("profile semantic reviewer must use a run distinct from every producer", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-run-identity-"));
+  const counter = { calls: 0 };
+  const evidence = makeAmbiguousSurfaceEvidence();
+  let producerRunId;
+  const runIdForInput = (input, callCount) => {
+    if (producerRunId === undefined && input.role.startsWith("genre-soul-work-consolidation:")) {
+      producerRunId = "shared-producer-review-run";
+      return producerRunId;
+    }
+    if (input.role.startsWith("genre-soul-surface-semantic-review:")) return producerRunId;
+    return `fake-run-${callCount}`;
+  };
+  try {
+    await assert.rejects(runGenreSoulProfile({
+      testOnlyRepositoryRoot: root,
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => evidence,
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: makeFakeExecutor(
+        counter,
+        runtimeEvidence(),
+        injectAmbiguousWorkSurface,
+        runIdForInput,
+      ),
+      testOnlyScanner: async (input) => passingScan(input),
+    }), /run separate from every producer/u);
+    assert.equal(counter.calls, 8);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("completion readback reconstructs semantic producer bindings and the canonical reviewer prompt", async () => {
+  const roots = await Promise.all([0, 1].map(() => mkdtemp(join(tmpdir(), "genre-profile-semantic-readback-"))));
+  const build = (root) => runGenreSoulProfile({
+    testOnlyRepositoryRoot: root,
+    genre: "modern-fantasy-ko",
+    testOnly: true,
+    testOnlySoulText: TEST_SOUL_TEXT,
+    testOnlyEvidenceLoader: async () => makeAmbiguousSurfaceEvidence(),
+    testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+    testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+    testOnlyExecutor: makeFakeExecutor({ calls: 0 }, runtimeEvidence(), injectAmbiguousWorkSurface),
+    testOnlyScanner: async (input) => passingScan(input),
+  });
+  const readback = async (root, run) => {
+    const profilePath = `analyses/genre_souls/${run.profile.soulId}/v1/genre-profile.json`;
+    return readCompletedGenreSoulProfileRun({
+      repositoryRoot: root,
+      profilePath,
+      profileBytes: await readFile(join(root, profilePath)),
+      profile: run.profile,
+      soulText: TEST_SOUL_TEXT,
+    });
+  };
+  try {
+    const producerBindingRun = await build(roots[0]);
+    const semanticInputPath = producerBindingRun.surfaceReview.inputPath;
+    const semanticInput = JSON.parse(await readFile(join(roots[0], semanticInputPath), "utf8"));
+    semanticInput.producerRuns[0].hostReceiptSha256 = fixedSha("0");
+    await writeFile(join(roots[0], semanticInputPath), jsonBytes(semanticInput));
+    await refreshProfileCompletionSeal(roots[0], producerBindingRun, [semanticInputPath]);
+    await assert.rejects(
+      readback(roots[0], producerBindingRun),
+      /surface semantic input drifted from reconstructed findings/u,
+    );
+
+    const promptRun = await build(roots[1]);
+    await rewriteSealedSurfaceReviewTrace(roots[1], promptRun, async ({ trace }) => {
+      const prompt = trace.messages[0].content;
+      trace.messages[0].content = `X${prompt.slice(1)}`;
+    });
+    await assert.rejects(readback(roots[1], promptRun), /prompt|trace/u);
+  } finally {
+    await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true })));
   }
 });
 
@@ -2482,6 +2827,11 @@ test("profile run keeps an ambiguous surface private until an exact owner decisi
   const leakWorkMechanism = (result, input) => {
     if (input.role.startsWith("genre-soul-work-consolidation:")) {
       result.primaryCommercialEngine.mechanism.pressure = "차도윤 방식은 기회가 닫히기 전에 압박을 회수한다";
+    } else if (input.role.startsWith("genre-soul-surface-semantic-review:")) {
+      for (const finding of result.findingDecisions) {
+        finding.verdict = "uncertain";
+        finding.reasonCode = "insufficient-context";
+      }
     }
   };
   try {
@@ -2498,6 +2848,7 @@ test("profile run keeps an ambiguous surface private until an exact owner decisi
     };
     const result = await runGenreSoulProfile(runOptions);
     assert.equal(result.status, "pending_hil");
+    assert.match(result.surfaceHil.requestPath, /\/genre\/surface-review\/owner-hil\/requests\//u);
     assert.equal(await pathExists(join(root, result.surfaceHil.candidatePath)), true);
     assert.equal(await pathExists(join(root, result.surfaceHil.requestPath)), true);
     assert.equal(await pathExists(join(root, "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json")), false);
@@ -2517,8 +2868,13 @@ test("profile run keeps an ambiguous surface private until an exact owner decisi
     assert.equal(completed.status, "completed");
     assert.equal(completed.surfaceHil.outcome, "pass");
     assert.equal(completed.surfaceHil.decisionPath, decision.decisionPath);
-    assert.equal(counter.calls, 7);
+    assert.equal(counter.calls, 8);
+    assert.equal(completed.surfaceReview.status, "pending_hil");
     for (const path of [
+      completed.surfaceReview.candidatePath,
+      completed.surfaceReview.inputPath,
+      completed.surfaceReview.acceptedPath,
+      completed.surfaceReview.acceptedReceiptPath,
       completed.surfaceHil.candidatePath,
       completed.surfaceHil.requestPath,
       completed.surfaceHil.decisionPath,

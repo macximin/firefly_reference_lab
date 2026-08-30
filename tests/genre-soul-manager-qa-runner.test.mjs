@@ -7,6 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  assertManagerQaSurfaceReviewReadback,
   assertRawSamplesBindPrivateSources,
   assertManagerQaTrackedSemanticSafety,
   derivePrivateManagerQaVerdict,
@@ -21,6 +22,10 @@ import {
   buildHermesStructuredAttemptInputAttestation,
 } from "../tools/genre-soul-hermes-run-lib.mjs";
 import { writePrivateGenreSoulSurfaceHilDecision } from "../tools/genre-soul-surface-hil-decision.mjs";
+import {
+  PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_INPUT_SCHEMA,
+  PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_RESULT_SCHEMA,
+} from "../tools/genre-soul-surface-semantic-review-lib.mjs";
 import {
   computePrimaryCommercialEngineSignature,
   validateManagerQaReceipt,
@@ -75,9 +80,9 @@ async function writeBytes(path, bytes) {
   await writeFile(path, bytes);
 }
 
-function sourceBytes(sourceId) {
+function sourceBytes(sourceId, sourcePrefix = "차도윤 이동.") {
   const early = Buffer.alloc(99, "e");
-  Buffer.from("차도윤 이동.").copy(early);
+  Buffer.from(sourcePrefix).copy(early);
   return Buffer.concat([
     early,
     Buffer.from(sourceId.padEnd(100, "m")),
@@ -119,7 +124,7 @@ function boundRef(path, digest = "a".repeat(64), sizeBytes = 10) {
   return { path, sha256: digest, sizeBytes };
 }
 
-function makeEvidence(root, { identicalMechanisms = false } = {}) {
+function makeEvidence(root, { identicalMechanisms = false, sourcePrefix } = {}) {
   const metadata = {
     managerSelection: {
       repoRelativePath: "evidence/genre-souls/male-manager-selection.v1.json",
@@ -152,7 +157,7 @@ function makeEvidence(root, { identicalMechanisms = false } = {}) {
     },
   };
   const bindings = SOURCE_IDS.map((sourceId, index) => {
-    const bytes = sourceBytes(sourceId);
+    const bytes = sourceBytes(sourceId, sourcePrefix);
     const sourcePath = `private_sources/${sourceId}.txt`;
     const observations = SPANS.map((span) => {
       const range = spanRange(span);
@@ -389,14 +394,59 @@ function privateResult(input) {
   };
 }
 
-function fakeRun({ runId = "manager-qa-run", mutateResult, mutateCandidate } = {}) {
+function semanticReviewResult(input, verdict = "generic-overlap") {
+  const reasonCode = {
+    "generic-overlap": "common-lexeme",
+    "protected-identity": "same-private-identity",
+    uncertain: "ambiguous-identity-use",
+  }[verdict];
+  if (!reasonCode) throw new Error(`Unsupported fixture semantic verdict: ${String(verdict)}.`);
+  return {
+    schemaVersion: PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_RESULT_SCHEMA,
+    gateVersion: input.gateVersion,
+    stage: input.stage,
+    genre: input.genre,
+    soulId: input.soulId,
+    inputDigest: input.inputDigest,
+    reviewRequestSha256: sha256(jsonBytes(input)),
+    findingDecisions: input.findings.map((finding) => ({
+      findingId: finding.findingId,
+      verdict,
+      reasonCode,
+      evidenceWindowIds: [
+        finding.candidateWindows[0].windowId,
+        finding.privateSourceWindows[0].windowId,
+      ].sort(),
+    })),
+    authority: {
+      scope: "reference-lab-analysis-surface-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+    },
+  };
+}
+
+function fakeRun({
+  runId = "manager-qa-run",
+  semanticRunId = `${runId}-surface-review`,
+  semanticVerdict = "generic-overlap",
+  mutateResult,
+  mutateCandidate,
+  mutateSemanticResult,
+} = {}) {
   return async (options) => {
     const inputBytes = await readFile(options.expectedReadPaths[0]);
     const input = JSON.parse(inputBytes.toString("utf8"));
-    const runtime = input.runtime;
+    const isSemanticReview = input.schemaVersion === PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_INPUT_SCHEMA;
+    const effectiveRunId = isSemanticReview ? semanticRunId : runId;
+    const runtime = input.runtime ?? fakeRuntime();
     const readCapability = buildFixtureReadCapability(options, runtime, inputBytes);
-    const result = privateResult(input);
-    if (mutateResult) mutateResult(result, input);
+    const result = isSemanticReview
+      ? semanticReviewResult(input, semanticVerdict)
+      : privateResult(input);
+    if (isSemanticReview) {
+      if (mutateSemanticResult) mutateSemanticResult(result, input);
+    } else if (mutateResult) mutateResult(result, input);
     await options.validateResult(result);
     const candidate = structuredClone(result);
     if (mutateCandidate) mutateCandidate(candidate, input);
@@ -415,13 +465,13 @@ function fakeRun({ runId = "manager-qa-run", mutateResult, mutateCandidate } = {
       api_calls: 2,
       model: "gpt-5.6-sol",
       provider: "openai-codex",
-      session_id: runId,
+      session_id: effectiveRunId,
       completed: true,
       failed: false,
       service_tier: null,
     };
     const trace = {
-      id: runId,
+      id: effectiveRunId,
       model: "gpt-5.6-sol",
       billing_provider: "openai-codex",
       profile_name: PROFILE_ID,
@@ -480,8 +530,8 @@ function fakeRun({ runId = "manager-qa-run", mutateResult, mutateCandidate } = {
       + Math.max(contextOutputReserveTokens, usage.output_tokens);
     const receipt = {
       schemaVersion: "private-hermes-structured-run-receipt/v1",
-      role: "manager-qa",
-      runId,
+      role: options.role,
+      runId: effectiveRunId,
       profileId: PROFILE_ID,
       model: "gpt-5.6-sol",
       provider: "openai-codex",
@@ -550,16 +600,16 @@ function fakeRun({ runId = "manager-qa-run", mutateResult, mutateCandidate } = {
     ]);
     const completionBytes = jsonBytes({
       schemaVersion: "private-hermes-structured-attempt-completion/v1",
-      role: "manager-qa",
+      role: options.role,
       attemptId,
-      runId,
+      runId: effectiveRunId,
       hostReceiptSha256: sha256(jsonBytes(receipt)),
       completed: true,
     });
     await writeFile(join(attemptDir, "completed.json"), completionBytes);
     await writeFile(join(options.runRoot, "completed.json"), jsonBytes({
       schemaVersion: "private-hermes-structured-completed-pointer/v1",
-      role: "manager-qa",
+      role: options.role,
       attempt: `attempts/${attemptId}`,
       attemptCompletionSha256: sha256(completionBytes),
       hostReceiptSha256: sha256(jsonBytes(receipt)),
@@ -785,7 +835,10 @@ async function setupFixture(options = {}) {
   const root = await mkdtemp(join(tmpdir(), "genre-soul-manager-qa-"));
   const evidence = makeEvidence(root, options);
   for (const binding of evidence.bindings) {
-    await writeBytes(join(root, binding.evidence.source.repoRelativePath), sourceBytes(binding.sourceId));
+    await writeBytes(
+      join(root, binding.evidence.source.repoRelativePath),
+      sourceBytes(binding.sourceId, options.sourcePrefix),
+    );
   }
   const privateProfileInput = {
     path: `exports/genre-souls/${SOUL_ID}/v1/profile-runs/${"d".repeat(64)}/genre/input.json`,
@@ -845,10 +898,22 @@ function runnerOptions(fixture, overrides = {}) {
 
 test("builds a fresh manager receipt, scans before publication, and reuses identical bytes", async () => {
   const fixture = await setupFixture();
+  const roles = [];
+  const run = fakeRun();
+  const options = runnerOptions(fixture, {
+    testOnlyRunStructured: async (runOptions) => {
+      roles.push(runOptions.role);
+      return run(runOptions);
+    },
+  });
   try {
-    const first = await runGenreSoulManagerQa(runnerOptions(fixture));
+    const first = await runGenreSoulManagerQa(options);
     assert.equal(first.status, "written");
+    assert.deepEqual(roles, ["manager-qa"]);
     assert.equal(first.receipt.manager.actorId, `hermes:${PROFILE_ID}:manager-qa-run`);
+    assert.equal(first.receipt.schemaVersion, "genre-soul-manager-qa/v2");
+    assert.equal(first.receipt.surfaceReview.mode, "deterministic-clean");
+    assert.equal(first.receipt.surfaceReview.semantic, null);
     assert.equal(first.receipt.sources.length, 3);
     assert.equal(first.receipt.sources.flatMap((source) => source.samples).length, 9);
     assert.equal(new Set(first.receipt.sources.map((source) => source.mechanismSignatureSha256)).size, 3);
@@ -856,7 +921,7 @@ test("builds a fresh manager receipt, scans before publication, and reuses ident
     const tracked = await readFile(join(fixture.root, first.qaPath));
     assert.equal(sha256(tracked), first.leakReceipt.artifact.sha256);
 
-    const second = await runGenreSoulManagerQa(runnerOptions(fixture));
+    const second = await runGenreSoulManagerQa(options);
     assert.equal(second.status, "reused");
     assert.deepEqual(second.receipt, first.receipt);
   } finally {
@@ -1383,6 +1448,7 @@ test("Manager QA consumes an exact owner surface decision before publishing a pe
   const fixture = await setupFixture();
   const options = runnerOptions(fixture, {
     testOnlyRunStructured: fakeRun({
+      semanticVerdict: "uncertain",
       mutateResult: (result) => {
         result.engineComparisons[0].semanticDifference = "차도윤 방식은 반복 행동과 저항 해소 순서가 다르다";
       },
@@ -1410,29 +1476,263 @@ test("Manager QA consumes an exact owner surface decision before publishing a pe
     assert.equal(published.surfaceHil.decisionPath, decision.decisionPath);
     const tracked = JSON.parse(await readFile(join(fixture.root, published.qaPath), "utf8"));
     assert.equal(tracked.result, "pass");
-    assert.equal(tracked.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v1");
+    assert.equal(tracked.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v2");
     assert.equal(tracked.surfaceReview.candidate.path, published.surfaceHil.candidatePath);
-    assert.equal(tracked.surfaceReview.request.path, published.surfaceHil.requestPath);
-    assert.equal(tracked.surfaceReview.decision.path, decision.decisionPath);
-    assert.equal(tracked.surfaceReview.decision.sha256, decision.decisionSha256);
-    assert.equal(tracked.surfaceReview.decision.outcome, "approved");
-    assert.equal(tracked.surfaceReview.decision.decidedByRole, "owner");
+    assert.equal(tracked.surfaceReview.semantic.outcome, "owner-approved");
+    assert.equal(tracked.surfaceReview.semantic.verdictCounts.uncertain > 0, true);
+    assert.equal(tracked.surfaceReview.ownerDecision.request.path, published.surfaceHil.requestPath);
+    assert.equal(tracked.surfaceReview.ownerDecision.decision.path, decision.decisionPath);
+    assert.equal(tracked.surfaceReview.ownerDecision.decision.sha256, decision.decisionSha256);
+    assert.equal(tracked.surfaceReview.ownerDecision.decision.outcome, "approved");
+    assert.equal(tracked.surfaceReview.ownerDecision.decision.decidedByRole, "owner");
+    assert.notEqual(tracked.surfaceReview.semantic.reviewer.runId, tracked.manager.runId);
+    assert.notEqual(tracked.surfaceReview.semantic.reviewer.runId, tracked.profile.synthesisRunId);
     assert.equal(validateManagerQaReceipt(tracked), true);
     const historicalV1 = structuredClone(tracked);
-    historicalV1.surfaceReview.gateVersion = "genre-soul-protected-surface-hil/v1";
+    historicalV1.schemaVersion = "genre-soul-manager-qa/v1";
+    delete historicalV1.manager.inputDigest;
+    const structuredRoot = tracked.surfaceReview.candidate.path.slice(0, -"/surface-review/candidate.json".length);
+    const historicalRequestSha256 = "7".repeat(64);
+    historicalV1.surfaceReview = {
+      schemaVersion: "genre-soul-manager-surface-review-proof/v1",
+      gateVersion: "genre-soul-protected-surface-hil/v2",
+      candidate: boundRef(`${structuredRoot}/surface-hil/candidate.json`, "6".repeat(64), 61),
+      request: boundRef(
+        `${structuredRoot}/surface-hil/requests/${historicalRequestSha256}.json`,
+        historicalRequestSha256,
+        62,
+      ),
+      decision: {
+        ...boundRef(
+          `${structuredRoot}/surface-hil/decisions/${historicalRequestSha256}.json`,
+          "8".repeat(64),
+          63,
+        ),
+        decisionId: `surface-decision-${"9".repeat(24)}`,
+        outcome: "approved",
+        decidedByRole: "owner",
+      },
+      authority: {
+        scope: "reference-lab-analysis-surface-only",
+        mayWriteInkOSCanon: false,
+        mayPromoteSoul: false,
+      },
+    };
     assert.equal(validateManagerQaReceipt(historicalV1), true);
-    const unsupportedV3 = structuredClone(tracked);
-    unsupportedV3.surfaceReview.gateVersion = "genre-soul-protected-surface-hil/v3";
-    assert.throws(() => validateManagerQaReceipt(unsupportedV3), /gate version drifted/u);
+    const currentWithLegacyProof = structuredClone(tracked);
+    currentWithLegacyProof.surfaceReview = structuredClone(historicalV1.surfaceReview);
+    assert.throws(() => validateManagerQaReceipt(currentWithLegacyProof), /schema or gate version drifted/u);
+    const v1ClaimingV3 = structuredClone(historicalV1);
+    v1ClaimingV3.surfaceReview.gateVersion = "genre-soul-protected-surface-hil/v3";
+    assert.throws(() => validateManagerQaReceipt(v1ClaimingV3), /gate version drifted/u);
     const tampered = structuredClone(tracked);
-    tampered.surfaceReview.decision.outcome = "rejected";
-    assert.throws(() => validateManagerQaReceipt(tampered), /requires an exact approved owner decision/u);
+    tampered.surfaceReview.ownerDecision.decision.outcome = "rejected";
+    assert.throws(() => validateManagerQaReceipt(tampered), /require(?:s)? an exact approved owner decision/u);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }
 });
 
-test("semantic lint rejects proper names, selection identities, and copied private surfaces without blocking generic mechanism prose", async () => {
+test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 compound false positive", async () => {
+  const fixture = await setupFixture({ sourcePrefix: "정부군(軍)은 이동." });
+  const calls = [];
+  const run = fakeRun({
+    mutateResult: (result) => {
+      result.engineComparisons[0].semanticDifference = "정부 방식은 반복 행동과 저항 해소 순서가 다르다";
+    },
+  });
+  try {
+    const result = await runGenreSoulManagerQa(runnerOptions(fixture, {
+      testOnlyRunStructured: async (options) => {
+        calls.push(options.role);
+        return run(options);
+      },
+    }));
+    assert.equal(result.status, "written");
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0], "manager-qa");
+    assert.match(calls[1], /^genre-soul-surface-semantic-review:manager-qa:/u);
+    assert.equal(result.surfaceHil, undefined);
+    assert.equal(result.receipt.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v2");
+    assert.equal(result.receipt.surfaceReview.semantic.outcome, "auto-passed");
+    assert.equal(result.receipt.surfaceReview.semantic.verdictCounts.genericOverlap > 0, true);
+    assert.equal(result.receipt.surfaceReview.semantic.verdictCounts.protectedIdentity, 0);
+    assert.equal(result.receipt.surfaceReview.semantic.verdictCounts.uncertain, 0);
+    assert.equal(result.receipt.surfaceReview.ownerDecision, null);
+    assert.equal(validateManagerQaReceipt(result.receipt), true);
+    assert.equal(await assertManagerQaSurfaceReviewReadback({
+      repositoryRoot: fixture.root,
+      receipt: result.receipt,
+    }), true);
+
+    const missingProof = structuredClone(result.receipt);
+    delete missingProof.surfaceReview;
+    assert.throws(() => validateManagerQaReceipt(missingProof), /keys must be exactly/u);
+    for (const mutate of [
+      (value) => { value.surfaceReview.candidate.sha256 = "0".repeat(64); },
+      (value) => { value.surfaceReview.semantic.input.sha256 = "1".repeat(64); },
+      (value) => { value.surfaceReview.semantic.result.sha256 = "2".repeat(64); },
+      (value) => { value.surfaceReview.semantic.verdictCounts.genericOverlap += 1; },
+      (value) => { value.surfaceReview.semantic.outcome = "owner-approved"; },
+      (value) => { value.manager.inputDigest = "3".repeat(64); },
+    ]) {
+      const tampered = structuredClone(result.receipt);
+      mutate(tampered);
+      assert.throws(() => validateManagerQaReceipt(tampered));
+    }
+
+    const acceptedPath = join(fixture.root, result.receipt.surfaceReview.semantic.result.path);
+    const parkedPath = `${acceptedPath}.fixture-missing`;
+    await rename(acceptedPath, parkedPath);
+    await assert.rejects(
+      assertManagerQaSurfaceReviewReadback({ repositoryRoot: fixture.root, receipt: result.receipt }),
+      /ENOENT/u,
+    );
+    await rename(parkedPath, acceptedPath);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+async function assertSurfaceEvidenceMutationFailsClosed({ root, receipt, references }) {
+  for (const { label, reference } of references) {
+    const absolutePath = join(root, reference.path);
+    const originalBytes = await readFile(absolutePath);
+    for (const mode of ["missing", "byte-drift"]) {
+      const parkedPath = `${absolutePath}.fixture-${mode}`;
+      try {
+        if (mode === "missing") {
+          await rename(absolutePath, parkedPath);
+        } else {
+          await writeFile(absolutePath, Buffer.concat([originalBytes, Buffer.from("fixture-drift")]));
+        }
+        await assert.rejects(
+          assertManagerQaSurfaceReviewReadback({ repositoryRoot: root, receipt }),
+          mode === "missing" ? /ENOENT/u : /bytes drifted/u,
+          `${label} ${mode} must fail closed`,
+        );
+      } finally {
+        if (mode === "missing") {
+          await rename(parkedPath, absolutePath);
+        } else {
+          await writeFile(absolutePath, originalBytes);
+        }
+      }
+    }
+  }
+}
+
+test("Manager QA current v2 live readback requires every deterministic, semantic, and owner evidence byte", async () => {
+  const deterministic = await setupFixture();
+  try {
+    const result = await runGenreSoulManagerQa(runnerOptions(deterministic));
+    assert.equal(result.receipt.surfaceReview.mode, "deterministic-clean");
+    await assertSurfaceEvidenceMutationFailsClosed({
+      root: deterministic.root,
+      receipt: result.receipt,
+      references: [{
+        label: "deterministic candidate",
+        reference: result.receipt.surfaceReview.candidate,
+      }],
+    });
+  } finally {
+    await rm(deterministic.root, { recursive: true, force: true });
+  }
+
+  const semantic = await setupFixture({ sourcePrefix: "정부군(軍)은 이동." });
+  try {
+    const result = await runGenreSoulManagerQa(runnerOptions(semantic, {
+      testOnlyRunStructured: fakeRun({
+        mutateResult: (candidate) => {
+          candidate.engineComparisons[0].semanticDifference = "정부 방식은 반복 행동과 저항 해소 순서가 다르다";
+        },
+      }),
+    }));
+    assert.equal(result.receipt.surfaceReview.mode, "semantic-auto-passed");
+    await assertSurfaceEvidenceMutationFailsClosed({
+      root: semantic.root,
+      receipt: result.receipt,
+      references: [
+        { label: "semantic candidate", reference: result.receipt.surfaceReview.candidate },
+        { label: "semantic input", reference: result.receipt.surfaceReview.semantic.input },
+        { label: "semantic result", reference: result.receipt.surfaceReview.semantic.result },
+        { label: "semantic receipt", reference: result.receipt.surfaceReview.semantic.receipt },
+      ],
+    });
+  } finally {
+    await rm(semantic.root, { recursive: true, force: true });
+  }
+
+  const owner = await setupFixture();
+  const ownerOptions = runnerOptions(owner, {
+    testOnlyRunStructured: fakeRun({
+      semanticVerdict: "uncertain",
+      mutateResult: (candidate) => {
+        candidate.engineComparisons[0].semanticDifference = "차도윤 방식은 반복 행동과 저항 해소 순서가 다르다";
+      },
+    }),
+  });
+  try {
+    const pending = await runGenreSoulManagerQa(ownerOptions);
+    assert.equal(pending.status, "pending_hil");
+    await writePrivateGenreSoulSurfaceHilDecision({
+      repositoryRoot: owner.root,
+      requestPath: pending.surfaceHil.requestPath,
+      decision: "approve",
+      actorId: "owner:live-readback-test",
+      decidedAt: "2026-08-30T00:00:00.000Z",
+      testOnly: true,
+      testOnlyRepositoryRoot: owner.root,
+    });
+    const result = await runGenreSoulManagerQa(ownerOptions);
+    assert.equal(result.receipt.surfaceReview.mode, "semantic-owner-approved");
+    await assertSurfaceEvidenceMutationFailsClosed({
+      root: owner.root,
+      receipt: result.receipt,
+      references: [
+        { label: "owner request", reference: result.receipt.surfaceReview.ownerDecision.request },
+        { label: "owner decision", reference: result.receipt.surfaceReview.ownerDecision.decision },
+      ],
+    });
+  } finally {
+    await rm(owner.root, { recursive: true, force: true });
+  }
+});
+
+test("Manager QA blocks a reviewer-confirmed identity and rejects reviewer self-approval", async () => {
+  for (const scenario of [
+    {
+      options: { semanticVerdict: "protected-identity" },
+      message: /reviewer-confirmed protected identity/u,
+    },
+    {
+      options: { semanticRunId: "manager-qa-run" },
+      message: /run separate from every producer/u,
+    },
+  ]) {
+    const fixture = await setupFixture({ sourcePrefix: "정부군(軍)은 이동." });
+    const run = fakeRun({
+      ...scenario.options,
+      mutateResult: (result) => {
+        result.engineComparisons[0].semanticDifference = "정부 방식은 반복 행동과 저항 해소 순서가 다르다";
+      },
+    });
+    try {
+      await assert.rejects(
+        runGenreSoulManagerQa(runnerOptions(fixture, { testOnlyRunStructured: run })),
+        scenario.message,
+      );
+      await assert.rejects(
+        readFile(join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`)),
+        /ENOENT/u,
+      );
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("deterministic surface lint blocks hard facts and routes ambiguous names while passing generic mechanism prose", async () => {
   const fixture = await setupFixture();
   try {
     const result = await runGenreSoulManagerQa(runnerOptions(fixture));
@@ -1451,7 +1751,7 @@ test("semantic lint rejects proper names, selection identities, and copied priva
       receipt: named,
       evidence: fixture.evidence,
       rawSamples,
-    }), /pending_hil/u);
+    }), /pending_semantic_review/u);
 
     for (const [sourceText, personName] of [
       ["김민수와 함께 움직였다.", "김민수"],
@@ -1475,7 +1775,7 @@ test("semantic lint rejects proper names, selection identities, and copied priva
         receipt: conjunctionReceipt,
         evidence: fixture.evidence,
         rawSamples: conjunctionSamples,
-      }), /pending_hil/u);
+      }), /pending_semantic_review/u);
     }
 
     const organizationSamples = structuredClone(rawSamples);
@@ -1486,7 +1786,7 @@ test("semantic lint rejects proper names, selection identities, and copied priva
       receipt: organizationReceipt,
       evidence: fixture.evidence,
       rawSamples: organizationSamples,
-    }), /protected proper surface/u);
+    }), /pending_semantic_review/u);
 
     for (const sourceText of [
       "태성그룹은 다음 인수를 준비했다.",
@@ -1501,7 +1801,7 @@ test("semantic lint rejects proper names, selection identities, and copied priva
         receipt: organizationReceipt,
         evidence: fixture.evidence,
         rawSamples: attachedOrganizationSamples,
-      }), /protected proper surface/u);
+      }), /pending_semantic_review/u);
     }
 
     const genericSamples = structuredClone(rawSamples);
@@ -1530,7 +1830,7 @@ test("semantic lint rejects proper names, selection identities, and copied priva
       receipt: ambiguousNounReceipt,
       evidence: fixture.evidence,
       rawSamples: ambiguousNounSamples,
-    }), /pending_hil/u);
+    }), /pending_semantic_review/u);
     for (const genericNoun of ["변화", "한계", "권한"]) {
       const nounSamples = structuredClone(rawSamples);
       nounSamples[0].sourceText = `${genericNoun}는 다음 보상을 바꾼다.`;
@@ -1603,7 +1903,7 @@ test("high-confidence protected Manager prose fails before the structured result
         calls += 1;
         return protectedRun(options);
       },
-    })), /Manager QA candidate contains a protected private surface/u);
+    })), /Manager QA tracked semantic output contains a protected proper surface/u);
     assert.equal(calls, 1);
     await assert.rejects(
       readFile(join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`)),

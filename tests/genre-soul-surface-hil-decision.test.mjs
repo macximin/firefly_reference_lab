@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { writePrivateGenreSoulSurfaceHilDecision } from "../tools/genre-soul-surface-hil-decision.mjs";
 import {
+  buildPrivateGenreSoulAmbiguousSurfaceRequest,
   computeGenreSoulSurfaceSampleSetSha256,
   computeGenreSoulSurfaceSourceSetSha256,
   evaluateGenreSoulSurfaceHil,
@@ -31,11 +32,34 @@ async function writeRequestFixture(root) {
     sourceSetSha256: computeGenreSoulSurfaceSourceSetSha256([]),
     sampleSetSha256: computeGenreSoulSurfaceSampleSetSha256(samples),
   });
-  assert.equal(pending.status, "pending_hil");
-  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${sha256("run")}/genre/surface-hil/requests/${pending.requestSha256}.json`;
+  assert.equal(pending.status, "pending_semantic_review");
+  const built = buildPrivateGenreSoulAmbiguousSurfaceRequest({
+    stage: pending.stage,
+    genre: pending.genre,
+    soulId: pending.soulId,
+    inputDigest: pending.inputDigest,
+    candidate: pending.candidate,
+    privateEvidence: pending.privateEvidence,
+    semanticReview: {
+      input: { sha256: sha256("review-input"), sizeBytes: 10 },
+      result: { sha256: sha256("review-result"), sizeBytes: 10 },
+      receipt: {
+        sha256: sha256("review-receipt"),
+        sizeBytes: 10,
+        role: "genre-soul-surface-semantic-review:profile:test",
+        runId: "review-run-test",
+        model: "gpt-5.6-sol",
+        provider: "openai-codex",
+        reasoningEffort: "high",
+        promptSha256: sha256("review-prompt"),
+      },
+    },
+    findings: pending.findings,
+  });
+  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${sha256("run")}/genre/surface-review/owner-hil/requests/${built.sha256}.json`;
   await mkdir(join(root, dirname(requestPath)), { recursive: true });
-  await writeFile(join(root, requestPath), pending.requestBytes);
-  return { pending, requestPath };
+  await writeFile(join(root, requestPath), built.bytes);
+  return { pending: built, requestPath };
 }
 
 test("writes one owner surface decision with no-clobber canonical readback and reuses identical bytes", async () => {

@@ -3,18 +3,31 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 
 export const PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA =
-  "private-genre-soul-ambiguous-surface-request/v2";
+  "private-genre-soul-ambiguous-surface-request/v3";
 export const PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_DECISION_SCHEMA =
-  "private-genre-soul-ambiguous-surface-decision/v2";
+  "private-genre-soul-ambiguous-surface-decision/v3";
 export const GENRE_SOUL_SURFACE_HIL_GATE_VERSION =
-  "genre-soul-protected-surface-hil/v2";
+  "genre-soul-protected-surface-hil/v3";
+export const GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION =
+  "genre-soul-surface-candidate-extractor/v3";
 
 const SURNAME_AMBIGUITY_RULE = "bare-korean-surname-shaped-2-4-overlap/v1";
 const ORGANIZATION_STEM_AMBIGUITY_RULE = "bare-organization-stem-overlap/v1";
+const ADJACENT_PERSON_AMBIGUITY_RULE = "adjacent-role-or-honorific/v1";
+const QUOTED_SURFACE_AMBIGUITY_RULE = "quoted-private-surface-overlap/v1";
+const LATIN_IDENTIFIER_AMBIGUITY_RULE = "latin-identifier-shaped-overlap/v1";
+const ORGANIZATION_FULL_AMBIGUITY_RULE = "organization-full-form-overlap/v1";
 const AMBIGUITY_RULES = new Set([
+  ADJACENT_PERSON_AMBIGUITY_RULE,
+  LATIN_IDENTIFIER_AMBIGUITY_RULE,
+  ORGANIZATION_FULL_AMBIGUITY_RULE,
+  QUOTED_SURFACE_AMBIGUITY_RULE,
   SURNAME_AMBIGUITY_RULE,
   ORGANIZATION_STEM_AMBIGUITY_RULE,
 ]);
+const WINDOW_MAX_UTF8_BYTES = 768;
+const WINDOW_CONTEXT_CODE_UNITS = 160;
+const MAX_WINDOWS_PER_SIDE = 8;
 const SHA256 = /^[0-9a-f]{64}$/u;
 const SAFE_PRIVATE_REF = /^[A-Za-z0-9._:/-]{1,512}$/u;
 const STAGES = new Set(["profile", "manager-qa"]);
@@ -323,45 +336,52 @@ function organizationIdentityAttributionTerms(value) {
   return terms;
 }
 
-function protectedSampleTerms(sampleText) {
-  const tokens = surfaceTokens(sampleText);
-  const protectedTerms = new Map();
-  const add = (term, rule) => {
-    if (term.length < 2) return;
-    const rules = protectedTerms.get(term) ?? new Set();
-    rules.add(rule);
-    protectedTerms.set(term, rules);
-  };
-  for (const match of String(sampleText).normalize("NFC")
+function quotedSurfaceTerms(value) {
+  const terms = new Set();
+  for (const match of String(value).normalize("NFC")
     .matchAll(/["“”'‘’『』「」《》〈〉]([^"“”'‘’『』「」《》〈〉\r\n]{2,80})["“”'‘’『』「」《》〈〉]/gu)) {
     const term = normalizedSurface(match[1]);
-    if (term.length >= 2) add(term, "quoted-private-identity/v1");
+    if (term.length >= 2) terms.add(term);
   }
-  for (const structure of organizationStructures(sampleText)) {
-    add(structure.full, "explicit-organization-structure/v1");
+  return terms;
+}
+
+function latinIdentifierTerms(value) {
+  const terms = new Set();
+  for (const token of surfaceTokens(value)) {
+    if (isLatinPrivateIdentifier(token.raw)) terms.add(normalizedSurface(token.raw));
   }
+  return terms;
+}
+
+function organizationFullTerms(value) {
+  return new Set(organizationStructures(value).map((entry) => entry.full));
+}
+
+// Quote marks, Latin identifier morphology, and organization suffixes are
+// properties of sample prose, not independently bound identities. Even when
+// more than one of those shapes coincides (for example `“중견기업”`), the
+// overlap remains a semantic-review candidate. Deterministic identity blocks
+// come only from canonical selection metadata below.
+
+// Role and honorific morphology is deliberately candidate-only in v3. Korean
+// particles, punctuation, and compounds such as `정부군` can look identical to
+// a person anchor after normalization; only the semantic reviewer may resolve
+// these overlaps.
+function adjacentPersonTerms(value) {
+  const tokens = surfaceTokens(value);
+  const terms = new Set();
   for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index].normalized;
-    const rawToken = tokens[index].raw;
-    if (isLatinPrivateIdentifier(rawToken)) {
-      add(normalizedSurface(rawToken), "latin-private-identifier/v1");
-    }
-    const attachedPerson = attachedPersonAnchor(token);
-    if (attachedPerson) add(attachedPerson, "adjacent-role-or-honorific/v1");
-    const candidate = personCandidate(token);
+    const attached = attachedPersonAnchor(tokens[index].normalized);
+    if (attached) terms.add(attached);
+    const candidate = personCandidate(tokens[index].normalized);
     if (
       candidate
       && isBareSurnameShapedAmbiguityCandidate(candidate)
       && (roleBase(tokens[index - 1]?.normalized) || roleBase(tokens[index + 1]?.normalized))
-    ) {
-      add(candidate, "adjacent-role-or-honorific/v1");
-    }
-    const nextRole = roleBase(tokens[index + 1]?.normalized);
-    if (nextRole && candidate && isBareSurnameShapedAmbiguityCandidate(candidate)) {
-      add(candidate, "adjacent-role-or-honorific/v1");
-    }
+    ) terms.add(candidate);
   }
-  return protectedTerms;
+  return terms;
 }
 
 function isLatinPrivateIdentifier(value) {
@@ -398,6 +418,141 @@ function ambiguousSurnameShapedTerms(value) {
     }
   }
   return terms;
+}
+
+function normalizedSurfaceRangeMap(value) {
+  const text = String(value).normalize("NFC");
+  const units = [];
+  let normalized = "";
+  for (let start = 0; start < text.length;) {
+    const codePoint = text.codePointAt(start);
+    const rawUnit = String.fromCodePoint(codePoint);
+    const end = start + rawUnit.length;
+    const transformed = rawUnit.toLocaleLowerCase("en-US").replace(/[^가-힣a-z0-9]+/gu, "");
+    for (const unit of transformed) {
+      normalized += unit;
+      units.push({ start, end });
+    }
+    start = end;
+  }
+  return { normalized, units };
+}
+
+function normalizedSurfaceRangesForTerm(value, term) {
+  const mapped = normalizedSurfaceRangeMap(value);
+  const ranges = [];
+  let cursor = 0;
+  while (cursor <= mapped.normalized.length - term.length) {
+    const match = mapped.normalized.indexOf(term, cursor);
+    if (match < 0) break;
+    const first = mapped.units[match];
+    const last = mapped.units[match + term.length - 1];
+    if (first && last) ranges.push({ start: first.start, end: last.end });
+    cursor = match + 1;
+  }
+  return ranges;
+}
+
+function tokenRangesForTerm(value, term) {
+  const ranges = [];
+  for (const token of surfaceTokens(value)) {
+    const base = tokenBase(token.normalized);
+    const helperless = base.endsWith("이") ? base.slice(0, -1) : "";
+    const attachedPerson = attachedPersonAnchor(token.normalized);
+    const organization = attachedOrganizationStructure(token.normalized);
+    if (
+      base === term
+      || helperless === term
+      || attachedPerson === term
+      || organization?.stem === term
+      || organization?.full === term
+      || normalizedSurface(token.raw) === term
+    ) ranges.push({ start: token.start, end: token.end });
+  }
+  if (ranges.length < 1) {
+    ranges.push(...normalizedSurfaceRangesForTerm(value, term));
+  }
+  return ranges;
+}
+
+function safeSliceBoundary(value, index, direction) {
+  let boundary = Math.max(0, Math.min(value.length, index));
+  if (
+    boundary > 0
+    && boundary < value.length
+    && /[\uDC00-\uDFFF]/u.test(value[boundary])
+    && /[\uD800-\uDBFF]/u.test(value[boundary - 1])
+  ) boundary += direction < 0 ? -1 : 1;
+  return Math.max(0, Math.min(value.length, boundary));
+}
+
+function boundedRawWindow(value, range, side, reference, term) {
+  const text = String(value).normalize("NFC");
+  let start = safeSliceBoundary(text, range.start - WINDOW_CONTEXT_CODE_UNITS, -1);
+  let end = safeSliceBoundary(text, range.end + WINDOW_CONTEXT_CODE_UNITS, 1);
+  while (Buffer.byteLength(text.slice(start, end)) > WINDOW_MAX_UTF8_BYTES && (start < range.start || end > range.end)) {
+    if (end - range.end >= range.start - start && end > range.end) {
+      end = safeSliceBoundary(text, end - 1, -1);
+    } else if (start < range.start) {
+      start = safeSliceBoundary(text, start + 1, 1);
+    }
+  }
+  const windowText = text.slice(start, end);
+  const startUtf8Byte = Buffer.byteLength(text.slice(0, start));
+  const endUtf8Byte = startUtf8Byte + Buffer.byteLength(windowText);
+  const matchStartUtf8Byte = Buffer.byteLength(text.slice(start, range.start));
+  const matchEndUtf8Byte = matchStartUtf8Byte + Buffer.byteLength(text.slice(range.start, range.end));
+  const descriptor = {
+    side,
+    reference,
+    startUtf8Byte,
+    endUtf8Byte,
+    matchStartUtf8Byte,
+    matchEndUtf8Byte,
+    textSha256: sha256(Buffer.from(windowText)),
+    normalizedTermSha256: sha256(Buffer.from(term)),
+  };
+  return {
+    windowId: `surface-window-${sha256(canonicalJsonBytes(descriptor)).slice(0, 24)}`,
+    side,
+    reference,
+    startUtf8Byte,
+    endUtf8Byte,
+    matchStartUtf8Byte,
+    matchEndUtf8Byte,
+    text: windowText,
+    textSha256: descriptor.textSha256,
+  };
+}
+
+function rawWindowsForTerm(value, term, side, reference) {
+  const ranges = tokenRangesForTerm(value, term);
+  const selected = ranges.length <= MAX_WINDOWS_PER_SIDE
+    ? ranges
+    : [...ranges.slice(0, MAX_WINDOWS_PER_SIDE / 2), ...ranges.slice(-MAX_WINDOWS_PER_SIDE / 2)];
+  const windows = [...new Map(selected.map((range) => {
+    const window = boundedRawWindow(value, range, side, reference, term);
+    return [window.windowId, window];
+  })).values()].sort((left, right) => compareStrings(left.windowId, right.windowId));
+  return { windows, complete: ranges.length <= MAX_WINDOWS_PER_SIDE && ranges.length > 0 };
+}
+
+function mergeBoundedWindowResults(results) {
+  const all = [...new Map(results.flatMap((result) => result.windows)
+    .map((window) => [window.windowId, window])).values()]
+    .sort((left, right) => (
+      compareStrings(left.reference, right.reference)
+      || left.startUtf8Byte - right.startUtf8Byte
+      || left.endUtf8Byte - right.endUtf8Byte
+      || compareStrings(left.windowId, right.windowId)
+    ));
+  const selected = all.length <= MAX_WINDOWS_PER_SIDE
+    ? all
+    : [...all.slice(0, MAX_WINDOWS_PER_SIDE / 2), ...all.slice(-MAX_WINDOWS_PER_SIDE / 2)];
+  return {
+    windows: selected.sort((left, right) => compareStrings(left.windowId, right.windowId)),
+    complete: results.every((result) => result.complete) && all.length <= MAX_WINDOWS_PER_SIDE,
+  };
 }
 
 function privateSampleRef(sample, index) {
@@ -527,6 +682,7 @@ function hasFiveTokenCopy(candidateText, sampleText) {
 function findingIdFor(context, finding) {
   const identity = {
     gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
     stage: context.stage,
     genre: context.genre,
     soulId: context.soulId,
@@ -539,55 +695,152 @@ function findingIdFor(context, finding) {
     normalizedTerm: finding.normalizedTerm,
     candidateLocations: finding.candidateLocations,
     privateSampleRefs: finding.privateSampleRefs,
+    candidateWindowIds: finding.candidateWindows.map((window) => window.windowId),
+    privateSourceWindowIds: finding.privateSourceWindows.map((window) => window.windowId),
+    windowCoverageComplete: finding.windowCoverageComplete,
   };
   return `surface-finding-${sha256(Buffer.from(JSON.stringify(identity))).slice(0, 24)}`;
 }
 
-function normalizeFindingInputs(findings) {
-  if (!Array.isArray(findings) || findings.length < 1) {
-    throw new Error("Ambiguous surface request requires at least one finding.");
+function validateSurfaceWindow(window, expectedSide, label) {
+  assertExactKeys(window, [
+    "windowId", "side", "reference", "startUtf8Byte", "endUtf8Byte",
+    "matchStartUtf8Byte", "matchEndUtf8Byte", "text", "textSha256",
+  ], label);
+  if (!/^surface-window-[0-9a-f]{24}$/u.test(window.windowId ?? "")) {
+    throw new Error(`${label}.windowId is invalid.`);
   }
-  const byRuleAndTerm = new Map();
-  for (const [index, finding] of findings.entries()) {
-    assertExactKeys(
-      finding,
-      ["rule", "normalizedTerm", "candidateLocations", "privateSampleRefs"],
-      `finding input ${index}`,
-    );
-    if (!AMBIGUITY_RULES.has(finding.rule)) {
-      throw new Error(`finding input ${index}.rule is unsupported.`);
-    }
-    if (!isValidAmbiguityFindingTerm(finding.rule, finding.normalizedTerm)) {
-      throw new Error(`finding input ${index}.normalizedTerm is invalid for ${finding.rule}.`);
-    }
-    const locations = uniqueSorted(finding.candidateLocations ?? []);
-    const refs = uniqueSorted(finding.privateSampleRefs ?? []);
-    assertUniqueSortedStrings(locations, `finding input ${index}.candidateLocations`, isCandidateLocation);
-    assertUniqueSortedStrings(refs, `finding input ${index}.privateSampleRefs`, (value) => SAFE_PRIVATE_REF.test(value));
-    const key = `${finding.rule}\u0000${finding.normalizedTerm}`;
-    const previous = byRuleAndTerm.get(key) ?? { candidateLocations: [], privateSampleRefs: [] };
-    byRuleAndTerm.set(key, {
-      candidateLocations: uniqueSorted([...previous.candidateLocations, ...locations]),
-      privateSampleRefs: uniqueSorted([...previous.privateSampleRefs, ...refs]),
-    });
+  if (window.side !== expectedSide) throw new Error(`${label}.side drifted.`);
+  if (typeof window.reference !== "string" || !SAFE_PRIVATE_REF.test(window.reference)) {
+    throw new Error(`${label}.reference is invalid.`);
   }
-  return [...byRuleAndTerm.entries()]
-    .map(([key, binding]) => {
-      const delimiter = key.indexOf("\u0000");
-      return {
-        rule: key.slice(0, delimiter),
-        normalizedTerm: key.slice(delimiter + 1),
-        ...binding,
-      };
-    })
-    .sort((left, right) => (
-      compareStrings(left.rule, right.rule)
-      || compareStrings(left.normalizedTerm, right.normalizedTerm)
-    ));
+  for (const key of ["startUtf8Byte", "endUtf8Byte", "matchStartUtf8Byte", "matchEndUtf8Byte"]) {
+    if (!Number.isSafeInteger(window[key]) || window[key] < 0) throw new Error(`${label}.${key} is invalid.`);
+  }
+  const bytes = Buffer.from(window.text ?? "");
+  if (
+    typeof window.text !== "string"
+    || window.text !== window.text.normalize("NFC")
+    || bytes.byteLength < 1
+    || bytes.byteLength > WINDOW_MAX_UTF8_BYTES
+    || window.endUtf8Byte - window.startUtf8Byte !== bytes.byteLength
+    || window.matchStartUtf8Byte >= window.matchEndUtf8Byte
+    || window.matchEndUtf8Byte > bytes.byteLength
+    || sha256(bytes) !== window.textSha256
+  ) throw new Error(`${label} byte binding is invalid.`);
+  assertSha(window.textSha256, `${label}.textSha256`);
+}
+
+function validateFindingObject(finding, context, index) {
+  const label = `surface finding ${index}`;
+  assertExactKeys(finding, [
+    "findingId", "rule", "normalizedTerm", "candidateLocations", "privateSampleRefs",
+    "candidateWindows", "privateSourceWindows", "windowCoverageComplete",
+  ], label);
+  if (!AMBIGUITY_RULES.has(finding.rule)) throw new Error(`${label}.rule is unsupported.`);
+  if (!isValidAmbiguityFindingTerm(finding.rule, finding.normalizedTerm)) {
+    throw new Error(`${label}.normalizedTerm is invalid for ${finding.rule}.`);
+  }
+  assertUniqueSortedStrings(finding.candidateLocations, `${label}.candidateLocations`, isCandidateLocation);
+  assertUniqueSortedStrings(finding.privateSampleRefs, `${label}.privateSampleRefs`, (value) => SAFE_PRIVATE_REF.test(value));
+  if (!Array.isArray(finding.candidateWindows) || finding.candidateWindows.length < 1) {
+    throw new Error(`${label}.candidateWindows must be non-empty.`);
+  }
+  if (!Array.isArray(finding.privateSourceWindows) || finding.privateSourceWindows.length < 1) {
+    throw new Error(`${label}.privateSourceWindows must be non-empty.`);
+  }
+  finding.candidateWindows.forEach((window, windowIndex) => (
+    validateSurfaceWindow(window, "candidate", `${label}.candidateWindows[${windowIndex}]`)
+  ));
+  finding.privateSourceWindows.forEach((window, windowIndex) => (
+    validateSurfaceWindow(window, "private-source", `${label}.privateSourceWindows[${windowIndex}]`)
+  ));
+  for (const [key, windows] of [
+    ["candidateWindows", finding.candidateWindows],
+    ["privateSourceWindows", finding.privateSourceWindows],
+  ]) {
+    const ids = windows.map((window) => window.windowId);
+    assertUniqueSortedStrings(ids, `${label}.${key} IDs`, (value) => /^surface-window-[0-9a-f]{24}$/u.test(value));
+  }
+  if (typeof finding.windowCoverageComplete !== "boolean") {
+    throw new Error(`${label}.windowCoverageComplete must be boolean.`);
+  }
+  if (finding.findingId !== findingIdFor(context, finding)) throw new Error(`${label}.findingId drifted.`);
+  return true;
+}
+
+function surfaceFindingSetSha256(findings) {
+  return sha256(canonicalJsonBytes({
+    schemaVersion: "private-genre-soul-surface-finding-set/v3",
+    gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
+    findings,
+  }));
+}
+
+export function validateGenreSoulSurfaceSemanticEvaluation(evaluation) {
+  assertExactKeys(evaluation, [
+    "status", "stage", "genre", "soulId", "inputDigest", "candidate", "privateEvidence",
+    "findings", "findingSetSha256", "blockers", "request", "requestBytes", "requestSha256",
+  ], "surface semantic evaluation");
+  if (evaluation.status !== "pending_semantic_review") {
+    throw new Error("Surface semantic evaluation status drifted.");
+  }
+  assertStageGenreSoul(evaluation.stage, evaluation.genre, evaluation.soulId);
+  assertSha(evaluation.inputDigest, "surface semantic evaluation inputDigest");
+  assertExactKeys(evaluation.candidate, ["path", "sha256", "sizeBytes"], "surface semantic evaluation candidate");
+  assertSafeRelativePath(evaluation.candidate.path, "surface semantic evaluation candidate.path");
+  assertSha(evaluation.candidate.sha256, "surface semantic evaluation candidate.sha256");
+  assertPositiveSafeInteger(evaluation.candidate.sizeBytes, "surface semantic evaluation candidate.sizeBytes");
+  assertExactKeys(
+    evaluation.privateEvidence,
+    ["sourceSetSha256", "sampleSetSha256"],
+    "surface semantic evaluation privateEvidence",
+  );
+  assertSha(evaluation.privateEvidence.sourceSetSha256, "surface semantic evaluation sourceSetSha256");
+  assertSha(evaluation.privateEvidence.sampleSetSha256, "surface semantic evaluation sampleSetSha256");
+  if (!Array.isArray(evaluation.findings) || evaluation.findings.length < 1) {
+    throw new Error("Surface semantic evaluation findings must be non-empty.");
+  }
+  const context = {
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: evaluation.candidate,
+    privateEvidence: evaluation.privateEvidence,
+  };
+  evaluation.findings.forEach((finding, index) => validateFindingObject(finding, context, index));
+  assertUniqueSortedStrings(
+    evaluation.findings.map((finding) => finding.findingId),
+    "surface semantic evaluation finding IDs",
+    (value) => /^surface-finding-[0-9a-f]{24}$/u.test(value),
+  );
+  if (evaluation.findingSetSha256 !== surfaceFindingSetSha256(evaluation.findings)) {
+    throw new Error("Surface semantic evaluation findingSetSha256 drifted.");
+  }
+  if (
+    !Array.isArray(evaluation.blockers)
+    || evaluation.blockers.length !== 0
+    || evaluation.request !== null
+    || evaluation.requestBytes !== null
+    || evaluation.requestSha256 !== null
+  ) throw new Error("Surface semantic evaluation must not carry deterministic blockers or owner HIL bytes.");
+  return true;
 }
 
 function isValidAmbiguityFindingTerm(rule, value) {
   if (typeof value !== "string" || value !== value.normalize("NFC")) return false;
+  if (rule === ADJACENT_PERSON_AMBIGUITY_RULE) return /^[가-힣]{2,4}$/u.test(value);
+  if (rule === QUOTED_SURFACE_AMBIGUITY_RULE) {
+    return value.length >= 2 && value.length <= 80 && normalizedSurface(value) === value;
+  }
+  if (rule === LATIN_IDENTIFIER_AMBIGUITY_RULE) {
+    return value.length >= 2 && value.length <= 80 && /[a-z]/u.test(value) && /^[a-z0-9]+$/u.test(value);
+  }
+  if (rule === ORGANIZATION_FULL_AMBIGUITY_RULE) {
+    return value.length >= 2 && value.length <= 40 && normalizedSurface(value) === value;
+  }
   if (rule === SURNAME_AMBIGUITY_RULE) return isBareSurnameShapedAmbiguityCandidate(value);
   if (rule === ORGANIZATION_STEM_AMBIGUITY_RULE) {
     return /^[가-힣a-z0-9_-]{2,20}$/u.test(value) && normalizedSurface(value) === value;
@@ -599,10 +852,33 @@ function isCandidateLocation(value) {
   return value.startsWith("$") && value.length <= 1_024 && !/[\0\r\n]/u.test(value);
 }
 
+function validateSemanticReviewBinding(value, label = "semanticReview") {
+  assertExactKeys(value, ["input", "result", "receipt"], label);
+  for (const key of ["input", "result"]) {
+    assertExactKeys(value[key], ["sha256", "sizeBytes"], `${label}.${key}`);
+    assertSha(value[key].sha256, `${label}.${key}.sha256`);
+    assertPositiveSafeInteger(value[key].sizeBytes, `${label}.${key}.sizeBytes`);
+  }
+  assertExactKeys(value.receipt, [
+    "sha256", "sizeBytes", "role", "runId", "model", "provider", "reasoningEffort", "promptSha256",
+  ], `${label}.receipt`);
+  assertSha(value.receipt.sha256, `${label}.receipt.sha256`);
+  assertPositiveSafeInteger(value.receipt.sizeBytes, `${label}.receipt.sizeBytes`);
+  assertActorId(value.receipt.role, `${label}.receipt.role`);
+  assertActorId(value.receipt.runId, `${label}.receipt.runId`);
+  if (
+    value.receipt.model !== "gpt-5.6-sol"
+    || value.receipt.provider !== "openai-codex"
+    || value.receipt.reasoningEffort !== "high"
+  ) throw new Error(`${label}.receipt runtime identity drifted.`);
+  assertSha(value.receipt.promptSha256, `${label}.receipt.promptSha256`);
+  return true;
+}
+
 export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
   if (!isObject(input)) throw new Error("Ambiguous surface request input must be an object.");
   assertExactKeys(input, [
-    "stage", "genre", "soulId", "inputDigest", "candidate", "privateEvidence", "findings",
+    "stage", "genre", "soulId", "inputDigest", "candidate", "privateEvidence", "semanticReview", "findings",
   ], "ambiguous surface request input");
   assertStageGenreSoul(input.stage, input.genre, input.soulId);
   assertSha(input.inputDigest, "inputDigest");
@@ -617,6 +893,7 @@ export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
   );
   assertSha(input.privateEvidence.sourceSetSha256, "privateEvidence.sourceSetSha256");
   assertSha(input.privateEvidence.sampleSetSha256, "privateEvidence.sampleSetSha256");
+  validateSemanticReviewBinding(input.semanticReview);
 
   const context = {
     stage: input.stage,
@@ -633,24 +910,28 @@ export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
       sampleSetSha256: input.privateEvidence.sampleSetSha256,
     },
   };
-  const findings = normalizeFindingInputs(input.findings)
-    .map((finding) => ({
-      findingId: findingIdFor(context, finding),
-      rule: finding.rule,
-      normalizedTerm: finding.normalizedTerm,
-      candidateLocations: finding.candidateLocations,
-      privateSampleRefs: finding.privateSampleRefs,
-    }))
+  if (!Array.isArray(input.findings) || input.findings.length < 1) {
+    throw new Error("Ambiguous surface request requires at least one uncertain finding.");
+  }
+  const findings = input.findings.map((finding) => structuredClone(finding))
     .sort((left, right) => compareStrings(left.findingId, right.findingId));
+  findings.forEach((finding, index) => validateFindingObject(finding, context, index));
+  assertUniqueSortedStrings(
+    findings.map((finding) => finding.findingId),
+    "ambiguous surface request finding IDs",
+    (value) => /^surface-finding-[0-9a-f]{24}$/u.test(value),
+  );
   const request = {
     schemaVersion: PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA,
     gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
     stage: context.stage,
     genre: context.genre,
     soulId: context.soulId,
     inputDigest: context.inputDigest,
     candidate: context.candidate,
     privateEvidence: context.privateEvidence,
+    semanticReview: structuredClone(input.semanticReview),
     findings,
   };
   const bytes = canonicalJsonBytes(request);
@@ -659,14 +940,17 @@ export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
 
 function validateRequestObject(request) {
   assertExactKeys(request, [
-    "schemaVersion", "gateVersion", "stage", "genre", "soulId", "inputDigest", "candidate",
-    "privateEvidence", "findings",
+    "schemaVersion", "gateVersion", "extractorVersion", "stage", "genre", "soulId", "inputDigest", "candidate",
+    "privateEvidence", "semanticReview", "findings",
   ], "ambiguous surface request");
   if (request.schemaVersion !== PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA) {
     throw new Error("Ambiguous surface request schema version drifted.");
   }
   if (request.gateVersion !== GENRE_SOUL_SURFACE_HIL_GATE_VERSION) {
     throw new Error("Ambiguous surface request gate version drifted.");
+  }
+  if (request.extractorVersion !== GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION) {
+    throw new Error("Ambiguous surface request extractor version drifted.");
   }
   assertStageGenreSoul(request.stage, request.genre, request.soulId);
   assertSha(request.inputDigest, "request.inputDigest");
@@ -681,6 +965,7 @@ function validateRequestObject(request) {
   );
   assertSha(request.privateEvidence.sourceSetSha256, "request.privateEvidence.sourceSetSha256");
   assertSha(request.privateEvidence.sampleSetSha256, "request.privateEvidence.sampleSetSha256");
+  validateSemanticReviewBinding(request.semanticReview, "request.semanticReview");
   if (!Array.isArray(request.findings) || request.findings.length < 1) {
     throw new Error("Ambiguous surface request findings must be non-empty.");
   }
@@ -693,33 +978,11 @@ function validateRequestObject(request) {
     privateEvidence: request.privateEvidence,
   };
   const ids = [];
-  const ruleTerms = [];
   for (const [index, finding] of request.findings.entries()) {
-    assertExactKeys(finding, [
-      "findingId", "rule", "normalizedTerm", "candidateLocations", "privateSampleRefs",
-    ], `request.findings[${index}]`);
-    if (!isValidAmbiguityFindingTerm(finding.rule, finding.normalizedTerm)) {
-      throw new Error(`request.findings[${index}].normalizedTerm is invalid.`);
-    }
-    assertUniqueSortedStrings(
-      finding.candidateLocations,
-      `request.findings[${index}].candidateLocations`,
-      isCandidateLocation,
-    );
-    assertUniqueSortedStrings(
-      finding.privateSampleRefs,
-      `request.findings[${index}].privateSampleRefs`,
-      (value) => SAFE_PRIVATE_REF.test(value),
-    );
-    const expectedId = findingIdFor(context, finding);
-    if (finding.findingId !== expectedId) throw new Error(`request.findings[${index}].findingId drifted.`);
+    validateFindingObject(finding, context, index);
     ids.push(finding.findingId);
-    ruleTerms.push(`${finding.rule}\u0000${finding.normalizedTerm}`);
   }
   assertUniqueSortedStrings(ids, "request finding IDs", (value) => /^surface-finding-[0-9a-f]{24}$/u.test(value));
-  if (new Set(ruleTerms).size !== ruleTerms.length) {
-    throw new Error("Request findings must deduplicate rule and normalized-term pairs.");
-  }
   return true;
 }
 
@@ -771,7 +1034,7 @@ function expectedDecisionId(value) {
 function validateDecisionObject(decision, expected = {}) {
   assertExactKeys(decision, [
     "schemaVersion", "gateVersion", "stage", "genre", "soulId", "inputDigest",
-    "request", "candidate", "privateEvidence", "findingDecisions", "outcome",
+    "request", "candidate", "privateEvidence", "semanticReview", "findingDecisions", "outcome",
     "decisionId", "decidedBy", "decidedAt", "authority",
   ], "ambiguous surface decision");
   if (decision.schemaVersion !== PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_DECISION_SCHEMA) {
@@ -793,6 +1056,7 @@ function validateDecisionObject(decision, expected = {}) {
   assertExactKeys(decision.privateEvidence, ["sourceSetSha256", "sampleSetSha256"], "decision.privateEvidence");
   assertSha(decision.privateEvidence.sourceSetSha256, "decision.privateEvidence.sourceSetSha256");
   assertSha(decision.privateEvidence.sampleSetSha256, "decision.privateEvidence.sampleSetSha256");
+  validateSemanticReviewBinding(decision.semanticReview, "decision.semanticReview");
   if (!Array.isArray(decision.findingDecisions) || decision.findingDecisions.length < 1) {
     throw new Error("Ambiguous surface decision findingDecisions must be non-empty.");
   }
@@ -848,6 +1112,7 @@ function validateDecisionObject(decision, expected = {}) {
       || decision.inputDigest !== request.inputDigest
       || JSON.stringify(decision.candidate) !== JSON.stringify(request.candidate)
       || JSON.stringify(decision.privateEvidence) !== JSON.stringify(request.privateEvidence)
+      || JSON.stringify(decision.semanticReview) !== JSON.stringify(request.semanticReview)
       || JSON.stringify(findingIds) !== JSON.stringify(request.findings.map((finding) => finding.findingId).sort(compareStrings))
     ) throw new Error("Ambiguous surface decision drifted from its exact request.");
   }
@@ -900,6 +1165,7 @@ export function buildPrivateGenreSoulAmbiguousSurfaceDecision(input) {
     },
     candidate: request.candidate,
     privateEvidence: request.privateEvidence,
+    semanticReview: request.semanticReview,
     findingDecisions,
     outcome: outcomeForFindingDecisions(findingDecisions),
     decisionId: "",
@@ -1030,7 +1296,6 @@ export function evaluateGenreSoulSurfaceHil(input) {
   const samples = normalizePrivateSamples(privateSamples);
 
   const blockers = [];
-  const protectedBySample = new Map();
   const exactTermsBySample = new Map();
   const organizationStemsBySample = new Map();
   const organizationAttributionsBySample = new Map();
@@ -1047,11 +1312,6 @@ export function evaluateGenreSoulSurfaceHil(input) {
       sample.reference,
       organizationIdentityAttributionTerms(sample.sourceText),
     );
-    for (const [term, rules] of protectedSampleTerms(sample.sourceText)) {
-      const entries = protectedBySample.get(term) ?? [];
-      for (const rule of rules) entries.push({ rule, privateRef: sample.reference });
-      protectedBySample.set(term, entries);
-    }
   }
   for (const entry of strings) {
     const normalized = normalizedSurface(entry.value);
@@ -1061,68 +1321,6 @@ export function evaluateGenreSoulSurfaceHil(input) {
           rule: "exact-selection-identity/v1",
           candidateLocation: entry.path,
           evidenceRef: selection.reference,
-        });
-      }
-    }
-    const exactTerms = candidateExactTerms(entry.value);
-    for (const term of exactTerms) {
-      for (const anchor of protectedBySample.get(term) ?? []) {
-        blockers.push({
-          rule: anchor.rule,
-          candidateLocation: entry.path,
-          evidenceRef: anchor.privateRef,
-        });
-      }
-    }
-    for (const [term, anchors] of protectedBySample) {
-      if (!anchors.some((anchor) => (
-        anchor.rule === "quoted-private-identity/v1"
-        || anchor.rule === "latin-private-identifier/v1"
-        || anchor.rule === "explicit-organization-structure/v1"
-      )) || !normalized.includes(term)) continue;
-      for (const anchor of anchors) {
-        if (
-          anchor.rule !== "quoted-private-identity/v1"
-          && anchor.rule !== "latin-private-identifier/v1"
-          && anchor.rule !== "explicit-organization-structure/v1"
-        ) continue;
-        blockers.push({
-          rule: anchor.rule,
-          candidateLocation: entry.path,
-          evidenceRef: anchor.privateRef,
-        });
-      }
-    }
-    const candidateAnchors = protectedSampleTerms(entry.value);
-    for (const [term, rules] of candidateAnchors) {
-      for (const sample of samples) {
-        if (!exactTermsBySample.get(sample.reference)?.has(term)) continue;
-        for (const rule of rules) {
-          blockers.push({
-            rule,
-            candidateLocation: entry.path,
-            evidenceRef: sample.reference,
-          });
-        }
-      }
-    }
-    const candidateOrganizationStems = organizationStemTerms(entry.value);
-    const candidateOrganizationAttributions = organizationIdentityAttributionTerms(entry.value);
-    for (const sample of samples) {
-      const sampleOrganizationStems = organizationStemsBySample.get(sample.reference) ?? new Set();
-      const sampleOrganizationAttributions = organizationAttributionsBySample.get(sample.reference) ?? new Set();
-      const mutuallyAnchoredTerms = new Set([
-        ...[...sampleOrganizationStems].filter((term) => (
-          candidateOrganizationStems.has(term)
-          || candidateOrganizationAttributions.has(term)
-        )),
-        ...[...candidateOrganizationStems].filter((term) => sampleOrganizationAttributions.has(term)),
-      ]);
-      if (mutuallyAnchoredTerms.size > 0) {
-        blockers.push({
-          rule: "explicit-organization-structure/v1",
-          candidateLocation: entry.path,
-          evidenceRef: sample.reference,
         });
       }
     }
@@ -1142,7 +1340,17 @@ export function evaluateGenreSoulSurfaceHil(input) {
   if (canonicalBlockers.length > 0) {
     return {
       status: "blocked",
+      stage: input.stage,
+      genre: input.genre,
+      soulId: input.soulId,
+      inputDigest: input.inputDigest,
       candidate: candidateDescriptor,
+      privateEvidence: {
+        sourceSetSha256: input.sourceSetSha256,
+        sampleSetSha256: input.sampleSetSha256,
+      },
+      findings: [],
+      findingSetSha256: null,
       blockers: canonicalBlockers,
       request: null,
       requestBytes: null,
@@ -1164,11 +1372,75 @@ export function evaluateGenreSoulSurfaceHil(input) {
     findingInputsByRuleAndTerm.set(key, finding);
   };
 
+  const shapeTermsByRule = new Map([
+    [QUOTED_SURFACE_AMBIGUITY_RULE, new Map()],
+    [LATIN_IDENTIFIER_AMBIGUITY_RULE, new Map()],
+    [ORGANIZATION_FULL_AMBIGUITY_RULE, new Map()],
+  ]);
+  const indexShapeTerms = (rule, terms, privateRef) => {
+    const byTerm = shapeTermsByRule.get(rule);
+    for (const term of terms) {
+      const refs = byTerm.get(term) ?? new Set();
+      refs.add(privateRef);
+      byTerm.set(term, refs);
+    }
+  };
+  for (const sample of samples) {
+    indexShapeTerms(QUOTED_SURFACE_AMBIGUITY_RULE, quotedSurfaceTerms(sample.sourceText), sample.reference);
+    indexShapeTerms(LATIN_IDENTIFIER_AMBIGUITY_RULE, latinIdentifierTerms(sample.sourceText), sample.reference);
+    indexShapeTerms(ORGANIZATION_FULL_AMBIGUITY_RULE, organizationFullTerms(sample.sourceText), sample.reference);
+  }
+  for (const entry of strings) {
+    const normalizedCandidate = normalizedSurface(entry.value);
+    for (const [rule, byTerm] of shapeTermsByRule) {
+      for (const [term, refs] of byTerm) {
+        if (!normalizedCandidate.includes(term)) continue;
+        for (const privateRef of refs) addFinding(rule, term, entry.path, privateRef);
+      }
+    }
+    const candidateTermsByRule = new Map([
+      [QUOTED_SURFACE_AMBIGUITY_RULE, quotedSurfaceTerms(entry.value)],
+      [LATIN_IDENTIFIER_AMBIGUITY_RULE, latinIdentifierTerms(entry.value)],
+      [ORGANIZATION_FULL_AMBIGUITY_RULE, organizationFullTerms(entry.value)],
+    ]);
+    for (const sample of samples) {
+      const normalizedSample = normalizedSurface(sample.sourceText);
+      for (const [rule, terms] of candidateTermsByRule) {
+        for (const term of terms) {
+          if (normalizedSample.includes(term)) addFinding(rule, term, entry.path, sample.reference);
+        }
+      }
+    }
+  }
+
+  const sampleRefsByAdjacentTerm = new Map();
+  for (const sample of samples) {
+    for (const term of adjacentPersonTerms(sample.sourceText)) {
+      const refs = sampleRefsByAdjacentTerm.get(term) ?? new Set();
+      refs.add(sample.reference);
+      sampleRefsByAdjacentTerm.set(term, refs);
+    }
+  }
+  for (const entry of strings) {
+    const candidateTerms = candidateExactTerms(entry.value);
+    for (const [term, refs] of sampleRefsByAdjacentTerm) {
+      if (!candidateTerms.has(term)) continue;
+      for (const privateRef of refs) {
+        addFinding(ADJACENT_PERSON_AMBIGUITY_RULE, term, entry.path, privateRef);
+      }
+    }
+    for (const term of adjacentPersonTerms(entry.value)) {
+      for (const sample of samples) {
+        if (exactTermsBySample.get(sample.reference)?.has(term)) {
+          addFinding(ADJACENT_PERSON_AMBIGUITY_RULE, term, entry.path, sample.reference);
+        }
+      }
+    }
+  }
+
   const sampleRefsByAmbiguousSurnameTerm = new Map();
   for (const sample of samples) {
-    const protectedTerms = protectedSampleTerms(sample.sourceText);
     for (const term of ambiguousSurnameShapedTerms(sample.sourceText)) {
-      if (protectedTerms.has(term)) continue;
       const refs = sampleRefsByAmbiguousSurnameTerm.get(term) ?? new Set();
       refs.add(sample.reference);
       sampleRefsByAmbiguousSurnameTerm.set(term, refs);
@@ -1191,8 +1463,8 @@ export function evaluateGenreSoulSurfaceHil(input) {
       for (const term of sampleOrganizationStems) {
         if (
           candidateExactTermsForEntry.has(term)
-          && !candidateOrganizationStems.has(term)
-          && !candidateOrganizationAttributions.has(term)
+          || candidateOrganizationStems.has(term)
+          || candidateOrganizationAttributions.has(term)
         ) {
           addFinding(ORGANIZATION_STEM_AMBIGUITY_RULE, term, entry.path, sample.reference);
         }
@@ -1200,8 +1472,8 @@ export function evaluateGenreSoulSurfaceHil(input) {
       for (const term of candidateOrganizationStems) {
         if (
           sampleExactTerms.has(term)
-          && !sampleOrganizationStems.has(term)
-          && !sampleOrganizationAttributions.has(term)
+          || sampleOrganizationStems.has(term)
+          || sampleOrganizationAttributions.has(term)
         ) {
           addFinding(ORGANIZATION_STEM_AMBIGUITY_RULE, term, entry.path, sample.reference);
         }
@@ -1222,14 +1494,26 @@ export function evaluateGenreSoulSurfaceHil(input) {
   if (findingInputs.length < 1) {
     return {
       status: "pass",
+      stage: input.stage,
+      genre: input.genre,
+      soulId: input.soulId,
+      inputDigest: input.inputDigest,
       candidate: candidateDescriptor,
+      privateEvidence: {
+        sourceSetSha256: input.sourceSetSha256,
+        sampleSetSha256: input.sampleSetSha256,
+      },
+      findings: [],
+      findingSetSha256: null,
       blockers: [],
       request: null,
       requestBytes: null,
       requestSha256: null,
     };
   }
-  const built = buildPrivateGenreSoulAmbiguousSurfaceRequest({
+  const candidateByPath = new Map(strings.map((entry) => [entry.path, entry.value]));
+  const sampleByRef = new Map(samples.map((sample) => [sample.reference, sample.sourceText]));
+  const context = {
     stage: input.stage,
     genre: input.genre,
     soulId: input.soulId,
@@ -1239,14 +1523,48 @@ export function evaluateGenreSoulSurfaceHil(input) {
       sourceSetSha256: input.sourceSetSha256,
       sampleSetSha256: input.sampleSetSha256,
     },
-    findings: findingInputs,
-  });
-  return {
-    status: "pending_hil",
-    candidate: candidateDescriptor,
-    blockers: [],
-    request: built.request,
-    requestBytes: built.bytes,
-    requestSha256: built.sha256,
   };
+  const findings = findingInputs.map((finding) => {
+    const candidateWindowResults = finding.candidateLocations.map((location) => (
+      rawWindowsForTerm(candidateByPath.get(location) ?? "", finding.normalizedTerm, "candidate", candidateDescriptor.path)
+    ));
+    const privateWindowResults = finding.privateSampleRefs.map((reference) => (
+      rawWindowsForTerm(sampleByRef.get(reference) ?? "", finding.normalizedTerm, "private-source", reference)
+    ));
+    const boundedCandidate = mergeBoundedWindowResults(candidateWindowResults);
+    const boundedPrivate = mergeBoundedWindowResults(privateWindowResults);
+    const candidateWindows = boundedCandidate.windows;
+    const privateSourceWindows = boundedPrivate.windows;
+    if (candidateWindows.length < 1 || privateSourceWindows.length < 1) {
+      throw new Error(`Surface semantic candidate cannot bind raw windows for ${finding.rule}.`);
+    }
+    const built = {
+      findingId: "",
+      ...finding,
+      candidateWindows,
+      privateSourceWindows,
+      windowCoverageComplete: boundedCandidate.complete && boundedPrivate.complete,
+    };
+    built.findingId = findingIdFor(context, built);
+    return built;
+  }).sort((left, right) => compareStrings(left.findingId, right.findingId));
+  findings.forEach((finding, index) => validateFindingObject(finding, context, index));
+  const findingSetSha256 = surfaceFindingSetSha256(findings);
+  const evaluation = {
+    status: "pending_semantic_review",
+    stage: input.stage,
+    genre: input.genre,
+    soulId: input.soulId,
+    inputDigest: input.inputDigest,
+    candidate: candidateDescriptor,
+    privateEvidence: context.privateEvidence,
+    findings,
+    findingSetSha256,
+    blockers: [],
+    request: null,
+    requestBytes: null,
+    requestSha256: null,
+  };
+  validateGenreSoulSurfaceSemanticEvaluation(evaluation);
+  return evaluation;
 }

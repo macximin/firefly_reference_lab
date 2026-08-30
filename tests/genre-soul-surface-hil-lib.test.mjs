@@ -4,7 +4,6 @@ import test from "node:test";
 
 import {
   PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_DECISION_SCHEMA,
-  PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA,
   buildPrivateGenreSoulAmbiguousSurfaceDecision,
   buildPrivateGenreSoulAmbiguousSurfaceRequest,
   computeGenreSoulSurfaceSampleSetSha256,
@@ -17,6 +16,20 @@ import {
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const digest = (label) => sha256(Buffer.from(label));
+const semanticReview = {
+  input: { sha256: digest("semantic-input"), sizeBytes: 10 },
+  result: { sha256: digest("semantic-result"), sizeBytes: 10 },
+  receipt: {
+    sha256: digest("semantic-receipt"),
+    sizeBytes: 10,
+    role: "genre-soul-surface-semantic-review:profile:test",
+    runId: "semantic-review-run-test",
+    model: "gpt-5.6-sol",
+    provider: "openai-codex",
+    reasoningEffort: "high",
+    promptSha256: digest("semantic-prompt"),
+  },
+};
 
 function evaluate(candidate, privateSamples = [], overrides = {}) {
   const selectionBindings = overrides.selectionBindings ?? [{
@@ -41,7 +54,29 @@ function evaluate(candidate, privateSamples = [], overrides = {}) {
   });
 }
 
-test("high-confidence selection identities, adjacent roles and honorifics, and explicit organizations block", () => {
+function ownerPending(evaluation, findings = evaluation.findings) {
+  assert.equal(evaluation.status, "pending_semantic_review");
+  const built = buildPrivateGenreSoulAmbiguousSurfaceRequest({
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: evaluation.candidate,
+    privateEvidence: evaluation.privateEvidence,
+    semanticReview,
+    findings,
+  });
+  return {
+    ...evaluation,
+    status: "pending_hil",
+    semanticReview,
+    request: built.request,
+    requestBytes: built.bytes,
+    requestSha256: built.sha256,
+  };
+}
+
+test("selection identities block while all sample-inferred surface shapes require semantic review", () => {
   for (const candidate of [
     { guidance: "재벌집 막내아들의 보상 구조를 따른다" },
     { guidance: "검은필명의 표면을 따른다" },
@@ -56,15 +91,37 @@ test("high-confidence selection identities, adjacent roles and honorifics, and e
     ["김광은 회장으로 취임했다.", "김광 방식은 저항을 보상으로 바꾼다", "adjacent-role-or-honorific/v1"],
     ["회장 박준은 인수를 결정했다.", "박준 방식은 저항을 보상으로 바꾼다", "adjacent-role-or-honorific/v1"],
     ["김광 씨가 계약을 뒤집었다.", "김광 방식은 저항을 보상으로 바꾼다", "adjacent-role-or-honorific/v1"],
-    ["태성그룹이라는 회사가 인수를 준비했다.", "태성 방식은 저항을 보상으로 바꾼다", "explicit-organization-structure/v1"],
-    ["태성 본사는 인수를 준비했다.", "태성 방식은 저항을 보상으로 바꾼다", "explicit-organization-structure/v1"],
+    ["태성그룹이라는 회사가 인수를 준비했다.", "태성 방식은 저항을 보상으로 바꾼다", "bare-organization-stem-overlap/v1"],
+    ["태성 본사는 인수를 준비했다.", "태성 방식은 저항을 보상으로 바꾼다", "bare-organization-stem-overlap/v1"],
   ];
   for (const [index, [sourceText, prose, rule]] of cases.entries()) {
     const result = evaluate({ guidance: prose }, [{ sampleId: `sample-${index}`, sourceText }]);
-    assert.equal(result.status, "blocked", sourceText);
-    assert.equal(result.blockers.some((blocker) => blocker.rule === rule), true, sourceText);
+    assert.equal(result.status, "pending_semantic_review", sourceText);
+    assert.equal(result.findings.some((finding) => finding.rule === rule), true, sourceText);
+    assert.equal(result.blockers.length, 0, sourceText);
     assert.equal(result.request, null);
   }
+
+  const exactFullOrganization = evaluate(
+    { guidance: "태성그룹의 자원 회수 순서를 따른다" },
+    [{ sampleId: "sample-exact-full-org", sourceText: "태성그룹이라는 회사가 인수를 준비했다." }],
+  );
+  assert.equal(exactFullOrganization.status, "pending_semantic_review");
+  assert.equal(
+    exactFullOrganization.findings.some((finding) => finding.rule === "organization-full-form-overlap/v1"),
+    true,
+  );
+
+  const quotedFullOrganization = evaluate(
+    { guidance: "태성그룹의 자원 회수 순서를 따른다" },
+    [{ sampleId: "sample-quoted-full-org", sourceText: "정식 식별자는 『태성그룹』이었다." }],
+  );
+  assert.equal(quotedFullOrganization.status, "pending_semantic_review");
+  assert.deepEqual(quotedFullOrganization.blockers, []);
+  assert.equal(
+    quotedFullOrganization.findings.some((finding) => finding.rule === "organization-full-form-overlap/v1"),
+    true,
+  );
 });
 
 test("unanchored organization-stem overlaps route to organization HIL without becoming hard identity blocks", () => {
@@ -78,28 +135,29 @@ test("unanchored organization-stem overlaps route to organization HIL without be
       { mechanism: prose },
       [{ sampleId: `sample-generic-org-stem-${index}`, sourceText }],
     );
-    assert.equal(result.status, "pending_hil", sourceText);
+    assert.equal(result.status, "pending_semantic_review", sourceText);
     assert.equal(result.blockers.length, 0, sourceText);
-    assert.equal(result.request.findings.length, 1, sourceText);
-    assert.equal(result.request.findings[0].rule, "bare-organization-stem-overlap/v1", sourceText);
+    assert.equal(result.findings.length, 1, sourceText);
+    assert.equal(result.findings[0].rule, "bare-organization-stem-overlap/v1", sourceText);
+    assert.equal(result.request, null, sourceText);
   }
 
   const reverse = evaluate(
     { mechanism: "재무분석회사는 별도 지표를 사용한다" },
     [{ sampleId: "sample-generic-org-reverse", sourceText: "재무분석 결과가 선택을 바꿨다." }],
   );
-  assert.equal(reverse.status, "pending_hil");
-  assert.equal(reverse.request.findings[0].rule, "bare-organization-stem-overlap/v1");
+  assert.equal(reverse.status, "pending_semantic_review");
+  assert.equal(reverse.findings[0].rule, "bare-organization-stem-overlap/v1");
 
-  // v2 does not guess that an unanchored bare homonym refers back to the
-  // organization; it binds that uncertainty to an explicit owner finding.
+  // v3 does not guess that an unanchored bare homonym refers back to the
+  // organization; it binds that uncertainty to semantic review first.
   const unanchoredNameLikeStem = evaluate(
     { mechanism: "청운 결과는 보상 회수 순서를 바꾼다" },
     [{ sampleId: "sample-unanchored-org-stem", sourceText: "청운그룹은 보고서를 냈다." }],
   );
-  assert.equal(unanchoredNameLikeStem.status, "pending_hil");
+  assert.equal(unanchoredNameLikeStem.status, "pending_semantic_review");
   assert.equal(
-    unanchoredNameLikeStem.request.findings[0].rule,
+    unanchoredNameLikeStem.findings[0].rule,
     "bare-organization-stem-overlap/v1",
   );
 
@@ -107,14 +165,14 @@ test("unanchored organization-stem overlaps route to organization HIL without be
     { mechanism: "계약기업 방식은 저항 해소 순서를 바꾼다" },
     [{ sampleId: "sample-generic-org-full", sourceText: "계약기업은 별도 심사를 받았다." }],
   );
-  assert.equal(exactFull.status, "blocked");
+  assert.equal(exactFull.status, "pending_semantic_review");
   assert.equal(
-    exactFull.blockers.some((blocker) => blocker.rule === "explicit-organization-structure/v1"),
+    exactFull.findings.some((finding) => finding.rule === "organization-full-form-overlap/v1"),
     true,
   );
 });
 
-test("organization stems require structure or identity attribution on both sides", () => {
+test("organization stems, full forms, and identity attribution remain semantic candidates", () => {
   for (const [index, [sourceText, prose]] of [
     ["태성그룹은 인수를 준비했다.", "태성 방식은 저항 해소 순서를 바꾼다"],
     ["태성 방식은 인수를 먼저 검토했다.", "태성그룹은 저항 해소 순서를 바꾼다"],
@@ -125,9 +183,9 @@ test("organization stems require structure or identity attribution on both sides
       { mechanism: prose },
       [{ sampleId: `sample-org-context-${index}`, sourceText }],
     );
-    assert.equal(result.status, "blocked", sourceText);
+    assert.equal(result.status, "pending_semantic_review", sourceText);
     assert.equal(
-      result.blockers.some((blocker) => blocker.rule === "explicit-organization-structure/v1"),
+      result.findings.some((finding) => finding.rule === "bare-organization-stem-overlap/v1"),
       true,
     );
   }
@@ -146,20 +204,21 @@ test("organization stems require structure or identity attribution on both sides
   }
 });
 
-test("a confirmed source organization full form blocks candidate separator reconstruction asymmetrically", () => {
-  for (const [index, [sourceText, prose]] of [
-    ["태성그룹은 인수를 준비했다.", "태성, 그룹 방식은 저항 해소 순서를 바꾼다"],
-    ["태성 그룹은 인수를 준비했다.", "태성. 그룹 방식은 저항 해소 순서를 바꾼다"],
-    ["태성그룹은 인수를 준비했다.", "태성\n그룹 방식은 저항 해소 순서를 바꾼다"],
-    ["태성그룹은 인수를 준비했다.", "태성\r\n그룹 방식은 저항 해소 순서를 바꾼다"],
+test("quoted source organization morphology routes candidate separator reconstruction to semantic review", () => {
+  for (const [index, prose] of [
+    "태성, 그룹 방식은 저항 해소 순서를 바꾼다",
+    "태성. 그룹 방식은 저항 해소 순서를 바꾼다",
+    "태성\n그룹 방식은 저항 해소 순서를 바꾼다",
+    "태성\r\n그룹 방식은 저항 해소 순서를 바꾼다",
   ].entries()) {
     const result = evaluate(
       { mechanism: prose },
-      [{ sampleId: `sample-org-full-reconstruction-${index}`, sourceText }],
+      [{ sampleId: `sample-org-full-reconstruction-${index}`, sourceText: "정식 식별자는 『태성그룹』이었다." }],
     );
-    assert.equal(result.status, "blocked", sourceText);
+    assert.equal(result.status, "pending_semantic_review", prose);
+    assert.deepEqual(result.blockers, [], prose);
     assert.equal(
-      result.blockers.some((blocker) => blocker.rule === "explicit-organization-structure/v1"),
+      result.findings.some((finding) => finding.rule === "organization-full-form-overlap/v1"),
       true,
     );
   }
@@ -173,21 +232,40 @@ test("a confirmed source organization full form blocks candidate separator recon
       { mechanism: "태성그룹은 저항 해소 순서를 바꾼다" },
       [{ sampleId: `sample-source-separator-non-org-${index}`, sourceText }],
     );
-    assert.equal(result.status, "pending_hil", sourceText);
+    assert.equal(result.status, "pending_semantic_review", sourceText);
     assert.equal(result.blockers.length, 0, sourceText);
-    assert.equal(result.request.findings[0].rule, "bare-organization-stem-overlap/v1", sourceText);
+    assert.equal(
+      result.findings.some((finding) => finding.rule === "organization-full-form-overlap/v1"),
+      true,
+      sourceText,
+    );
   }
 });
 
-test("quoted private terms and identifier-shaped Latin overlaps remain protected without blocking lowercase general words", () => {
+test("quoted and identifier-shaped Latin overlaps remain semantic candidates without blocking lowercase general words", () => {
   for (const [sourceText, prose, rule] of [
-    ["그들은 그 물건을 『검은 별』이라고 불렀다.", "검은 별 방식으로 보상을 회수한다", "quoted-private-identity/v1"],
-    ["ACME_7은 비밀 법인이었다.", "ACME_7 방식으로 보상을 회수한다", "latin-private-identifier/v1"],
-    ["FireFly9은 비밀 법인이었다.", "FireFly9 방식으로 보상을 회수한다", "latin-private-identifier/v1"],
+    ["그들은 그 물건을 『검은 별』이라고 불렀다.", "검은 별 방식으로 보상을 회수한다", "quoted-private-surface-overlap/v1"],
+    ["ACME_7은 비밀 법인이었다.", "ACME_7 방식으로 보상을 회수한다", "latin-identifier-shaped-overlap/v1"],
+    ["FireFly9은 비밀 법인이었다.", "FireFly9 방식으로 보상을 회수한다", "latin-identifier-shaped-overlap/v1"],
+    ["그는 “현재”라고 말했다.", "현재 압박을 보상으로 바꾼다", "quoted-private-surface-overlap/v1"],
+    ["IMF 충격이 시장을 흔들었다.", "IMF 충격을 역이용한다", "latin-identifier-shaped-overlap/v1"],
   ]) {
     const result = evaluate({ guidance: prose }, [{ sampleId: `sample-${sha256(sourceText).slice(0, 8)}`, sourceText }]);
-    assert.equal(result.status, "blocked", sourceText);
-    assert.equal(result.blockers.some((blocker) => blocker.rule === rule), true, sourceText);
+    assert.equal(result.status, "pending_semantic_review", sourceText);
+    assert.equal(result.findings.some((finding) => finding.rule === rule), true, sourceText);
+    assert.deepEqual(result.blockers, [], sourceText);
+  }
+  for (const term of ["중견기업", "중소기업", "신생기업", "가족기업"]) {
+    const result = evaluate(
+      { guidance: `${term} 인수로 보상을 회수한다` },
+      [{ sampleId: `sample-${sha256(term).slice(0, 8)}`, sourceText: `${term}의 자금 흐름을 읽었다.` }],
+    );
+    assert.equal(result.status, "pending_semantic_review", term);
+    assert.equal(
+      result.findings.some((finding) => finding.rule === "organization-full-form-overlap/v1"),
+      true,
+      term,
+    );
   }
   const lowercase = evaluate(
     { guidance: "shared mechanism changes the payoff" },
@@ -196,14 +274,14 @@ test("quoted private terms and identifier-shaped Latin overlaps remain protected
   assert.equal(lowercase.status, "pass");
 });
 
-test("a candidate-side role anchor blocks when the private sample only has the bare overlap", () => {
+test("a candidate-side role anchor becomes a semantic candidate when the private sample has the bare overlap", () => {
   const result = evaluate(
     { mechanism: "박준 회장은 압박을 보상으로 바꾼다" },
     [{ sampleId: "sample-bare-park", sourceText: "박준은 움직였다." }],
   );
-  assert.equal(result.status, "blocked");
+  assert.equal(result.status, "pending_semantic_review");
   assert.equal(
-    result.blockers.some((blocker) => blocker.rule === "adjacent-role-or-honorific/v1"),
+    result.findings.some((finding) => finding.rule === "adjacent-role-or-honorific/v1"),
     true,
   );
 });
@@ -221,35 +299,33 @@ test("separated role adjacency does not turn a contract noun into a person", () 
   }
 });
 
-test("bare surname-shaped overlaps stay pending HIL without becoming person confidence", () => {
+test("bare surname-shaped overlaps stay pending semantic review without becoming person confidence", () => {
   for (const term of ["김광", "박준", "이동", "이용", "이행", "이탈", "김치", "공개"]) {
     const result = evaluate(
       { mechanism: `${term} 방식은 압박 회수 순서를 바꾼다` },
       [{ sampleId: `sample-${sha256(term).slice(0, 8)}`, sourceText: `${term}은 다음 보상을 바꾼다.` }],
     );
-    assert.equal(result.status, "pending_hil", term);
-    assert.equal(result.request.schemaVersion, PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA);
-    assert.equal(result.request.schemaVersion, "private-genre-soul-ambiguous-surface-request/v2");
-    assert.equal(result.request.gateVersion, "genre-soul-protected-surface-hil/v2");
-    assert.equal(result.request.findings.length, 1);
-    assert.equal(result.request.findings[0].normalizedTerm, term);
-    assert.deepEqual(result.request.findings[0].candidateLocations, ["$.mechanism"]);
-    assert.equal(Buffer.isBuffer(result.requestBytes), true);
-    assert.equal(result.requestSha256, sha256(result.requestBytes));
-    assert.equal(validatePrivateGenreSoulAmbiguousSurfaceRequest(result.requestBytes).sha256, result.requestSha256);
+    assert.equal(result.status, "pending_semantic_review", term);
+    assert.equal(result.findings.length, 1);
+    assert.equal(result.findings[0].normalizedTerm, term);
+    assert.deepEqual(result.findings[0].candidateLocations, ["$.mechanism"]);
+    assert.ok(result.findings[0].candidateWindows.length > 0);
+    assert.ok(result.findings[0].privateSourceWindows.length > 0);
+    assert.equal(result.request, null);
   }
 });
 
-test("surname and organization-stem findings deduplicate by rule in one v2 owner request", () => {
-  const result = evaluate(
+test("surname and organization-stem findings deduplicate by rule before one v3 owner request", () => {
+  const evaluation = evaluate(
     { mechanism: "김광 결과는 보상 회수 순서를 바꾼다" },
     [
       { sampleId: "sample-mixed-bare", sourceText: "김광은 다음 결과를 확인했다." },
       { sampleId: "sample-mixed-org", sourceText: "김광그룹은 별도 보고서를 냈다." },
     ],
   );
-  assert.equal(result.status, "pending_hil");
-  assert.equal(result.request.findings.length, 2);
+  assert.equal(evaluation.status, "pending_semantic_review");
+  assert.equal(evaluation.findings.length, 2);
+  const result = ownerPending(evaluation);
   const byRule = new Map(result.request.findings.map((finding) => [finding.rule, finding]));
   assert.deepEqual(
     [...byRule.keys()].sort(),
@@ -265,7 +341,7 @@ test("surname and organization-stem findings deduplicate by rule in one v2 owner
     ["sample-mixed-org"],
   );
 
-  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/surface-hil/requests/${result.requestSha256}.json`;
+  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest("run")}/genre/surface-review/owner-hil/requests/${result.requestSha256}.json`;
   const approved = buildPrivateGenreSoulAmbiguousSurfaceDecision({
     request: result.requestBytes,
     requestPath,
@@ -293,14 +369,14 @@ test("explicit contract ontology terms bypass only bare ambiguity routing", () =
   }
 });
 
-test("bare three- and four-syllable repetition stays ambiguous instead of becoming confidence", () => {
+test("bare three- and four-syllable repetition stays a semantic candidate instead of becoming confidence", () => {
   for (const term of ["차도윤", "박물관"]) {
     const result = evaluate(
       { mechanism: `${term} 방식은 압박 회수 순서를 바꾼다` },
       [{ sampleId: `sample-${sha256(term).slice(0, 8)}`, sourceText: `${term}은 움직였다. ${term}은 다시 움직였다.` }],
     );
-    assert.equal(result.status, "pending_hil", term);
-    assert.equal(result.request.findings.some((finding) => finding.normalizedTerm === term), true);
+    assert.equal(result.status, "pending_semantic_review", term);
+    assert.equal(result.findings.some((finding) => finding.normalizedTerm === term), true);
     assert.deepEqual(result.blockers, []);
   }
 });
@@ -311,7 +387,7 @@ test("name-final helper syllable plus particle stays ambiguous", () => {
       { mechanism: "김철 방식은 압박을 바꾼다" },
       [{ selectorId: `selector-name-helper-${index}`, sourceText }],
     );
-    assert.equal(result.status, "pending_hil", sourceText);
+    assert.equal(result.status, "pending_semantic_review", sourceText);
   }
 });
 
@@ -343,7 +419,7 @@ test("an exact copied private surface of five or more tokens blocks", () => {
 });
 
 test("request construction is deterministic, sorted, deduplicated, and content-bound", () => {
-  const first = evaluate(
+  const firstEvaluation = evaluate(
     {
       z: "김광 방식과 공개 방식을 비교한다",
       a: ["공개 방식", "김광 방식", "김광 방식"],
@@ -354,7 +430,7 @@ test("request construction is deterministic, sorted, deduplicated, and content-b
       { sampleId: "sample-z", sourceText: "공개는 늦었다. 김광은 먼저 갔다." },
     ],
   );
-  const second = evaluate(
+  const secondEvaluation = evaluate(
     {
       z: "김광 방식과 공개 방식을 비교한다",
       a: ["공개 방식", "김광 방식", "김광 방식"],
@@ -364,8 +440,10 @@ test("request construction is deterministic, sorted, deduplicated, and content-b
       { sampleId: "sample-z", sourceText: "공개는 늦었다. 김광은 먼저 갔다." },
     ],
   );
-  assert.equal(first.status, "pending_hil");
-  assert.equal(second.status, "pending_hil");
+  assert.equal(firstEvaluation.status, "pending_semantic_review");
+  assert.equal(secondEvaluation.status, "pending_semantic_review");
+  const first = ownerPending(firstEvaluation);
+  const second = ownerPending(secondEvaluation);
   assert.deepEqual(first.request, second.request);
   assert.equal(first.requestBytes.equals(second.requestBytes), true);
   assert.equal(first.requestSha256, second.requestSha256);
@@ -386,39 +464,38 @@ test("request construction is deterministic, sorted, deduplicated, and content-b
     inputDigest: first.request.inputDigest,
     candidate: first.request.candidate,
     privateEvidence: first.request.privateEvidence,
-    findings: [...first.request.findings].reverse().map((finding) => ({
-      rule: finding.rule,
-      normalizedTerm: finding.normalizedTerm,
-      candidateLocations: [...finding.candidateLocations].reverse(),
-      privateSampleRefs: [...finding.privateSampleRefs].reverse(),
-    })),
+    semanticReview: first.request.semanticReview,
+    findings: [...first.request.findings].reverse(),
   });
   assert.equal(rebuilt.bytes.equals(first.requestBytes), true);
   assert.equal(rebuilt.sha256, first.requestSha256);
 
-  const drifted = evaluate(
+  const driftedEvaluation = evaluate(
     { z: "김광 방식과 공개 방식은 서로 다르다", a: ["공개 방식", "김광 방식", "김광 방식"] },
-    second.request.findings.length > 0
+    secondEvaluation.findings.length > 0
       ? [
           { sampleId: "sample-a", sourceText: "김광은 돌아왔다. 공개는 빨랐다." },
           { sampleId: "sample-z", sourceText: "공개는 늦었다. 김광은 먼저 갔다." },
         ]
       : [],
   );
+  const drifted = ownerPending(driftedEvaluation);
   assert.notEqual(drifted.requestSha256, first.requestSha256);
 });
 
 test("malformed and non-canonical requests are rejected", () => {
-  const result = evaluate(
+  const evaluation = evaluate(
     { mechanism: "김광 방식은 압박을 바꾼다" },
     [{ selectorId: "selector-a", sourceText: "김광은 움직였다." }],
   );
-  assert.equal(result.status, "pending_hil");
+  assert.equal(evaluation.status, "pending_semantic_review");
+  const result = ownerPending(evaluation);
 
   const cases = [
     (request) => { request.extra = true; },
     (request) => { request.schemaVersion = "private-genre-soul-ambiguous-surface-request/v1"; },
     (request) => { request.gateVersion = "genre-soul-protected-surface-hil/v1"; },
+    (request) => { request.extractorVersion = "genre-soul-surface-candidate-extractor/v2"; },
     (request) => { request.stage = "draft"; },
     (request) => { request.soulId = "male-fantasy-ko"; },
     (request) => { request.candidate.sha256 = "0".repeat(64); },
@@ -447,12 +524,12 @@ test("malformed and non-canonical requests are rejected", () => {
 });
 
 test("owner decisions bind the exact request and completely resolve approve or reject outcomes", () => {
-  const pending = evaluate(
+  const pending = ownerPending(evaluate(
     { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
     [{ selectorId: "selector-a", sourceText: "김광은 움직였다. 공개는 늦었다." }],
-  );
+  ));
   assert.equal(pending.status, "pending_hil");
-  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/surface-hil/requests/${pending.requestSha256}.json`;
+  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest("run")}/genre/surface-review/owner-hil/requests/${pending.requestSha256}.json`;
   const build = (action) => buildPrivateGenreSoulAmbiguousSurfaceDecision({
     request: pending.requestBytes,
     requestPath,
@@ -467,7 +544,7 @@ test("owner decisions bind the exact request and completely resolve approve or r
 
   const approved = build("generic-overlap-approved");
   assert.equal(approved.decision.schemaVersion, PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_DECISION_SCHEMA);
-  assert.equal(approved.decision.schemaVersion, "private-genre-soul-ambiguous-surface-decision/v2");
+  assert.equal(approved.decision.schemaVersion, "private-genre-soul-ambiguous-surface-decision/v3");
   assert.equal(approved.decision.outcome, "approved");
   assert.equal(
     validatePrivateGenreSoulAmbiguousSurfaceDecision(approved.bytes, {
@@ -495,11 +572,11 @@ test("owner decisions bind the exact request and completely resolve approve or r
 });
 
 test("surface owner decisions reject stale, partial, non-owner, non-canonical, and self-reidentified bytes", () => {
-  const pending = evaluate(
+  const pending = ownerPending(evaluate(
     { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
     [{ selectorId: "selector-a", sourceText: "김광은 움직였다. 공개는 늦었다." }],
-  );
-  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/surface-hil/requests/${pending.requestSha256}.json`;
+  ));
+  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest("run")}/genre/surface-review/owner-hil/requests/${pending.requestSha256}.json`;
   const input = {
     request: pending.requestBytes,
     requestPath,
@@ -529,6 +606,7 @@ test("surface owner decisions reject stale, partial, non-owner, non-canonical, a
     (decision) => { decision.request.sha256 = digest("stale-request"); },
     (decision) => { decision.candidate.sha256 = digest("stale-candidate"); },
     (decision) => { decision.privateEvidence.sampleSetSha256 = digest("stale-sample"); },
+    (decision) => { decision.semanticReview.result.sha256 = digest("stale-semantic-result"); },
     (decision) => { decision.findingDecisions[0].decision = "protected-reject"; },
     (decision) => { decision.decidedBy.role = "manager"; },
     (decision) => { decision.authority.mayPromoteSoul = true; },
@@ -573,10 +651,10 @@ test("candidateBytes bind the exact candidate bytes and invalid boundary inputs 
       { privateRef: "raw/sample-1", sourceText: "김광은 움직였다." },
     ]),
   });
-  assert.equal(result.status, "pending_hil");
+  assert.equal(result.status, "pending_semantic_review");
   assert.equal(result.candidate.sha256, sha256(candidateBytes));
   assert.equal(result.candidate.sizeBytes, candidateBytes.byteLength);
-  assert.equal(result.request.stage, "manager-qa");
+  assert.equal(result.stage, "manager-qa");
 
   assert.throws(() => evaluateGenreSoulSurfaceHil({
     stage: "profile",
