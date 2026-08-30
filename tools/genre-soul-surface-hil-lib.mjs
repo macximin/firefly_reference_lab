@@ -3,13 +3,18 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 
 export const PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA =
-  "private-genre-soul-ambiguous-surface-request/v1";
+  "private-genre-soul-ambiguous-surface-request/v2";
 export const PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_DECISION_SCHEMA =
-  "private-genre-soul-ambiguous-surface-decision/v1";
+  "private-genre-soul-ambiguous-surface-decision/v2";
 export const GENRE_SOUL_SURFACE_HIL_GATE_VERSION =
-  "genre-soul-protected-surface-hil/v1";
+  "genre-soul-protected-surface-hil/v2";
 
-const AMBIGUOUS_RULE = "bare-korean-surname-shaped-2-4-overlap/v1";
+const SURNAME_AMBIGUITY_RULE = "bare-korean-surname-shaped-2-4-overlap/v1";
+const ORGANIZATION_STEM_AMBIGUITY_RULE = "bare-organization-stem-overlap/v1";
+const AMBIGUITY_RULES = new Set([
+  SURNAME_AMBIGUITY_RULE,
+  ORGANIZATION_STEM_AMBIGUITY_RULE,
+]);
 const SHA256 = /^[0-9a-f]{64}$/u;
 const SAFE_PRIVATE_REF = /^[A-Za-z0-9._:/-]{1,512}$/u;
 const STAGES = new Set(["profile", "manager-qa"]);
@@ -56,6 +61,12 @@ const ORGANIZATION_SUFFIXES = [
   "기업", "회사", "건설", "전자", "증권", "은행", "병원", "호텔", "학교", "대학",
   "본사", "상회", "상단", "세가", "가문", "종파", "길드", "왕국", "제국",
 ].sort((left, right) => right.length - left.length || compareStrings(left, right));
+// These relational nouns attribute a way of acting or an operating identity
+// to the immediately preceding stem. They are structural anchors, not a list
+// of source terms or generic-word exceptions.
+const ORGANIZATION_IDENTITY_ATTRIBUTIONS = new Set([
+  "관행", "노선", "문화", "방식", "스타일", "수법", "원칙", "전략", "철학", "체계",
+]);
 const GRAMMATICAL_ENDINGS = [
   "이라고", "이라는", "이었으며", "이었고", "이었다", "에게서", "으로는", "에서는", "한테서",
   "라고", "라는", "였으며", "였고", "였다", "에게", "에서", "으로", "처럼", "보다", "까지",
@@ -200,7 +211,15 @@ function surfaceTokens(value) {
     .map((match) => ({
       raw: match[0],
       normalized: match[0].toLocaleLowerCase("en-US"),
+      start: match.index,
+      end: match.index + match[0].length,
     }));
+}
+
+function hasWhitespaceOnlyGap(value, left, right) {
+  if (!left || !right || left.end > right.start) return false;
+  const normalized = String(value ?? "").normalize("NFC");
+  return /^(?:\t|\p{Zs})+$/u.test(normalized.slice(left.end, right.start));
 }
 
 function stripGrammaticalEnding(value, minimumBaseLength = 2) {
@@ -252,15 +271,56 @@ function attachedPersonAnchor(value) {
   return null;
 }
 
-function organizationTermsFromToken(value) {
+function attachedOrganizationStructure(value) {
   const token = tokenBase(value);
   for (const suffix of ORGANIZATION_SUFFIXES) {
     if (!token.endsWith(suffix)) continue;
     const stem = token.slice(0, -suffix.length);
-    if (!/^[가-힣a-z0-9_-]{2,20}$/u.test(stem)) return [];
-    return uniqueSorted([stem, `${stem}${suffix}`]);
+    if (!/^[가-힣a-z0-9_-]{2,20}$/u.test(stem)) return null;
+    return { stem, full: `${stem}${suffix}` };
   }
-  return [];
+  return null;
+}
+
+function organizationStructures(value) {
+  const tokens = surfaceTokens(value);
+  const structures = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const attached = attachedOrganizationStructure(tokens[index].normalized);
+    if (attached) structures.push(attached);
+    const next = tokens[index + 1];
+    if (!hasWhitespaceOnlyGap(value, tokens[index], next)) continue;
+    const suffix = ORGANIZATION_SUFFIXES.find((entry) => tokenBase(next.normalized) === entry);
+    if (!suffix) continue;
+    const stem = tokenBase(tokens[index].normalized);
+    if (/^[가-힣a-z0-9_-]{2,20}$/u.test(stem)) {
+      structures.push({ stem, full: `${stem}${suffix}` });
+    }
+  }
+  return [...new Map(structures.map((entry) => [`${entry.stem}\u0000${entry.full}`, entry])).values()]
+    .sort((left, right) => compareStrings(`${left.stem}\u0000${left.full}`, `${right.stem}\u0000${right.full}`));
+}
+
+function organizationStemTerms(value) {
+  return new Set(organizationStructures(value).map((entry) => entry.stem));
+}
+
+function organizationIdentityAttributionTerms(value) {
+  const tokens = surfaceTokens(value);
+  const terms = new Set();
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const base = tokenBase(token.normalized);
+    if (!/^[가-힣a-z0-9_-]{2,20}$/u.test(base)) continue;
+    const normalizedRaw = normalizedSurface(token.normalized);
+    if (normalizedRaw.endsWith("의") && normalizedRaw !== base) terms.add(base);
+    const next = tokens[index + 1];
+    if (
+      hasWhitespaceOnlyGap(value, token, next)
+      && ORGANIZATION_IDENTITY_ATTRIBUTIONS.has(tokenBase(next.normalized))
+    ) terms.add(base);
+  }
+  return terms;
 }
 
 function protectedSampleTerms(sampleText) {
@@ -277,6 +337,9 @@ function protectedSampleTerms(sampleText) {
     const term = normalizedSurface(match[1]);
     if (term.length >= 2) add(term, "quoted-private-identity/v1");
   }
+  for (const structure of organizationStructures(sampleText)) {
+    add(structure.full, "explicit-organization-structure/v1");
+  }
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index].normalized;
     const rawToken = tokens[index].raw;
@@ -285,9 +348,6 @@ function protectedSampleTerms(sampleText) {
     }
     const attachedPerson = attachedPersonAnchor(token);
     if (attachedPerson) add(attachedPerson, "adjacent-role-or-honorific/v1");
-    for (const term of organizationTermsFromToken(token)) {
-      add(term, "explicit-organization-structure/v1");
-    }
     const candidate = personCandidate(token);
     if (
       candidate
@@ -299,14 +359,6 @@ function protectedSampleTerms(sampleText) {
     const nextRole = roleBase(tokens[index + 1]?.normalized);
     if (nextRole && candidate && isBareSurnameShapedAmbiguityCandidate(candidate)) {
       add(candidate, "adjacent-role-or-honorific/v1");
-    }
-    const suffix = ORGANIZATION_SUFFIXES.find((entry) => tokenBase(tokens[index + 1]?.normalized) === entry);
-    if (suffix) {
-      const stem = tokenBase(token);
-      if (/^[가-힣a-z0-9_-]{2,20}$/u.test(stem)) {
-        add(stem, "explicit-organization-structure/v1");
-        add(`${stem}${suffix}`, "explicit-organization-structure/v1");
-      }
     }
   }
   return protectedTerms;
@@ -324,10 +376,10 @@ function candidateExactTerms(value) {
   for (const { normalized } of surfaceTokens(value)) {
     const base = tokenBase(normalized);
     if (base.length >= 2) terms.add(base);
-    for (const term of organizationTermsFromToken(normalized)) terms.add(term);
     const attached = attachedPersonAnchor(normalized);
     if (attached) terms.add(attached);
   }
+  for (const structure of organizationStructures(value)) terms.add(structure.full);
   return terms;
 }
 
@@ -483,7 +535,7 @@ function findingIdFor(context, finding) {
     candidateSha256: context.candidate.sha256,
     sourceSetSha256: context.privateEvidence.sourceSetSha256,
     sampleSetSha256: context.privateEvidence.sampleSetSha256,
-    rule: AMBIGUOUS_RULE,
+    rule: finding.rule,
     normalizedTerm: finding.normalizedTerm,
     candidateLocations: finding.candidateLocations,
     privateSampleRefs: finding.privateSampleRefs,
@@ -495,32 +547,52 @@ function normalizeFindingInputs(findings) {
   if (!Array.isArray(findings) || findings.length < 1) {
     throw new Error("Ambiguous surface request requires at least one finding.");
   }
-  const byTerm = new Map();
+  const byRuleAndTerm = new Map();
   for (const [index, finding] of findings.entries()) {
     assertExactKeys(
       finding,
-      ["normalizedTerm", "candidateLocations", "privateSampleRefs"],
+      ["rule", "normalizedTerm", "candidateLocations", "privateSampleRefs"],
       `finding input ${index}`,
     );
-    if (
-      !isBareSurnameShapedAmbiguityCandidate(finding.normalizedTerm ?? "")
-      || finding.normalizedTerm !== finding.normalizedTerm.normalize("NFC")
-    ) {
-      throw new Error(`finding input ${index}.normalizedTerm must be a 2-4 syllable NFC ambiguity candidate.`);
+    if (!AMBIGUITY_RULES.has(finding.rule)) {
+      throw new Error(`finding input ${index}.rule is unsupported.`);
+    }
+    if (!isValidAmbiguityFindingTerm(finding.rule, finding.normalizedTerm)) {
+      throw new Error(`finding input ${index}.normalizedTerm is invalid for ${finding.rule}.`);
     }
     const locations = uniqueSorted(finding.candidateLocations ?? []);
     const refs = uniqueSorted(finding.privateSampleRefs ?? []);
     assertUniqueSortedStrings(locations, `finding input ${index}.candidateLocations`, isCandidateLocation);
     assertUniqueSortedStrings(refs, `finding input ${index}.privateSampleRefs`, (value) => SAFE_PRIVATE_REF.test(value));
-    const previous = byTerm.get(finding.normalizedTerm) ?? { candidateLocations: [], privateSampleRefs: [] };
-    byTerm.set(finding.normalizedTerm, {
+    const key = `${finding.rule}\u0000${finding.normalizedTerm}`;
+    const previous = byRuleAndTerm.get(key) ?? { candidateLocations: [], privateSampleRefs: [] };
+    byRuleAndTerm.set(key, {
       candidateLocations: uniqueSorted([...previous.candidateLocations, ...locations]),
       privateSampleRefs: uniqueSorted([...previous.privateSampleRefs, ...refs]),
     });
   }
-  return [...byTerm.entries()]
-    .map(([normalizedTerm, binding]) => ({ normalizedTerm, ...binding }))
-    .sort((left, right) => compareStrings(left.normalizedTerm, right.normalizedTerm));
+  return [...byRuleAndTerm.entries()]
+    .map(([key, binding]) => {
+      const delimiter = key.indexOf("\u0000");
+      return {
+        rule: key.slice(0, delimiter),
+        normalizedTerm: key.slice(delimiter + 1),
+        ...binding,
+      };
+    })
+    .sort((left, right) => (
+      compareStrings(left.rule, right.rule)
+      || compareStrings(left.normalizedTerm, right.normalizedTerm)
+    ));
+}
+
+function isValidAmbiguityFindingTerm(rule, value) {
+  if (typeof value !== "string" || value !== value.normalize("NFC")) return false;
+  if (rule === SURNAME_AMBIGUITY_RULE) return isBareSurnameShapedAmbiguityCandidate(value);
+  if (rule === ORGANIZATION_STEM_AMBIGUITY_RULE) {
+    return /^[가-힣a-z0-9_-]{2,20}$/u.test(value) && normalizedSurface(value) === value;
+  }
+  return false;
 }
 
 function isCandidateLocation(value) {
@@ -564,7 +636,7 @@ export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
   const findings = normalizeFindingInputs(input.findings)
     .map((finding) => ({
       findingId: findingIdFor(context, finding),
-      rule: AMBIGUOUS_RULE,
+      rule: finding.rule,
       normalizedTerm: finding.normalizedTerm,
       candidateLocations: finding.candidateLocations,
       privateSampleRefs: finding.privateSampleRefs,
@@ -621,16 +693,12 @@ function validateRequestObject(request) {
     privateEvidence: request.privateEvidence,
   };
   const ids = [];
-  const terms = [];
+  const ruleTerms = [];
   for (const [index, finding] of request.findings.entries()) {
     assertExactKeys(finding, [
       "findingId", "rule", "normalizedTerm", "candidateLocations", "privateSampleRefs",
     ], `request.findings[${index}]`);
-    if (finding.rule !== AMBIGUOUS_RULE) throw new Error(`request.findings[${index}].rule drifted.`);
-    if (
-      !isBareSurnameShapedAmbiguityCandidate(finding.normalizedTerm ?? "")
-      || finding.normalizedTerm !== finding.normalizedTerm.normalize("NFC")
-    ) {
+    if (!isValidAmbiguityFindingTerm(finding.rule, finding.normalizedTerm)) {
       throw new Error(`request.findings[${index}].normalizedTerm is invalid.`);
     }
     assertUniqueSortedStrings(
@@ -646,10 +714,12 @@ function validateRequestObject(request) {
     const expectedId = findingIdFor(context, finding);
     if (finding.findingId !== expectedId) throw new Error(`request.findings[${index}].findingId drifted.`);
     ids.push(finding.findingId);
-    terms.push(finding.normalizedTerm);
+    ruleTerms.push(`${finding.rule}\u0000${finding.normalizedTerm}`);
   }
   assertUniqueSortedStrings(ids, "request finding IDs", (value) => /^surface-finding-[0-9a-f]{24}$/u.test(value));
-  if (new Set(terms).size !== terms.length) throw new Error("Request findings must deduplicate normalized terms.");
+  if (new Set(ruleTerms).size !== ruleTerms.length) {
+    throw new Error("Request findings must deduplicate rule and normalized-term pairs.");
+  }
   return true;
 }
 
@@ -962,14 +1032,21 @@ export function evaluateGenreSoulSurfaceHil(input) {
   const blockers = [];
   const protectedBySample = new Map();
   const exactTermsBySample = new Map();
+  const organizationStemsBySample = new Map();
+  const organizationAttributionsBySample = new Map();
   for (const sample of samples) {
     const exactTerms = new Set();
     for (const token of surfaceTokens(sample.sourceText)) {
       const base = tokenBase(token.normalized);
       if (base.length >= 2) exactTerms.add(base);
-      for (const term of organizationTermsFromToken(token.normalized)) exactTerms.add(term);
     }
+    for (const structure of organizationStructures(sample.sourceText)) exactTerms.add(structure.full);
     exactTermsBySample.set(sample.reference, exactTerms);
+    organizationStemsBySample.set(sample.reference, organizationStemTerms(sample.sourceText));
+    organizationAttributionsBySample.set(
+      sample.reference,
+      organizationIdentityAttributionTerms(sample.sourceText),
+    );
     for (const [term, rules] of protectedSampleTerms(sample.sourceText)) {
       const entries = protectedBySample.get(term) ?? [];
       for (const rule of rules) entries.push({ rule, privateRef: sample.reference });
@@ -1001,11 +1078,13 @@ export function evaluateGenreSoulSurfaceHil(input) {
       if (!anchors.some((anchor) => (
         anchor.rule === "quoted-private-identity/v1"
         || anchor.rule === "latin-private-identifier/v1"
+        || anchor.rule === "explicit-organization-structure/v1"
       )) || !normalized.includes(term)) continue;
       for (const anchor of anchors) {
         if (
           anchor.rule !== "quoted-private-identity/v1"
           && anchor.rule !== "latin-private-identifier/v1"
+          && anchor.rule !== "explicit-organization-structure/v1"
         ) continue;
         blockers.push({
           rule: anchor.rule,
@@ -1025,6 +1104,26 @@ export function evaluateGenreSoulSurfaceHil(input) {
             evidenceRef: sample.reference,
           });
         }
+      }
+    }
+    const candidateOrganizationStems = organizationStemTerms(entry.value);
+    const candidateOrganizationAttributions = organizationIdentityAttributionTerms(entry.value);
+    for (const sample of samples) {
+      const sampleOrganizationStems = organizationStemsBySample.get(sample.reference) ?? new Set();
+      const sampleOrganizationAttributions = organizationAttributionsBySample.get(sample.reference) ?? new Set();
+      const mutuallyAnchoredTerms = new Set([
+        ...[...sampleOrganizationStems].filter((term) => (
+          candidateOrganizationStems.has(term)
+          || candidateOrganizationAttributions.has(term)
+        )),
+        ...[...candidateOrganizationStems].filter((term) => sampleOrganizationAttributions.has(term)),
+      ]);
+      if (mutuallyAnchoredTerms.size > 0) {
+        blockers.push({
+          rule: "explicit-organization-structure/v1",
+          candidateLocation: entry.path,
+          evidenceRef: sample.reference,
+        });
       }
     }
     for (const sample of samples) {
@@ -1051,32 +1150,75 @@ export function evaluateGenreSoulSurfaceHil(input) {
     };
   }
 
-  const sampleRefsByAmbiguousTerm = new Map();
+  const findingInputsByRuleAndTerm = new Map();
+  const addFinding = (rule, normalizedTerm, candidateLocation, privateRef) => {
+    const key = `${rule}\u0000${normalizedTerm}`;
+    const finding = findingInputsByRuleAndTerm.get(key) ?? {
+      rule,
+      normalizedTerm,
+      candidateLocations: new Set(),
+      privateSampleRefs: new Set(),
+    };
+    finding.candidateLocations.add(candidateLocation);
+    finding.privateSampleRefs.add(privateRef);
+    findingInputsByRuleAndTerm.set(key, finding);
+  };
+
+  const sampleRefsByAmbiguousSurnameTerm = new Map();
   for (const sample of samples) {
     const protectedTerms = protectedSampleTerms(sample.sourceText);
     for (const term of ambiguousSurnameShapedTerms(sample.sourceText)) {
       if (protectedTerms.has(term)) continue;
-      const refs = sampleRefsByAmbiguousTerm.get(term) ?? new Set();
+      const refs = sampleRefsByAmbiguousSurnameTerm.get(term) ?? new Set();
       refs.add(sample.reference);
-      sampleRefsByAmbiguousTerm.set(term, refs);
+      sampleRefsByAmbiguousSurnameTerm.set(term, refs);
     }
   }
-  const locationsByAmbiguousTerm = new Map();
   for (const entry of strings) {
     for (const term of ambiguousSurnameShapedTerms(entry.value)) {
-      if (!sampleRefsByAmbiguousTerm.has(term)) continue;
-      const locations = locationsByAmbiguousTerm.get(term) ?? new Set();
-      locations.add(entry.path);
-      locationsByAmbiguousTerm.set(term, locations);
+      for (const privateRef of sampleRefsByAmbiguousSurnameTerm.get(term) ?? []) {
+        addFinding(SURNAME_AMBIGUITY_RULE, term, entry.path, privateRef);
+      }
+    }
+
+    const candidateExactTermsForEntry = candidateExactTerms(entry.value);
+    const candidateOrganizationStems = organizationStemTerms(entry.value);
+    const candidateOrganizationAttributions = organizationIdentityAttributionTerms(entry.value);
+    for (const sample of samples) {
+      const sampleOrganizationStems = organizationStemsBySample.get(sample.reference) ?? new Set();
+      const sampleOrganizationAttributions = organizationAttributionsBySample.get(sample.reference) ?? new Set();
+      const sampleExactTerms = exactTermsBySample.get(sample.reference) ?? new Set();
+      for (const term of sampleOrganizationStems) {
+        if (
+          candidateExactTermsForEntry.has(term)
+          && !candidateOrganizationStems.has(term)
+          && !candidateOrganizationAttributions.has(term)
+        ) {
+          addFinding(ORGANIZATION_STEM_AMBIGUITY_RULE, term, entry.path, sample.reference);
+        }
+      }
+      for (const term of candidateOrganizationStems) {
+        if (
+          sampleExactTerms.has(term)
+          && !sampleOrganizationStems.has(term)
+          && !sampleOrganizationAttributions.has(term)
+        ) {
+          addFinding(ORGANIZATION_STEM_AMBIGUITY_RULE, term, entry.path, sample.reference);
+        }
+      }
     }
   }
-  const findingInputs = [...locationsByAmbiguousTerm.entries()]
-    .map(([normalizedTerm, locations]) => ({
-      normalizedTerm,
-      candidateLocations: uniqueSorted(locations),
-      privateSampleRefs: uniqueSorted(sampleRefsByAmbiguousTerm.get(normalizedTerm)),
+  const findingInputs = [...findingInputsByRuleAndTerm.values()]
+    .map((finding) => ({
+      rule: finding.rule,
+      normalizedTerm: finding.normalizedTerm,
+      candidateLocations: uniqueSorted(finding.candidateLocations),
+      privateSampleRefs: uniqueSorted(finding.privateSampleRefs),
     }))
-    .sort((left, right) => compareStrings(left.normalizedTerm, right.normalizedTerm));
+    .sort((left, right) => (
+      compareStrings(left.rule, right.rule)
+      || compareStrings(left.normalizedTerm, right.normalizedTerm)
+    ));
   if (findingInputs.length < 1) {
     return {
       status: "pass",

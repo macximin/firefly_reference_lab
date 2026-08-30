@@ -73,7 +73,20 @@ seal이 없으면 profile을 완료 후보로 보거나 QA를 시작·재사용�
 visibility marker·top-level completion seal을 쓰지 않는다. InkOS chapter 전용
 Storyyard Review Packet v2를 Reference Lab 분석 판정으로 재라벨하지 않는다.
 `대기업` 같은 4-token 이하 일반 상업 메커니즘 문구는 commercial-first 원칙에
-따라 짧다는 이유만으로 자동 거절하지 않는다.
+따라 짧다는 이유만으로 자동 거절하지 않는다. 조직 접미사 문맥에서 파생된 bare
+stem은 반대쪽에서도 조직 전체형, 소유격, 또는 방식·전략·문화 같은 identity
+귀속 문맥이 확인될 때만 조직 identity로 즉시 차단한다. 문장부호를 건넌 인접
+토큰은 조직 구조로 보지 않는다. 반대쪽에 귀속 문맥이 없는 stem 단독 교차는
+일반어 목록으로 의미를 추측하지 않고 `bare-organization-stem-overlap/v1`
+`pending_hil` finding으로 보낸다. 성씨형 finding과 조직 stem finding은 rule별로
+dedupe되어 같은 v2 request와 owner decision에 결속된다. 동일 조직
+전체형, 선정 identity, 인용 표면, identifier형 Latin, 직함 결속 인명, 5-token
+복사는 이 경계와 무관하게 기존 차단을 유지한다. 이 의미 변경은
+`genre-soul-protected-surface-hil/v2`와 새 실행 digest를 사용한다. 완료된 v1 검토
+영수증은 역사 증거로 읽을 수 있지만 v1 pending 요청·결정은 v2 판단으로 재사용하지
+않는다. v2 request/decision schema는 각각
+`private-genre-soul-ambiguous-surface-request/v2`와
+`private-genre-soul-ambiguous-surface-decision/v2`다.
 
 owner 결정은 request의 exact path·SHA·candidate·private source/sample digest와 모든
 finding ID를 결속한다. 같은 run 재실행은 `approve`일 때만 계속 진행하며 profile은

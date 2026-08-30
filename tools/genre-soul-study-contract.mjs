@@ -726,7 +726,10 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     ], "managerQa.surfaceReview");
     if (
       review.schemaVersion !== "genre-soul-manager-surface-review-proof/v1"
-      || review.gateVersion !== "genre-soul-protected-surface-hil/v1"
+      || !new Set([
+        "genre-soul-protected-surface-hil/v1",
+        "genre-soul-protected-surface-hil/v2",
+      ]).has(review.gateVersion)
     ) throw new Error("Manager QA surface review proof schema or gate version drifted.");
     assertExactKeys(review.candidate, ["path", "sha256", "sizeBytes"], "managerQa.surfaceReview.candidate");
     assertExactKeys(review.request, ["path", "sha256", "sizeBytes"], "managerQa.surfaceReview.request");

@@ -1418,6 +1418,12 @@ test("Manager QA consumes an exact owner surface decision before publishing a pe
     assert.equal(tracked.surfaceReview.decision.outcome, "approved");
     assert.equal(tracked.surfaceReview.decision.decidedByRole, "owner");
     assert.equal(validateManagerQaReceipt(tracked), true);
+    const historicalV1 = structuredClone(tracked);
+    historicalV1.surfaceReview.gateVersion = "genre-soul-protected-surface-hil/v1";
+    assert.equal(validateManagerQaReceipt(historicalV1), true);
+    const unsupportedV3 = structuredClone(tracked);
+    unsupportedV3.surfaceReview.gateVersion = "genre-soul-protected-surface-hil/v3";
+    assert.throws(() => validateManagerQaReceipt(unsupportedV3), /gate version drifted/u);
     const tampered = structuredClone(tracked);
     tampered.surfaceReview.decision.outcome = "rejected";
     assert.throws(() => validateManagerQaReceipt(tampered), /requires an exact approved owner decision/u);

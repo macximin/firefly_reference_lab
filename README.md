@@ -121,7 +121,14 @@ private `pending_hil` 요청만 남긴다. 이 상태에서는 tracked 후보·�
 visibility marker·top-level completion seal을 쓰지 않는다. 기존 Storyyard
 `firefly_review_packet/v2`는 InkOS 원고 두 후보 전용이므로 이 분석 판정에
 재라벨해 쓰지 않는다. 반면 `대기업` 같은 4-token 이하의 일반 상업 메커니즘
-문구는 짧다는 이유만으로 자동 거절하지 않는다. 실행
+문구는 짧다는 이유만으로 자동 거절하지 않는다. 조직 접미사에서 파생된 bare
+stem도 반대쪽에 조직 전체형·소유격·방식/전략/문화형 identity 귀속 문맥이 함께
+있을 때만 즉시 차단한다. 문장부호 너머 인접 토큰은 조직 구조에서 제외하고, 문맥
+없는 stem-only 교차는 일반어 stoplist 없이 새 조직 stem finding의 private
+`pending_hil`로 보낸다. 성씨형·조직 stem finding은 같은 v2 request에서 rule별로
+결속되고, 동일 조직 전체형과 나머지 고신뢰 표면 차단은 유지한다. 이 v2 의미는 새
+digest와 request/decision v2 schema를 만들고, 완료된 v1 검토 영수증만 역사 증거로
+읽으며 v1 pending 요청·결정을 새 판단으로 재사용하지 않는다. 실행
 digest는 exact prompt bytes와 현재 attested Hermes
 binary·implementation·dependency·profile/project context 전체를 포함하며, 실제
 attempt의 trace·usage·result·host receipt·completion pointer가 모두 일치해야 한다.
