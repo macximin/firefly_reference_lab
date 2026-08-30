@@ -959,6 +959,17 @@ test("rejects work evidence not carried by an accepted same-dimension partition 
     patternObservationIdsByDimension: new Map(dimensions.map((dimension) => [dimension, new Set([firstId])])),
   };
   assert.equal(validatePrivateWorkSynthesisResult(final, work, provenance), true);
+  const missingEngineProvenance = {
+    ...provenance,
+    engineObservationIds: new Set(
+      [...provenance.engineObservationIds]
+        .filter((observationId) => observationId !== final.primaryCommercialEngine.evidenceObservationIds.early),
+    ),
+  };
+  assert.throws(
+    () => validatePrivateWorkSynthesisResult(final, work, missingEngineProvenance),
+    /was not cited by an accepted partition result/u,
+  );
   const crossDimension = structuredClone(final);
   crossDimension.patterns.find((pattern) => pattern.dimension === "worldConstraints").evidenceObservationIds = [work.observations[1].observationId];
   assert.throws(
@@ -1021,6 +1032,87 @@ test("rejects genre evidence not carried by an accepted same-dimension work resu
   const unresolved = structuredClone(result);
   unresolved.unresolvedConflicts = ["증거 충돌"];
   assert.throws(() => validatePrivateGenreSynthesisResult(unresolved, expected), /cannot publish while unresolved conflicts remain/u);
+});
+
+test("profile synthesis prompts state the exact evidence provenance enforced by their validators", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-prompt-provenance-"));
+  const counter = { calls: 0 };
+  let partPromptCount = 0;
+  let workPromptCount = 0;
+  let genrePromptCount = 0;
+  try {
+    const completed = await runGenreSoulProfile({
+      testOnlyRepositoryRoot: root,
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => makeEvidence(),
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), (_result, input) => {
+        if (input.role.startsWith("genre-soul-work-part:")) {
+          partPromptCount += 1;
+          assert.match(input.prompt, /Every evidenceObservationIds array must be non-empty, unique, and sorted/u);
+          assert.match(input.prompt, /NFC-normalized and trimmed, with every whitespace run collapsed to one space/u);
+        } else if (input.role.startsWith("genre-soul-work-consolidation:")) {
+          workPromptCount += 1;
+          assert.match(
+            input.prompt,
+            /parts\[\]\.acceptedOutput\.result\.patterns\[\] whose dimension exactly equals that output pattern's dimension/u,
+          );
+          assert.match(input.prompt, /evidenceObservationIds array must be non-empty, unique, and sorted/u);
+          assert.match(
+            input.prompt,
+            /cited by an accepted partition primaryCommercialEngineCandidate/u,
+          );
+          assert.match(input.prompt, /NFC-normalized and trimmed, with every whitespace run collapsed to one space/u);
+        } else if (input.role === "genre-soul-profile-synthesis") {
+          genrePromptCount += 1;
+          assert.match(
+            input.prompt,
+            /works\[\]\.acceptedOutput\.result\.patterns\[\] whose dimension exactly equals that output pattern's dimension/u,
+          );
+          assert.match(input.prompt, /Evidence entries must be non-empty, unique by sourceId, and sorted by sourceId/u);
+          assert.match(input.prompt, /return unresolvedConflicts as exactly \[\]/u);
+          assert.match(input.prompt, /Encode evidence-supported differences as conditional patterns/u);
+          assert.match(input.prompt, /using each of the three sourceIds exactly once/u);
+          assert.match(input.prompt, /NFC-normalized and trimmed, with every whitespace run collapsed to one space/u);
+        }
+      }),
+      testOnlyScanner: async (input) => passingScan(input),
+    });
+    assert.equal(completed.status, "completed");
+    assert.ok(partPromptCount >= 3);
+    assert.equal(workPromptCount, 3);
+    assert.equal(genrePromptCount, 1);
+    const manifestArtifact = completed.completion.artifacts.find((artifact) => artifact.path.endsWith("/manifest.json"));
+    assert.ok(manifestArtifact);
+    const manifest = JSON.parse(await readFile(join(root, manifestArtifact.path), "utf8"));
+    assert.equal(manifest.promptContractVersion, "genre-soul-profile-partitioned-synthesis-prompts/v3");
+    assert.deepEqual(manifest.promptContracts.contracts.workConsolidations, [
+      {
+        sourceId: "gdrive-commercial",
+        sha256: "10ba56fbe88755d237c43caa827e58d91ecd54694a90e983b348680616a0864e",
+        sizeBytes: 3048,
+      },
+      {
+        sourceId: "gdrive-breadth",
+        sha256: "c83979cd2ff04c626403731e0e357e1b2431b18735e851aa658ec94bf744af7c",
+        sizeBytes: 3041,
+      },
+      {
+        sourceId: "gdrive-surface",
+        sha256: "86ab87d2f7e6a21f1ed26a9410ffb3b3b5e19855551dd8c7154b6ebe58ae3b6c",
+        sizeBytes: 3042,
+      },
+    ]);
+    assert.deepEqual(manifest.promptContracts.contracts.genreSynthesis, {
+      sha256: "ff1cc7e9f5d726cfbda9a77deec1fcc0fe7af899219ed4c377fb9eb58c14a4db",
+      sizeBytes: 2818,
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("profile operating API rejects production executor injection and arbitrary test receipts", async () => {
