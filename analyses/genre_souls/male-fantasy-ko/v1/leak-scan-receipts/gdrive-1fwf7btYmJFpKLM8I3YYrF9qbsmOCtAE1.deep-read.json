@@ -12,7 +12,8 @@
   },
   "corpus": {
     "privateRegistrySha256": "21dbb85ca19383c6ff7c6702e8ab1092f6d11290016496074f15a8e4fd31652b",
-    "availableSourceCount": 32
+    "availableSourceCount": 32,
+    "observedSourceSetSha256": "3e5fcbad8f76dcece6de219746744336b0d9cc552a1e906a80b34de1b4839ea3"
   },
   "matchCount": 0,
   "matches": [],

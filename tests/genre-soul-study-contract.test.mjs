@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -7,7 +8,11 @@ import test from "node:test";
 import { buildGenreSoulSourceRegistry } from "../tools/genre-soul-source-registry.mjs";
 import {
   assertFullByteCoverage,
+  computeCommercialMechanismSignature,
+  computePrimaryCommercialEngineSignature,
+  computeTrackedProjectionObservedSourceSetSha256,
   scanTrackedProjection,
+  scanTrackedProjectionBytes,
   validateDeepReadArtifact,
   validateGenreProfileArtifact,
   validateManagerQaReceipt,
@@ -16,7 +21,312 @@ import {
 } from "../tools/genre-soul-study-contract.mjs";
 
 const hash = (character) => character.repeat(64);
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const sourceText = "주인공은 회사를 샀다. 경쟁자는 계약을 막았다. 주인공은 현금과 지분으로 보상을 받았다. ".repeat(20);
+const profileSourceIds = ["gdrive-commercial", "gdrive-breadth", "gdrive-surface"];
+const profileDimensions = [
+  "worldConstraints",
+  "protagonistRepeatedVerbs",
+  "pressureAndOpposition",
+  "rewardAndStatusCurrency",
+  "nextChapterExpectedAction",
+  "commercialEngines",
+  "emotionalCoherence",
+  "arcAndGrowth",
+  "failurePatterns",
+];
+
+function boundReference(path, character, sizeBytes = 100) {
+  return { path, sha256: hash(character), sizeBytes };
+}
+
+function profileEvidence(sourceId, suffix, options = {}) {
+  const item = {
+    sourceId,
+    observationId: `obs-${sourceId.slice("gdrive-".length)}-${suffix}`,
+    segmentId: "s0001",
+    kind: options.kind ?? "commercial-engine",
+    selectors: [{ type: "utf8-byte", startByte: options.startByte ?? 10, endByte: options.endByte ?? 20 }],
+  };
+  if (options.span) item.span = options.span;
+  return item;
+}
+
+function makeGenreProfile() {
+  const soulId = "male-modern-fantasy-ko";
+  const sources = profileSourceIds.map((sourceId, index) => ({
+    sourceId,
+    selectionBasis: ["commercial-anchor", "genre-breadth", "surface-anchor"][index],
+    sourceSha256: hash(["1", "2", "3"][index]),
+    sourceSizeBytes: 1_000,
+    chapterCount: 100 + index,
+    trackedStudy: boundReference(`analyses/genre_souls/${soulId}/v1/work-studies/${sourceId}.deep-read.json`, "4"),
+    privateBundle: boundReference(`exports/genre-souls/${soulId}/v1/deep-read-runs/${sourceId}/deep-read-receipt.json`, "5"),
+    trackedLeakReceipt: boundReference(`analyses/genre_souls/${soulId}/v1/leak-scan-receipts/${sourceId}.deep-read.json`, "6"),
+  }));
+  const patterns = profileDimensions.map((dimension, index) => {
+    const classification = dimension === "failurePatterns" ? "failure" : "genre-common";
+    return {
+      patternId: `pattern-${String(index + 1).padStart(2, "0")}`,
+      dimension,
+      classification,
+      guidance: `${dimension} 지침`,
+      commercialFunction: `${dimension} 상업 기능`,
+      sourceIds: [...profileSourceIds].sort(),
+      evidence: profileSourceIds.map((sourceId, sourceIndex) => profileEvidence(sourceId, `p${index}-${sourceIndex}`, {
+        kind: dimension === "failurePatterns" ? "failure-pattern" : "commercial-engine",
+        startByte: 10 + (index * 30),
+        endByte: 20 + (index * 30),
+      })),
+    };
+  });
+  const primaryCommercialEngines = profileSourceIds.map((sourceId, sourceIndex) => {
+    const mechanism = {
+      protagonistRepeatedVerb: `행동 ${sourceIndex + 1}`,
+      pressure: `압박 ${sourceIndex + 1}`,
+      activeChoice: `선택 ${sourceIndex + 1}`,
+      resistance: `저항 ${sourceIndex + 1}`,
+      payoff: `지급 ${sourceIndex + 1}`,
+      recognition: `인정 ${sourceIndex + 1}`,
+    };
+    const signatureSha256 = computePrimaryCommercialEngineSignature(sourceId, mechanism);
+    return {
+      engineId: `engine-${signatureSha256.slice(0, 24)}`,
+      sourceId,
+      mechanism,
+      signatureSha256,
+      evidence: ["early", "middle", "late"].map((span, spanIndex) => profileEvidence(sourceId, `e${sourceIndex}-${span}`, {
+        span,
+        startByte: 400 + (spanIndex * 30),
+        endByte: 410 + (spanIndex * 30),
+      })),
+    };
+  });
+  return {
+    schemaVersion: "genre-soul-analysis-profile/v1",
+    state: "candidate",
+    genre: "modern-fantasy-ko",
+    soulId,
+    version: "v1",
+    generatedAt: "2026-08-29T12:00:00.000Z",
+    evidenceSet: {
+      managerSelection: boundReference("evidence/genre-souls/male-manager-selection.v1.json", "7"),
+      inventory: boundReference("evidence/genre-souls/male-source-inventory.v1.json", "8"),
+      registryReceipt: {
+        ...boundReference("evidence/genre-souls/male-source-registry-receipt.v1.json", "9"),
+        privateRegistrySha256: hash("a"),
+      },
+      sources,
+    },
+    synthesis: {
+      privateInput: {
+        schemaVersion: "private-genre-soul-profile-input/v1",
+        path: `exports/genre-souls/${soulId}/v1/profile-runs/${hash("b")}/genre/input.json`,
+        sha256: hash("c"),
+        sizeBytes: 10_000,
+        sourceIds: [...profileSourceIds].sort(),
+        observationCount: 300,
+        selectorCount: 500,
+      },
+      run: {
+        runId: "profile-run-1",
+        model: "gpt-5.6-sol",
+        provider: "openai-codex",
+        reasoningEffort: "high",
+        configSha256: hash("d"),
+        traceReceiptSha256: hash("e"),
+      },
+      contentContract: {
+        id: "fiction-content-neutral-ko/v1",
+        sha256: "c5b531577cbfbfb1dfc4cd2b5cb82d7ce796c6958e0bc00c3e180b0e5440e199",
+      },
+      truncation: false,
+    },
+    patterns,
+    primaryCommercialEngines,
+    dimensions: Object.fromEntries(patterns.map((pattern) => [pattern.dimension, [pattern.patternId]])),
+    contentNeutrality: {
+      automaticMoralGate: false,
+      illegalityIsAutomaticFailure: false,
+      userIntensityPreserved: true,
+    },
+    authority: {
+      scope: "analysis-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+      ownerDecisionRequired: true,
+    },
+  };
+}
+
+function makeManagerQaReceipt() {
+  const profile = makeGenreProfile();
+  const sourceIds = profile.evidenceSet.sources.map((source) => source.sourceId).sort();
+  const engines = new Map(profile.primaryCommercialEngines.map((engine) => [engine.sourceId, engine]));
+  const sources = sourceIds.map((sourceId, sourceIndex) => {
+    const engine = engines.get(sourceId);
+    return {
+      sourceId,
+      sourceSizeBytes: 1_000,
+      engineId: engine.engineId,
+      engineSignatureSha256: engine.signatureSha256,
+      mechanismSignatureSha256: computeCommercialMechanismSignature(engine.mechanism),
+      samples: ["early", "middle", "late"].map((span, spanIndex) => ({
+        span,
+        observationId: `obs-${sourceId.slice("gdrive-".length)}-qa-${span}`,
+        kind: ["commercial-engine", "protagonist-action", "payoff-witness"][spanIndex],
+        selector: {
+          type: "utf8-byte",
+          startByte: 100 + (sourceIndex * 100) + (spanIndex * 20),
+          endByte: 110 + (sourceIndex * 100) + (spanIndex * 20),
+        },
+        sliceSha256: hash(["1", "2", "3"][spanIndex]),
+      })),
+    };
+  });
+  const engineComparisons = [];
+  for (let leftIndex = 0; leftIndex < sourceIds.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < sourceIds.length; rightIndex += 1) {
+      const leftSourceId = sourceIds[leftIndex];
+      const rightSourceId = sourceIds[rightIndex];
+      const pair = `${leftSourceId}::${rightSourceId}`;
+      engineComparisons.push({
+        comparisonId: `comparison-${sha256(pair).slice(0, 24)}`,
+        leftSourceId,
+        rightSourceId,
+        leftEngineId: engines.get(leftSourceId).engineId,
+        rightEngineId: engines.get(rightSourceId).engineId,
+        verdict: "different",
+        semanticDifference: "압박을 자산으로 전환하는 반복 행동과 저항 해소 방식이 다르다.",
+        commercialConsequence: "독자가 기대하는 지급 주기와 다음 행동 약속이 서로 다르다.",
+      });
+    }
+  }
+  return {
+    schemaVersion: "genre-soul-manager-qa/v1",
+    state: "candidate-qa-passed",
+    genre: profile.genre,
+    soulId: profile.soulId,
+    version: "v1",
+    profile: {
+      path: `analyses/genre_souls/${profile.soulId}/v1/genre-profile.json`,
+      sha256: hash("4"),
+      sizeBytes: 10_000,
+      synthesisRunId: profile.synthesis.run.runId,
+      leakScanReceipt: boundReference(
+        `analyses/genre_souls/${profile.soulId}/v1/leak-scan-receipts/genre-profile.json`,
+        "5",
+      ),
+    },
+    privateInput: {
+      schemaVersion: "private-genre-soul-manager-qa-input/v1",
+      path: `exports/genre-souls/${profile.soulId}/v1/manager-qa-runs/${hash("6")}/input.json`,
+      sha256: hash("7"),
+      sizeBytes: 20_000,
+      sourceIds,
+      rawSampleCount: 9,
+    },
+    manager: {
+      actorId: "hermes:inkos_male_modern_fantasy:manager-qa-run-1",
+      role: "manager",
+      runId: "manager-qa-run-1",
+      model: "gpt-5.6-sol",
+      provider: "openai-codex",
+      reasoningEffort: "high",
+      configSha256: hash("8"),
+      traceReceiptSha256: hash("9"),
+      outputSha256: hash("a"),
+    },
+    decidedAt: "2026-08-29T15:00:00.000Z",
+    sources,
+    engineComparisons,
+    checks: {
+      profileEvidenceBinding: true,
+      exactSourceCoverage: true,
+      rawSampleReadback: true,
+      primaryEnginesPairwiseDifferent: true,
+      profileSurfaceLeakScanPassed: true,
+      contentNeutrality: true,
+    },
+    contentNeutrality: {
+      moralFitnessGate: false,
+      automaticRewrite: false,
+      userIntensityPreserved: true,
+    },
+    authority: {
+      scope: "reference-lab-qa-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+      ownerDecisionRequired: true,
+    },
+    result: "pass",
+  };
+}
+
+function makeManagerQaValidationContext(receipt, profile = makeGenreProfile()) {
+  return {
+    requireLiveBindings: true,
+    expectedProfile: {
+      artifact: profile,
+      path: receipt.profile.path,
+      sha256: receipt.profile.sha256,
+      sizeBytes: receipt.profile.sizeBytes,
+      leakScanReceipt: structuredClone(receipt.profile.leakScanReceipt),
+    },
+    expectedRunEvidence: {
+      receipt: {
+        profileId: "inkos_male_modern_fantasy",
+        runId: receipt.manager.runId,
+        model: receipt.manager.model,
+        provider: receipt.manager.provider,
+        reasoningEffort: receipt.manager.reasoningEffort,
+        profileConfigSha256: receipt.manager.configSha256,
+        resultSha256: receipt.manager.outputSha256,
+      },
+      hostReceiptSha256: receipt.manager.traceReceiptSha256,
+    },
+  };
+}
+
+function makePromotionEligibility() {
+  return {
+    schemaVersion: "genre-soul-promotion-eligibility/v1",
+    genre: "modern-fantasy-ko",
+    status: "pass",
+    deepReadSourceCount: 3,
+    reviewPacketSchema: "firefly_review_packet/v2",
+    blindPairCount: 3,
+    independentBlindRunCount: 3,
+    soulWins: 2,
+    averageCommercialScore: 87,
+    winningPairMinimumGain: 2.5,
+    genreIdentityPassed: 3,
+    contentNeutralViolationCount: 0,
+    unauthorizedCanonWriteCount: 0,
+    allSurfaceMatchesHumanClassified: true,
+    canonLeakCount: 0,
+    managerQaPassed: true,
+    leakScanMatchCount: 0,
+    ownerDecisionRequired: true,
+    ownerDecisionId: null,
+    deepReadReceiptSha256s: [hash("1"), hash("2"), hash("3")],
+    reviewPacketSha256s: [hash("4"), hash("5"), hash("6")],
+    blindReviewReceiptSha256s: [hash("7"), hash("8"), hash("9")],
+    contentNeutralReceiptSha256s: [hash("a"), hash("b"), hash("c")],
+    surfaceComparisonReceiptSha256s: [hash("d"), hash("e"), hash("f")],
+    managerQaReceiptSha256: hash("a"),
+    leakScanReceiptSha256: hash("b"),
+    generationRunIds: ["generation-1", "generation-2", "generation-3", "generation-4", "generation-5", "generation-6"],
+    blindRunIds: ["blind-1", "blind-2", "blind-3"],
+    inputSha256s: [hash("a"), hash("b")],
+    authority: {
+      scope: "analysis-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+      ownerDecisionRequired: true,
+    },
+  };
+}
 
 async function fixtureRoot() {
   const root = await mkdtemp(join(tmpdir(), "genre-study-"));
@@ -108,40 +418,8 @@ test("validates survey, deep-read, genre profile, manager QA, and owner-separate
       chapterCount: 20,
       observationIds: ["obs-1"],
     }, fixture.privateRegistry), true);
-    assert.equal(validateGenreProfileArtifact({
-      schemaVersion: "genre-soul-analysis-profile/v1",
-      genre: "modern-fantasy-ko",
-      soulId: "male-modern-fantasy-ko",
-      version: "v1",
-      inventorySha256: hash("a"),
-      surveySha256: hash("b"),
-      deepReadReceiptSha256s: [hash("c")],
-      dimensions: {
-        worldConstraints: ["현대 자산과 제도"],
-        protagonistRepeatedVerbs: ["산다"],
-        pressureAndOpposition: ["계약 저항"],
-        rewardAndStatusCurrency: ["현금과 지분"],
-        nextChapterExpectedAction: ["다음 거래"],
-        commercialEngines: ["가시적 지급"],
-      },
-      contentNeutrality: {
-        automaticMoralGate: false,
-        illegalityIsAutomaticFailure: false,
-        userIntensityPreserved: true,
-      },
-    }), true);
-    assert.equal(validateManagerQaReceipt({
-      schemaVersion: "genre-soul-manager-qa/v1",
-      genre: "modern-fantasy-ko",
-      manager: { actorId: "manager-1", role: "manager" },
-      decidedAt: "2026-08-28T03:00:00.000Z",
-      inputSha256s: [hash("a"), hash("b")],
-      coveragePassed: true,
-      surfaceLeakScanPassed: true,
-      moralFitnessGate: false,
-      automaticRewrite: false,
-      result: "pass",
-    }), true);
+    assert.equal(validateGenreProfileArtifact(makeGenreProfile()), true);
+    assert.equal(validateManagerQaReceipt(makeManagerQaReceipt()), true);
     assert.equal(validatePromotionEligibility({
       schemaVersion: "genre-soul-promotion-eligibility/v1",
       genre: "modern-fantasy-ko",
@@ -172,31 +450,191 @@ test("validates survey, deep-read, genre profile, manager QA, and owner-separate
       generationRunIds: ["generation-1", "generation-2", "generation-3", "generation-4", "generation-5", "generation-6"],
       blindRunIds: ["blind-1", "blind-2", "blind-3"],
       inputSha256s: [hash("a"), hash("b")],
+      authority: {
+        scope: "analysis-only",
+        mayWriteInkOSCanon: false,
+        mayPromoteSoul: false,
+        ownerDecisionRequired: true,
+      },
     }), true);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }
 });
 
-test("rejects moralizing genre defaults and Reference Lab owner-decision claims", () => {
-  const base = {
-    schemaVersion: "genre-soul-analysis-profile/v1",
-    genre: "murim-ko",
-    soulId: "male-murim-ko",
-    version: "v1",
-    inventorySha256: hash("a"),
-    surveySha256: hash("b"),
-    deepReadReceiptSha256s: [hash("c")],
-    dimensions: {
-      worldConstraints: ["강호 위계"], protagonistRepeatedVerbs: ["벤다"], pressureAndOpposition: ["문파 충돌"],
-      rewardAndStatusCurrency: ["무공과 명성"], nextChapterExpectedAction: ["다음 대결"], commercialEngines: ["승패 지급"],
-    },
-    contentNeutrality: { automaticMoralGate: false, illegalityIsAutomaticFailure: false, userIntensityPreserved: true },
+test("survey, deep-read, reader, range, and promotion contracts reject every extra key", async () => {
+  const fixture = await fixtureRoot();
+  try {
+    const source = fixture.privateRegistry.items[0];
+    const reader = {
+      runId: "exact-run", model: "gpt-5.6-sol", reasoningEffort: "high",
+      configSha256: hash("1"), traceReceiptSha256: hash("2"),
+    };
+    const survey = {
+      schemaVersion: "genre-soul-survey/v1",
+      genre: "modern-fantasy-ko",
+      completedAt: "2026-08-28T01:00:00.000Z",
+      candidateSourceIds: [fixture.sourceId],
+      entries: [{
+        sourceId: fixture.sourceId,
+        sourceSha256: source.sourceSha256,
+        reader,
+        status: "surveyed",
+        coverage: [{ startByte: 0, endByte: 120 }],
+        managerExclusion: null,
+        observationIds: ["obs-1"],
+      }],
+    };
+    const deepRead = {
+      schemaVersion: "genre-soul-deep-read/v1",
+      genre: "modern-fantasy-ko",
+      sourceId: fixture.sourceId,
+      sourceSha256: source.sourceSha256,
+      sourceSizeBytes: source.sizeBytes,
+      reader,
+      completedAt: "2026-08-28T02:00:00.000Z",
+      coverage: [{ startByte: 0, endByte: source.sizeBytes }],
+      chapterCount: 20,
+      observationIds: ["obs-1"],
+    };
+    for (const mutated of [
+      { ...structuredClone(survey), extra: true },
+      (() => { const value = structuredClone(survey); value.entries[0].extra = true; return value; })(),
+      (() => { const value = structuredClone(survey); value.entries[0].reader.extra = true; return value; })(),
+      (() => { const value = structuredClone(survey); value.entries[0].coverage[0].extra = true; return value; })(),
+    ]) assert.throws(() => validateSurveyArtifact(mutated, fixture.privateRegistry), /keys must be exactly/u);
+    for (const mutated of [
+      { ...structuredClone(deepRead), extra: true },
+      (() => { const value = structuredClone(deepRead); value.reader.extra = true; return value; })(),
+      (() => { const value = structuredClone(deepRead); value.coverage[0].extra = true; return value; })(),
+    ]) assert.throws(() => validateDeepReadArtifact(mutated, fixture.privateRegistry), /keys must be exactly/u);
+
+    const extraPromotion = makePromotionEligibility();
+    extraPromotion.promoted = true;
+    assert.throws(() => validatePromotionEligibility(extraPromotion), /keys must be exactly/u);
+    const authorityDrift = makePromotionEligibility();
+    authorityDrift.authority.mayPromoteSoul = true;
+    assert.throws(() => validatePromotionEligibility(authorityDrift), /authority must remain analysis-only/u);
+    const authorityExtra = makePromotionEligibility();
+    authorityExtra.authority.ownerDecisionId = "forbidden";
+    assert.throws(() => validatePromotionEligibility(authorityExtra), /keys must be exactly/u);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("profile accepts exact legacy and content-addressed current deep-read receipt paths only", () => {
+  const legacy = makeGenreProfile();
+  assert.equal(validateGenreProfileArtifact(legacy), true);
+
+  const current = makeGenreProfile();
+  current.evidenceSet.sources.forEach((source, index) => {
+    const base = `exports/genre-souls/${current.soulId}/v1/deep-read-runs/${source.sourceId}`;
+    source.privateBundle.path = `${base}/runs/${String(index + 1).repeat(64)}/deep-read-receipt.json`;
+  });
+  assert.equal(validateGenreProfileArtifact(current), true);
+
+  const malformed = structuredClone(current);
+  malformed.evidenceSet.sources[0].privateBundle.path = malformed.evidenceSet.sources[0].privateBundle.path
+    .replace("/deep-read-receipt.json", "/extra/deep-read-receipt.json");
+  assert.throws(() => validateGenreProfileArtifact(malformed), /exact legacy path or a content-addressed/u);
+});
+
+test("genre profile fails closed on two sources, duplicate bindings, source support, and authority", () => {
+  const twoSources = makeGenreProfile();
+  twoSources.evidenceSet.sources = twoSources.evidenceSet.sources.slice(0, 2);
+  assert.throws(() => validateGenreProfileArtifact(twoSources), /exactly three sources/u);
+
+  const duplicate = makeGenreProfile();
+  duplicate.evidenceSet.sources[2] = {
+    ...structuredClone(duplicate.evidenceSet.sources[0]),
+    selectionBasis: "surface-anchor",
   };
+  assert.throws(() => validateGenreProfileArtifact(duplicate), /duplicated/u);
+
+  const unsupportedCommon = makeGenreProfile();
+  unsupportedCommon.patterns[0].sourceIds = unsupportedCommon.patterns[0].sourceIds.slice(0, 2);
+  unsupportedCommon.patterns[0].evidence = unsupportedCommon.patterns[0].evidence.filter((entry) => (
+    unsupportedCommon.patterns[0].sourceIds.includes(entry.sourceId)
+  ));
+  assert.throws(() => validateGenreProfileArtifact(unsupportedCommon), /genre-common source support/u);
+
+  const unauthorized = makeGenreProfile();
+  unauthorized.authority.mayWriteInkOSCanon = true;
+  assert.throws(() => validateGenreProfileArtifact(unauthorized), /authority must remain analysis-only/u);
+
+  const contractDrift = makeGenreProfile();
+  contractDrift.synthesis.contentContract.sha256 = hash("f");
+  assert.throws(() => validateGenreProfileArtifact(contractDrift), /not canonical/u);
+});
+
+test("manager QA fails closed on shared synthesis runs, missing raw spans, and incomplete engine comparisons", () => {
+  const sharedRun = makeManagerQaReceipt();
+  sharedRun.manager.runId = sharedRun.profile.synthesisRunId;
+  assert.throws(() => validateManagerQaReceipt(sharedRun), /separate from profile synthesis/u);
+
+  const missingLate = makeManagerQaReceipt();
+  missingLate.sources[0].samples[2].span = "middle";
+  assert.throws(() => validateManagerQaReceipt(missingLate), /cover exactly early, middle, and late/u);
+
+  const duplicateMechanism = makeManagerQaReceipt();
+  duplicateMechanism.sources[2].mechanismSignatureSha256 = duplicateMechanism.sources[0].mechanismSignatureSha256;
+  assert.throws(() => validateManagerQaReceipt(duplicateMechanism), /byte-identical/u);
+
+  const missingPair = makeManagerQaReceipt();
+  missingPair.engineComparisons = missingPair.engineComparisons.slice(0, 2);
+  assert.throws(() => validateManagerQaReceipt(missingPair), /all three pairwise/u);
+
+  const unauthorized = makeManagerQaReceipt();
+  unauthorized.authority.mayPromoteSoul = true;
+  assert.throws(() => validateManagerQaReceipt(unauthorized), /owner-separated/u);
+});
+
+test("manager QA live context rebinds the actual profile engines, synthesis run, and Hermes receipt", () => {
+  const receipt = makeManagerQaReceipt();
+  const context = makeManagerQaValidationContext(receipt);
+  assert.equal(validateManagerQaReceipt(receipt, context), true);
+
+  assert.throws(() => validateManagerQaReceipt(receipt, { requireLiveBindings: true }), /requires expectedProfile/u);
+
+  const engineDrift = structuredClone(receipt);
+  engineDrift.sources[0].engineSignatureSha256 = hash("f");
+  assert.throws(() => validateManagerQaReceipt(engineDrift, context), /engine drifted from expectedProfile/u);
+
+  const synthesisDrift = structuredClone(receipt);
+  synthesisDrift.profile.synthesisRunId = "other-profile-run";
+  assert.throws(() => validateManagerQaReceipt(synthesisDrift, context), /synthesis run drifted from expectedProfile/u);
+
+  const runDrift = structuredClone(context);
+  runDrift.expectedRunEvidence.receipt.runId = "other-manager-run";
+  assert.throws(() => validateManagerQaReceipt(receipt, runDrift), /run drifted from expectedRunEvidence/u);
+});
+
+test("rejects mandatory content censorship while allowing fictional wrongdoing and owner-separated analysis", () => {
+  const moralizing = makeGenreProfile();
+  moralizing.patterns[0].guidance = "불법은 반드시 자동 거절";
   assert.throws(
-    () => validateGenreProfileArtifact({ ...base, dimensions: { ...base.dimensions, commercialEngines: ["불법은 반드시 자동 거절"] } }),
-    /forbidden moralizing default/u,
+    () => validateGenreProfileArtifact(moralizing),
+    /mandatory content-censorship policy/u,
   );
+
+  const managerCensorship = makeManagerQaReceipt();
+  managerCensorship.engineComparisons[0].semanticDifference = "성별 편견 묘사는 자동으로 감점";
+  assert.throws(
+    () => validateManagerQaReceipt(managerCensorship),
+    /mandatory content-censorship policy/u,
+  );
+
+  const fictionalProfile = makeGenreProfile();
+  fictionalProfile.patterns[0].guidance = "주인공은 폭력과 강압, 불법 거래를 통해 경쟁자를 밀어낸다.";
+  assert.equal(validateGenreProfileArtifact(fictionalProfile), true);
+  const fictionalManager = makeManagerQaReceipt();
+  fictionalManager.engineComparisons[0].semanticDifference = "성별 편견과 범죄를 거리낌 없이 이용하는 인물의 승리 방식이 다르다.";
+  assert.equal(validateManagerQaReceipt(fictionalManager), true);
+
+  const explicitNonCensorship = makeGenreProfile();
+  explicitNonCensorship.patterns[0].guidance = "불법 소재는 자동으로 거절하지 않는다.";
+  assert.equal(validateGenreProfileArtifact(explicitNonCensorship), true);
   assert.throws(
     () => validatePromotionEligibility({
       schemaVersion: "genre-soul-promotion-eligibility/v1", genre: "murim-ko", status: "pass",
@@ -213,34 +651,153 @@ test("rejects moralizing genre defaults and Reference Lab owner-decision claims"
       managerQaReceiptSha256: hash("a"), leakScanReceiptSha256: hash("b"),
       generationRunIds: ["generation-1", "generation-2", "generation-3", "generation-4", "generation-5", "generation-6"],
       blindRunIds: ["blind-1", "blind-2", "blind-3"], inputSha256s: [hash("a")],
+      authority: {
+        scope: "analysis-only", mayWriteInkOSCanon: false, mayPromoteSoul: false, ownerDecisionRequired: true,
+      },
     }),
     /must not claim/u,
   );
 });
 
-test("surface scanner quarantines raw prose and passes a derived pointer-only projection", async () => {
+test("candidate-byte surface scanner quarantines raw prose and passes before any tracked write", async () => {
   const fixture = await fixtureRoot();
   try {
-    const rawArtifact = join(fixture.root, "analyses/genre_souls/raw.json");
-    const cleanArtifact = join(fixture.root, "analyses/genre_souls/clean.json");
-    await mkdir(join(fixture.root, "analyses/genre_souls"), { recursive: true });
-    await writeFile(rawArtifact, `${JSON.stringify({ summary: sourceText })}\n`);
-    await writeFile(cleanArtifact, `${JSON.stringify({ sourceId: fixture.sourceId, sourceSha256: fixture.privateRegistry.items[0].sourceSha256 })}\n`);
-    const raw = await scanTrackedProjection({
+    const rawRelativePath = "analyses/genre_souls/raw.json";
+    const cleanRelativePath = "analyses/genre_souls/clean.json";
+    await assert.rejects(access(join(fixture.root, rawRelativePath)));
+    await assert.rejects(access(join(fixture.root, cleanRelativePath)));
+    const raw = await scanTrackedProjectionBytes({
       repositoryRoot: fixture.root,
-      artifactPath: rawArtifact,
+      artifactRelativePath: rawRelativePath,
+      artifactBytes: Buffer.from(`${JSON.stringify({ summary: sourceText })}\n`),
       ...fixture.paths,
     });
     assert.equal(raw.status, "quarantine");
     assert.ok(raw.matchCount > 0);
     assert.equal(JSON.stringify(raw).includes(sourceText.slice(0, 50)), false);
-    const clean = await scanTrackedProjection({
+    const cleanBytes = Buffer.from(`${JSON.stringify({
+      sourceId: fixture.sourceId,
+      sourceSha256: fixture.privateRegistry.items[0].sourceSha256,
+    })}\n`);
+    const clean = await scanTrackedProjectionBytes({
       repositoryRoot: fixture.root,
-      artifactPath: cleanArtifact,
+      artifactRelativePath: cleanRelativePath,
+      artifactBytes: cleanBytes,
       ...fixture.paths,
     });
     assert.equal(clean.status, "pass");
     assert.equal(clean.matchCount, 0);
+    assert.equal(clean.corpus.observedSourceSetSha256, computeTrackedProjectionObservedSourceSetSha256([{
+      sourceId: fixture.sourceId,
+      sourceSha256: fixture.privateRegistry.items[0].sourceSha256,
+      sizeBytes: fixture.privateRegistry.items[0].sizeBytes,
+    }]));
+    await assert.rejects(access(join(fixture.root, rawRelativePath)));
+    await assert.rejects(access(join(fixture.root, cleanRelativePath)));
+
+    await mkdir(join(fixture.root, "analyses/genre_souls"), { recursive: true });
+    const onDiskArtifact = join(fixture.root, "analyses/genre_souls/on-disk.json");
+    await writeFile(onDiskArtifact, cleanBytes);
+    const onDisk = await scanTrackedProjection({
+      repositoryRoot: fixture.root,
+      artifactPath: onDiskArtifact,
+      ...fixture.paths,
+    });
+    assert.equal(onDisk.status, "pass");
+    assert.equal(onDisk.artifact.sha256, clean.artifact.sha256);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("candidate-byte scanner rejects source bytes drifted from the canonical private registry", async () => {
+  const fixture = await fixtureRoot();
+  try {
+    await writeFile(join(fixture.root, fixture.sourcePath), `${sourceText}drifted-after-registry\n`);
+    await assert.rejects(scanTrackedProjectionBytes({
+      repositoryRoot: fixture.root,
+      artifactRelativePath: "analyses/genre_souls/source-drift.json",
+      artifactBytes: Buffer.from("{\"safe\":true}\n"),
+      ...fixture.paths,
+    }), new RegExp(`source byte drift: ${fixture.sourceId}`, "u"));
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("candidate-byte scanner keeps the exact verified buffer and digest when the source mutates during scanning", async () => {
+  const fixture = await fixtureRoot();
+  try {
+    const canonical = fixture.privateRegistry.items[0];
+    await assert.rejects(scanTrackedProjectionBytes({
+      repositoryRoot: fixture.root,
+      artifactRelativePath: "analyses/genre_souls/unguarded-hook.json",
+      artifactBytes: Buffer.from("{\"safe\":true}\n"),
+      ...fixture.paths,
+      testOnlyHooks: { afterSourceBufferVerified: async () => {} },
+    }), /explicit testOnly=true boundary/u);
+    let mutationCount = 0;
+    const result = await scanTrackedProjectionBytes({
+      repositoryRoot: fixture.root,
+      artifactRelativePath: "analyses/genre_souls/mutate-during-scan.json",
+      artifactBytes: Buffer.from("{\"safe\":true}\n"),
+      ...fixture.paths,
+      testOnly: true,
+      testOnlyHooks: {
+        afterSourceBufferVerified: async ({ sourceId, sourceSha256, sizeBytes }) => {
+          assert.equal(sourceId, fixture.sourceId);
+          assert.equal(sourceSha256, canonical.sourceSha256);
+          assert.equal(sizeBytes, canonical.sizeBytes);
+          mutationCount += 1;
+          await writeFile(join(fixture.root, fixture.sourcePath), "mutated only after the canonical buffer was verified\n");
+        },
+      },
+    });
+    assert.equal(mutationCount, 1);
+    assert.equal(result.status, "pass");
+    assert.equal(result.corpus.availableSourceCount, 1);
+    assert.equal(result.corpus.observedSourceSetSha256, computeTrackedProjectionObservedSourceSetSha256([{
+      sourceId: fixture.sourceId,
+      sourceSha256: canonical.sourceSha256,
+      sizeBytes: canonical.sizeBytes,
+    }]));
+    await assert.rejects(scanTrackedProjectionBytes({
+      repositoryRoot: fixture.root,
+      artifactRelativePath: "analyses/genre_souls/post-mutation.json",
+      artifactBytes: Buffer.from("{\"safe\":true}\n"),
+      ...fixture.paths,
+    }), new RegExp(`source byte drift: ${fixture.sourceId}`, "u"));
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("tracked projection scanners reject a symbolic-link ancestor from repository root to target", async () => {
+  const fixture = await fixtureRoot();
+  try {
+    const analyses = join(fixture.root, "analyses");
+    const escaped = join(fixture.root, "escaped-genre-souls");
+    await Promise.all([
+      mkdir(analyses, { recursive: true }),
+      mkdir(escaped, { recursive: true }),
+    ]);
+    await symlink(escaped, join(analyses, "genre_souls"), "dir");
+    const artifactRelativePath = "analyses/genre_souls/symlinked.json";
+    const artifactBytes = Buffer.from("{\"safe\":true}\n");
+    await assert.rejects(scanTrackedProjectionBytes({
+      repositoryRoot: fixture.root,
+      artifactRelativePath,
+      artifactBytes,
+      ...fixture.paths,
+    }), /symbolic-link ancestor/u);
+
+    const artifactPath = join(fixture.root, artifactRelativePath);
+    await writeFile(join(escaped, "symlinked.json"), artifactBytes);
+    await assert.rejects(scanTrackedProjection({
+      repositoryRoot: fixture.root,
+      artifactPath,
+      ...fixture.paths,
+    }), /symbolic-link ancestor/u);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }

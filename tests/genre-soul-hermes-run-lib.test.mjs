@@ -1,0 +1,1317 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import { promisify } from "node:util";
+
+import {
+  FICTION_CONTENT_CONTRACT_ID,
+  FICTION_CONTENT_CONTRACT_SHA256,
+  HERMES_STRUCTURED_ATTEMPT_EVIDENCE_FILENAMES,
+  HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
+  buildHermesExecutionEnvironment,
+  buildHermesExactInputReadManifest,
+  buildHermesStructuredAttemptInputAttestation,
+  extractHermesContextLimitEntry,
+  loadHermesBinaryRuntimeEvidence,
+  loadHermesExactInputEvidence,
+  loadHermesRuntimeEvidence,
+  runHermesStructuredAttempt,
+  validateHermesStructuredAttemptEvidenceFileNames,
+  validateHermesProfileRuntime,
+  validateHermesStructuredAttemptInputAttestation,
+  validateHermesStructuredReceipt,
+  validateHermesStructuredTrace,
+  validateHermesExactInputTrace,
+  validateHermesExactInputReadCapability,
+} from "../tools/genre-soul-hermes-run-lib.mjs";
+
+const execFileAsync = promisify(execFile);
+
+function digest(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function jsonBytes(value) {
+  return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function structuredAttemptInputAttestationFixture() {
+  const profileId = "inkos_test_profile";
+  const fixedDigest = (label) => digest(`fixture:${label}`);
+  const runtime = {
+    runtimeAttestation: "current-attested",
+    profileId,
+    profileConfigSha256: fixedDigest("profile-config"),
+    soulSha256: fixedDigest("soul"),
+    contentNeutralContractId: FICTION_CONTENT_CONTRACT_ID,
+    contentNeutralContractSha256: FICTION_CONTENT_CONTRACT_SHA256,
+    contentNeutralSoulSectionSha256: fixedDigest("content-neutral-section"),
+    contextLimit: 272000,
+    contextLimitEntrySha256: fixedDigest("context-limit-entry"),
+    hermesCommand: join(tmpdir(), "mock-hermes"),
+    hermesExecutableSha256: fixedDigest("executable"),
+    hermesDelegatedExecutableSha256: fixedDigest("delegated-executable"),
+    hermesVersionSha256: fixedDigest("version"),
+    hermesImplementationSha256: fixedDigest("implementation"),
+    hermesDependencySha256: fixedDigest("dependency"),
+    hermesProfileContextSha256: fixedDigest("profile-context"),
+    hermesProjectContextSha256: fixedDigest("project-context"),
+    hermesRuntimeIdentitySha256: "",
+  };
+  runtime.hermesRuntimeIdentitySha256 = digest(jsonBytes({
+    runtimeAttestation: runtime.runtimeAttestation,
+    profileConfigSha256: runtime.profileConfigSha256,
+    soulSha256: runtime.soulSha256,
+    contextLimitEntrySha256: runtime.contextLimitEntrySha256,
+    hermesExecutableSha256: runtime.hermesExecutableSha256,
+    hermesDelegatedExecutableSha256: runtime.hermesDelegatedExecutableSha256,
+    hermesVersionSha256: runtime.hermesVersionSha256,
+    hermesImplementationSha256: runtime.hermesImplementationSha256,
+    hermesDependencySha256: runtime.hermesDependencySha256,
+    hermesProfileContextSha256: runtime.hermesProfileContextSha256,
+    hermesProjectContextSha256: runtime.hermesProjectContextSha256,
+  }));
+  const expectedReads = [{
+    path: join(tmpdir(), "bound-input.json"),
+    sha256: fixedDigest("bound-input"),
+    sizeBytes: 123,
+  }];
+  return {
+    schemaVersion: HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
+    role: "profile-synthesis",
+    profileHome: join(tmpdir(), "hermes-profile"),
+    projectCwd: join(tmpdir(), "firefly-reference-lab"),
+    profileId,
+    promptSha256: fixedDigest("prompt"),
+    inputDigest: fixedDigest("input-digest"),
+    inputSha256: digest(jsonBytes(expectedReads.map(({ path, sha256 }) => ({ path, sha256 })))),
+    expectedReads,
+    outputReserveTokens: 48_000,
+    executionEnvironmentSha256: fixedDigest("execution-environment"),
+    readCapabilitySha256: fixedDigest("read-capability"),
+    runtime,
+  };
+}
+
+test("validates canonical structured-attempt input attestation bytes and all consumer bindings", () => {
+  const fixture = structuredAttemptInputAttestationFixture();
+  const canonical = buildHermesStructuredAttemptInputAttestation(fixture);
+  const bytes = jsonBytes(canonical);
+  const attemptDir = join(tmpdir(), `attempt-20260830000000000-deadbeef-${digest(bytes)}`);
+  const validated = validateHermesStructuredAttemptInputAttestation({
+    bytes,
+    attemptDir,
+    expected: canonical,
+  });
+  assert.deepEqual(validated.value, canonical);
+  assert.equal(validated.sha256, digest(bytes));
+
+  const tampered = buildHermesStructuredAttemptInputAttestation({ ...fixture, role: "manager-qa" });
+  const tamperedBytes = jsonBytes(tampered);
+  assert.throws(() => validateHermesStructuredAttemptInputAttestation({
+    bytes: tamperedBytes,
+    attemptDir: join(tmpdir(), `attempt-tampered-${digest(tamperedBytes)}`),
+    expected: canonical,
+  }), /expected binding drifted: role/u);
+
+  assert.throws(() => validateHermesStructuredAttemptInputAttestation({
+    bytes,
+    attemptDir: join(tmpdir(), `attempt-wrong-${"0".repeat(64)}`),
+    expected: canonical,
+  }), /directory digest drifted/u);
+
+  assert.throws(() => validateHermesStructuredAttemptInputAttestation({
+    bytes,
+    attemptDir,
+    expected: { expectedReads: [{ ...canonical.expectedReads[0], sizeBytes: 124 }] },
+  }), /expected binding drifted: expectedReads/u);
+  assert.throws(() => validateHermesStructuredAttemptInputAttestation({
+    bytes,
+    attemptDir,
+    expected: { runtime: { hermesExecutableSha256: "0".repeat(64) } },
+  }), /expected runtime drifted: hermesExecutableSha256/u);
+  assert.throws(() => validateHermesStructuredAttemptInputAttestation({
+    bytes,
+    attemptDir,
+    expected: { executionEnvironmentSha256: "0".repeat(64) },
+  }), /expected binding drifted: executionEnvironmentSha256/u);
+
+  assert.throws(() => validateHermesStructuredAttemptInputAttestation({
+    bytes: Buffer.from(JSON.stringify(canonical)),
+    attemptDir,
+    expected: canonical,
+  }), /not canonical JSON/u);
+  assert.throws(() => buildHermesStructuredAttemptInputAttestation({
+    ...fixture,
+    runtime: { ...fixture.runtime, extraRuntimeKey: true },
+  }), /runtime keys drifted/u);
+  assert.throws(() => buildHermesStructuredAttemptInputAttestation({
+    ...fixture,
+    inputSha256: "0".repeat(64),
+  }), /inputSha256 drifted from expectedReads/u);
+});
+
+function configBytes() {
+  return Buffer.from(`model:
+  provider: openai-codex
+  default: gpt-5.6-sol
+agent:
+  reasoning_effort: high
+`);
+}
+
+function soulBytes(profileId) {
+  return Buffer.from(`# 테스트 Soul
+
+- Profile ID: \`${profileId}\`
+
+## 허구 내용 중립
+
+계약은 \`${FICTION_CONTENT_CONTRACT_ID}\`, SHA-256은 \`${FICTION_CONTENT_CONTRACT_SHA256}\`다.
+
+- 허구 내용은 도덕 승인 여부가 아니라 인물과 장면 인과로 판단한다.
+
+## 실행 경계
+
+읽기 전용 분석만 수행한다.
+`);
+}
+
+function usage(runId = "20260829_000000_mock") {
+  return {
+    estimated_cost_usd: 0,
+    cost_status: "included",
+    cost_source: "none",
+    input_tokens: 1200,
+    output_tokens: 300,
+    cache_read_tokens: 400,
+    cache_write_tokens: 0,
+    reasoning_tokens: 50,
+    total_tokens: 1900,
+    api_calls: 2,
+    model: "gpt-5.6-sol",
+    provider: "openai-codex",
+    session_id: runId,
+    completed: true,
+    failed: false,
+    service_tier: null,
+  };
+}
+
+function traceFixture({ profileId, prompt, soul, path, fileContent, result, runId = "20260829_000000_mock" }) {
+  const fileBytes = Buffer.from(fileContent);
+  return {
+    id: runId,
+    model: "gpt-5.6-sol",
+    billing_provider: "openai-codex",
+    profile_name: profileId,
+    end_reason: "agent_close",
+    ended_at: 1787932800.125,
+    compression_failure_cooldown_until: null,
+    compression_failure_error: null,
+    compression_fallback_streak: 0,
+    compression_ineffective_count: 0,
+    input_tokens: 1200,
+    output_tokens: 300,
+    cache_read_tokens: 400,
+    cache_write_tokens: 0,
+    reasoning_tokens: 50,
+    api_call_count: 2,
+    system_prompt: `${soul}\nHermes appended runtime instructions`,
+    messages: [
+      { role: "user", content: prompt, compacted: 0 },
+      {
+        role: "assistant",
+        finish_reason: "tool_calls",
+        compacted: 0,
+        tool_calls: [{
+          id: "call-read-1",
+          function: { name: "firefly_read_source", arguments: JSON.stringify({ inputId: "input-001" }) },
+        }],
+      },
+      {
+        role: "tool",
+        tool_call_id: "call-read-1",
+        compacted: 0,
+        content: JSON.stringify({
+          schemaVersion: "firefly-hermes-read-result/v1",
+          inputId: "input-001",
+          sha256: digest(fileBytes),
+          sizeBytes: fileBytes.byteLength,
+          content: fileContent,
+        }),
+      },
+      {
+        role: "assistant",
+        finish_reason: "stop",
+        compacted: 0,
+        content: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+test("validates the real sol/high profile, SOUL, and content-neutral runtime evidence", () => {
+  const profileId = "inkos_test_profile";
+  const runtime = validateHermesProfileRuntime({
+    profileId,
+    configBytes: configBytes(),
+    soulBytes: soulBytes(profileId),
+    contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
+  });
+  assert.equal(runtime.contextLimit, 272000);
+  assert.equal(runtime.contentNeutralContractSha256, FICTION_CONTENT_CONTRACT_SHA256);
+  assert.match(runtime.soulSha256, /^[a-f0-9]{64}$/u);
+
+  assert.throws(() => validateHermesProfileRuntime({
+    profileId,
+    configBytes: Buffer.from("model:\n  provider: mock\n  default: gpt-5.6-sol\nagent:\n  reasoning_effort: high\n"),
+    soulBytes: soulBytes(profileId),
+    contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
+  }), /not gpt-5\.6-sol\/openai-codex\/high/u);
+
+  const commentSpoof = Buffer.from(`model:
+  provider: wrong-provider
+  default: wrong-model
+agent:
+  reasoning_effort: low
+# provider: openai-codex
+# default: gpt-5.6-sol
+# reasoning_effort: high
+`);
+  assert.throws(() => validateHermesProfileRuntime({
+    profileId,
+    configBytes: commentSpoof,
+    soulBytes: soulBytes(profileId),
+    contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
+  }), /canonical config/u);
+
+  assert.equal(
+    extractHermesContextLimitEntry(Buffer.from("context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000\n")).toString("utf8"),
+    "gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000",
+  );
+  assert.throws(() => extractHermesContextLimitEntry(Buffer.from(
+    "context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 128000\n",
+  )), /exactly one/u);
+
+  assert.throws(() => validateHermesProfileRuntime({
+    profileId,
+    configBytes: configBytes(),
+    soulBytes: Buffer.from(soulBytes(profileId).toString("utf8").replace(FICTION_CONTENT_CONTRACT_SHA256, "0".repeat(64))),
+    contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
+  }), /content-neutral contract identity drifted/u);
+});
+
+test("pure trace validation rejects extra paths, non-read tools, compaction, and result drift", () => {
+  const profileId = "inkos_test_profile";
+  const prompt = "read one input and return JSON";
+  const soul = soulBytes(profileId).toString("utf8");
+  const path = "/private/input.txt";
+  const result = { schemaVersion: "mock-result/v1", status: "ok" };
+  const fileContent = "첫 줄\n둘째 줄\n";
+  const trace = traceFixture({ profileId, prompt, soul, path, fileContent: "첫 줄\n둘째 줄\n", result });
+  const budget = {
+    inputEvidenceBytes: Buffer.byteLength(fileContent),
+    outputReserveTokens: 48_000,
+  };
+  const evidence = validateHermesStructuredTrace({
+    trace,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  });
+  assert.equal(evidence.exactReadCount, 1);
+  const activeMessages = trace.messages.slice(0, -1);
+  assert.equal(evidence.contextInputProxyTokens, Math.ceil((
+    Buffer.byteLength(trace.system_prompt)
+    + Buffer.byteLength(JSON.stringify(activeMessages))
+  ) / 2));
+  const duplicateCountedProxy = Math.ceil((
+    Buffer.byteLength(trace.system_prompt)
+    + Buffer.byteLength(JSON.stringify(trace.messages))
+    + Buffer.byteLength(prompt)
+    + Buffer.byteLength(fileContent)
+  ) / 2);
+  assert.notEqual(evidence.contextInputProxyTokens, duplicateCountedProxy);
+  assert.equal(evidence.contextOutputReserveTokens, 48_000);
+  assert.equal(evidence.contextBudgetUpperBoundTokens, evidence.contextInputProxyTokens + 48_000);
+
+  const unexpected = structuredClone(trace);
+  unexpected.messages[1].tool_calls[0].function.arguments = JSON.stringify({ inputId: "input-002" });
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: unexpected, usage: usage(), profileId, prompt, soulText: soul, expectedReadPaths: [path], result, contextLimit: 272000, ...budget,
+  }), /unexpected inputId/u);
+
+  const forbidden = structuredClone(trace);
+  forbidden.messages[1].tool_calls[0].function.name = "terminal";
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: forbidden, usage: usage(), profileId, prompt, soulText: soul, expectedReadPaths: [path], result, contextLimit: 272000, ...budget,
+  }), /forbidden tool/u);
+
+  const compacted = structuredClone(trace);
+  compacted.messages[0].compacted = 1;
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: compacted, usage: usage(), profileId, prompt, soulText: soul, expectedReadPaths: [path], result, contextLimit: 272000, ...budget,
+  }), /compacted messages/u);
+
+  assert.throws(() => validateHermesStructuredTrace({
+    trace, usage: usage(), profileId, prompt, soulText: soul, expectedReadPaths: [path], result: { status: "drifted" }, contextLimit: 272000, ...budget,
+  }), /result drifted/u);
+
+  const driftedTotal = usage();
+  driftedTotal.total_tokens += 1;
+  assert.throws(() => validateHermesStructuredTrace({
+    trace, usage: driftedTotal, profileId, prompt, soulText: soul, expectedReadPaths: [path], result, contextLimit: 272000, ...budget,
+  }), /usage total is not bound/u);
+
+  const cacheHeavyUsage = usage();
+  cacheHeavyUsage.cache_read_tokens = 2_000_000;
+  cacheHeavyUsage.total_tokens = cacheHeavyUsage.input_tokens + cacheHeavyUsage.output_tokens
+    + cacheHeavyUsage.cache_read_tokens + cacheHeavyUsage.cache_write_tokens;
+  const cacheHeavyTrace = structuredClone(trace);
+  cacheHeavyTrace.cache_read_tokens = cacheHeavyUsage.cache_read_tokens;
+  const cacheHeavy = validateHermesStructuredTrace({
+    trace: cacheHeavyTrace,
+    usage: cacheHeavyUsage,
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  });
+  assert.equal(cacheHeavy.contextBudgetUpperBoundTokens, evidence.contextBudgetUpperBoundTokens);
+
+  assert.throws(() => validateHermesStructuredTrace({
+    trace,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    inputEvidenceBytes: Buffer.byteLength(fileContent),
+    outputReserveTokens: 299,
+  }), /exceeded its bound reserve/u);
+
+  assert.throws(() => validateHermesStructuredTrace({
+    trace,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: evidence.contextBudgetUpperBoundTokens,
+    ...budget,
+  }), /context boundary failed/u);
+});
+
+test("public exact-input APIs bind opaque IDs to complete UTF-8 result bytes", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-exact-input-api-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const inputPath = join(root, "source.txt");
+  const content = "경로는 모델 인자가 아니다.\n두 번째 줄.\n";
+  await writeFile(inputPath, content);
+  const inputDigest = digest("public-exact-input-fixture");
+  const evidence = await loadHermesExactInputEvidence([inputPath], inputDigest);
+  assert.deepEqual(buildHermesExactInputReadManifest(evidence.files), {
+    schemaVersion: "firefly-hermes-read-manifest/v1",
+    inputs: [{
+      inputId: "input-001",
+      path: inputPath,
+      sha256: digest(content),
+      sizeBytes: Buffer.byteLength(content),
+    }],
+  });
+  const trace = traceFixture({
+    profileId: "inkos_test_profile",
+    prompt: "read input-001",
+    soul: soulBytes("inkos_test_profile").toString("utf8"),
+    path: inputPath,
+    fileContent: content,
+    result: { schemaVersion: "mock-result/v1", status: "ok" },
+  });
+  assert.deepEqual(await validateHermesExactInputTrace({ trace, expectedFiles: evidence.files }), {
+    exactReadCount: 1,
+    exactReadSha256s: [digest(content)],
+  });
+  const pathArgument = structuredClone(trace);
+  pathArgument.messages[1].tool_calls[0].function.arguments = JSON.stringify({ path: inputPath });
+  await assert.rejects(
+    validateHermesExactInputTrace({ trace: pathArgument, expectedFiles: evidence.files }),
+    /arguments must contain only inputId/u,
+  );
+  const partial = structuredClone(trace);
+  partial.messages[2].content = JSON.stringify({
+    ...JSON.parse(partial.messages[2].content),
+    content: content.slice(0, -2),
+  });
+  await assert.rejects(
+    validateHermesExactInputTrace({ trace: partial, expectedFiles: evidence.files }),
+    /partial or drifted/u,
+  );
+  const oversizedPath = join(root, "oversized-result.txt");
+  await writeFile(oversizedPath, "\u0000".repeat(800_000));
+  await assert.rejects(
+    loadHermesExactInputEvidence([oversizedPath], inputDigest),
+    /exceeds the reader result boundary/u,
+  );
+  const linkedPath = join(root, "linked-input.txt");
+  await symlink(inputPath, linkedPath, "file");
+  await assert.rejects(
+    loadHermesExactInputEvidence([linkedPath], inputDigest),
+    /symbolic-link component/u,
+  );
+});
+
+test("binds the delegated Hermes implementation behind a stable wrapper", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-runtime-fingerprint-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const installRoot = join(root, "install");
+  const delegated = join(installRoot, "venv/bin/hermes");
+  const venvPython = join(installRoot, "venv/bin/python");
+  const basePython = join(root, "base-python/bin/python3.11");
+  const standardLibraryFile = join(root, "base-python/lib/python3.11/os.py");
+  const sitePackage = join(installRoot, "venv/lib/python3.11/site-packages/mock_dependency/__init__.py");
+  const wrapper = join(root, "hermes");
+  await mkdir(join(installRoot, "venv/bin"), { recursive: true });
+  await mkdir(join(installRoot, "venv/lib/python3.11/site-packages/mock_dependency"), { recursive: true });
+  await mkdir(join(root, "base-python/bin"), { recursive: true });
+  await mkdir(join(root, "base-python/lib/python3.11"), { recursive: true });
+  await writeFile(delegated, "#!/usr/bin/env node\nprocess.stdout.write('delegated-one');\n");
+  await writeFile(basePython, "#!/bin/sh\nexit 0\n");
+  await chmod(basePython, 0o755);
+  await writeFile(standardLibraryFile, "BOUND = 'one'\n");
+  await symlink(basePython, venvPython, "file");
+  await writeFile(join(installRoot, "venv/pyvenv.cfg"), "home = /bound/base/python\n");
+  await writeFile(sitePackage, "VERSION = 'one'\n");
+  await writeFile(wrapper, `#!/usr/bin/env bash
+if [[ "$1" == "--version" ]]; then
+  printf '%s\\n' 'mock-hermes 1.0.0' 'Install directory: ${installRoot}'
+else
+  exec "${delegated}" "$@"
+fi
+`);
+  await Promise.all([chmod(delegated, 0o755), chmod(wrapper, 0o755)]);
+
+  const first = await loadHermesBinaryRuntimeEvidence(wrapper);
+  await writeFile(delegated, "#!/usr/bin/env node\nprocess.stdout.write('delegated-two');\n");
+  await chmod(delegated, 0o755);
+  const second = await loadHermesBinaryRuntimeEvidence(wrapper);
+  assert.equal(first.hermesExecutableSha256, second.hermesExecutableSha256);
+  assert.equal(first.hermesVersionSha256, second.hermesVersionSha256);
+  assert.notEqual(first.hermesDelegatedExecutableSha256, second.hermesDelegatedExecutableSha256);
+  assert.notEqual(first.hermesImplementationSha256, second.hermesImplementationSha256);
+  assert.notEqual(first.hermesRuntimeIdentitySha256, second.hermesRuntimeIdentitySha256);
+
+  const dependencyBefore = second;
+  await writeFile(sitePackage, "VERSION = 'two'\n");
+  const dependencyAfter = await loadHermesBinaryRuntimeEvidence(wrapper);
+  assert.equal(dependencyBefore.hermesDelegatedExecutableSha256, dependencyAfter.hermesDelegatedExecutableSha256);
+  assert.notEqual(dependencyBefore.hermesDependencySha256, dependencyAfter.hermesDependencySha256);
+  assert.notEqual(dependencyBefore.hermesRuntimeIdentitySha256, dependencyAfter.hermesRuntimeIdentitySha256);
+
+  await writeFile(standardLibraryFile, "BOUND = 'two'\n");
+  const standardLibraryAfter = await loadHermesBinaryRuntimeEvidence(wrapper);
+  assert.notEqual(dependencyAfter.hermesDependencySha256, standardLibraryAfter.hermesDependencySha256);
+
+  const versionProbeState = join(root, "version-probe-state");
+  await writeFile(wrapper, `#!/usr/bin/env bash
+if [[ "$1" == "--version" ]]; then
+  if [[ -e "${versionProbeState}" ]]; then
+    printf '%s\\n' '# drift during version probe' >> "${delegated}"
+  else
+    : > "${versionProbeState}"
+  fi
+  printf '%s\\n' 'mock-hermes 1.0.0' 'Install directory: ${installRoot}'
+else
+  exec "${delegated}" "$@"
+fi
+`);
+  await chmod(wrapper, 0o755);
+  await assert.rejects(
+    loadHermesBinaryRuntimeEvidence(wrapper),
+    /changed across hash\/version\/hash attestation/u,
+  );
+});
+
+test("keeps project runtime identity stable across volatile Git/date state and binds policy bytes", { concurrency: false }, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-project-context-")));
+  const profileId = "inkos_test_profile";
+  const profileHome = join(root, "hermes", "profiles", profileId);
+  const mockBin = join(root, "mock-hermes");
+  const candidatePath = join(root, "analyses", "genre_souls", "candidate.json");
+  const previousBin = process.env.HERMES_BIN;
+  const previousCache = process.env.HERMES_CONTEXT_CACHE_PATH;
+  try {
+    await Promise.all([
+      mkdir(profileHome, { recursive: true }),
+      mkdir(join(root, "analyses", "genre_souls"), { recursive: true }),
+    ]);
+    await Promise.all([
+      writeFile(join(profileHome, "config.yaml"), configBytes()),
+      writeFile(join(profileHome, "SOUL.md"), soulBytes(profileId)),
+      writeFile(join(root, "hermes", "context_length_cache.yaml"), "context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000\n"),
+      writeFile(join(root, "notes.txt"), "baseline\n"),
+      writeFile(candidatePath, "{\"version\":1}\n"),
+      writeFile(mockBin, "#!/bin/sh\nprintf 'mock-hermes 1.0.0\\n'\n"),
+    ]);
+    await chmod(mockBin, 0o755);
+    await execFileAsync("git", ["-C", root, "init", "-q"]);
+    await execFileAsync("git", ["-C", root, "config", "user.name", "Hermes Test"]);
+    await execFileAsync("git", ["-C", root, "config", "user.email", "hermes-test@example.invalid"]);
+    await execFileAsync("git", ["-C", root, "add", "notes.txt", "analyses/genre_souls/candidate.json"]);
+    await execFileAsync("git", ["-C", root, "commit", "-qm", "baseline"]);
+    process.env.HERMES_BIN = mockBin;
+    process.env.HERMES_CONTEXT_CACHE_PATH = "/tmp/ignored-context-cache";
+
+    const load = () => loadHermesRuntimeEvidence(profileHome, profileId, { projectCwd: root });
+    const baseline = await load();
+    const canonicalEnvironment = buildHermesExecutionEnvironment({ profileHome, projectCwd: root });
+    const forgedEnvironment = {
+      ...canonicalEnvironment,
+      env: {
+        ...canonicalEnvironment.env,
+        HOME: join(root, "forged-home"),
+        XDG_CONFIG_HOME: join(root, "forged-xdg-config"),
+      },
+    };
+    await assert.rejects(
+      loadHermesRuntimeEvidence(profileHome, profileId, {
+        projectCwd: root,
+        executionEnvironment: forgedEnvironment,
+      }),
+      /execution environment is not canonical/u,
+    );
+    await writeFile(candidatePath, "{\"version\":2}\n");
+    const dirty = await load();
+    assert.equal(dirty.hermesProjectContextSha256, baseline.hermesProjectContextSha256);
+    assert.equal(dirty.hermesRuntimeIdentitySha256, baseline.hermesRuntimeIdentitySha256);
+
+    await execFileAsync("git", ["-C", root, "add", "analyses/genre_souls/candidate.json"]);
+    const staged = await load();
+    assert.equal(staged.hermesProjectContextSha256, baseline.hermesProjectContextSha256);
+    assert.equal(staged.hermesRuntimeIdentitySha256, baseline.hermesRuntimeIdentitySha256);
+    await execFileAsync("git", ["-C", root, "commit", "-qm", "tracked output update"]);
+    await execFileAsync("git", ["-C", root, "commit", "--allow-empty", "-qm", "head only"]);
+    const movedHead = await load();
+    assert.equal(movedHead.hermesProjectContextSha256, baseline.hermesProjectContextSha256);
+    assert.equal(movedHead.hermesRuntimeIdentitySha256, baseline.hermesRuntimeIdentitySha256);
+
+    const NativeDate = globalThis.Date;
+    globalThis.Date = class FixedFutureDate extends NativeDate {
+      constructor(...args) {
+        super(...(args.length > 0 ? args : ["2099-12-31T23:59:59.000Z"]));
+      }
+
+      static now() {
+        return NativeDate.parse("2099-12-31T23:59:59.000Z");
+      }
+    };
+    try {
+      const futureDate = await load();
+      assert.equal(futureDate.hermesProjectContextSha256, baseline.hermesProjectContextSha256);
+      assert.equal(futureDate.hermesRuntimeIdentitySha256, baseline.hermesRuntimeIdentitySha256);
+    } finally {
+      globalThis.Date = NativeDate;
+    }
+
+    await writeFile(join(root, "AGENTS.md"), "first policy bytes\n");
+    const firstPolicy = await load();
+    assert.notEqual(firstPolicy.hermesProjectContextSha256, baseline.hermesProjectContextSha256);
+    assert.notEqual(firstPolicy.hermesRuntimeIdentitySha256, baseline.hermesRuntimeIdentitySha256);
+    await writeFile(join(root, "AGENTS.md"), "second policy bytes\n");
+    const secondPolicy = await load();
+    assert.notEqual(secondPolicy.hermesProjectContextSha256, firstPolicy.hermesProjectContextSha256);
+    assert.notEqual(secondPolicy.hermesRuntimeIdentitySha256, firstPolicy.hermesRuntimeIdentitySha256);
+  } finally {
+    if (previousBin === undefined) delete process.env.HERMES_BIN;
+    else process.env.HERMES_BIN = previousBin;
+    if (previousCache === undefined) delete process.env.HERMES_CONTEXT_CACHE_PATH;
+    else process.env.HERMES_CONTEXT_CACHE_PATH = previousCache;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("runs through an injectable mock Hermes binary, seals immutable completion, and reuses it", { concurrency: false }, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-structured-run-")));
+  const profileId = "inkos_test_profile";
+  const profileHome = join(root, "hermes", "profiles", profileId);
+  const runRoot = join(root, "run");
+  const inputPath = join(root, "input.txt");
+  const mockBin = join(root, "mock-hermes.mjs");
+  const usageSource = join(root, "mock-usage.json");
+  const resultSource = join(root, "mock-result.json");
+  const traceSource = join(root, "mock-session.jsonl");
+  const invocationLog = join(root, "mock-invocations.log");
+  const prompt = "Read the exact file once and return the requested JSON object.";
+  const inputText = "첫 줄\n둘째 줄\n";
+  const result = { schemaVersion: "mock-result/v1", status: "ok", count: 2 };
+  const runId = "20260829_010203_mock";
+  const previousBin = process.env.HERMES_BIN;
+  const previousUsage = process.env.MOCK_HERMES_USAGE_SOURCE;
+  const previousResult = process.env.MOCK_HERMES_RESULT_SOURCE;
+  const previousTrace = process.env.MOCK_HERMES_TRACE_SOURCE;
+  const previousLog = process.env.MOCK_HERMES_INVOCATION_LOG;
+  const previousDelay = process.env.MOCK_HERMES_DELAY_MS;
+  const previousVersionDelay = process.env.MOCK_HERMES_VERSION_DELAY_MS;
+  const previousExpectedCwd = process.env.MOCK_HERMES_EXPECTED_CWD;
+  const previousExpectedCache = process.env.MOCK_HERMES_EXPECTED_CACHE;
+  const previousExpectedHome = process.env.MOCK_HERMES_EXPECTED_HOME;
+  const previousCapsuleLog = process.env.MOCK_HERMES_CAPSULE_LOG;
+  const previousCreateAuth = process.env.MOCK_HERMES_CREATE_AUTH;
+  const previousForbiddenRoot = process.env.MOCK_HERMES_FORBIDDEN_ROOT;
+  const previousMutateSelf = process.env.MOCK_HERMES_MUTATE_SELF;
+  const previousCache = process.env.HERMES_CONTEXT_CACHE_PATH;
+  const previousEnvironmentHint = process.env.HERMES_ENVIRONMENT_HINT;
+  const previousHermesPlatform = process.env.HERMES_PLATFORM;
+  const previousIgnoreRules = process.env.HERMES_IGNORE_RULES;
+  const previousTerminalCwd = process.env.TERMINAL_CWD;
+  const previousTerminalEnv = process.env.TERMINAL_ENV;
+  const hostileEnvironment = {
+    ANTHROPIC_MODEL: "must-not-reach-Hermes",
+    AWS_CA_BUNDLE: "/tmp/forged-aws-ca.pem",
+    CODEX_HOME: "/tmp/forged-codex-home",
+    CODEX_MODEL: "forged-model",
+    CURL_CA_BUNDLE: "/tmp/forged-curl-ca.pem",
+    HERMES_UNEXPECTED_OVERRIDE: "must-not-reach-Hermes",
+    HTTPS_PROXY: "http://127.0.0.1:9",
+    NODE_EXTRA_CA_CERTS: "/tmp/forged-node-ca.pem",
+    NO_PROXY: "example.invalid",
+    OPENAI_API_KEY: "forged-openai-key",
+    OPENAI_BASE_URL: "https://forged-openai.invalid",
+    OPENROUTER_API_KEY: "forged-openrouter-key",
+    REQUESTS_CA_BUNDLE: "/tmp/forged-requests-ca.pem",
+    SSL_CERT_FILE: "/tmp/forged-ssl-ca.pem",
+    TERMINAL_UNEXPECTED_OVERRIDE: "must-not-reach-Hermes",
+    _CODEX_DYNAMIC_OVERRIDE: "must-not-reach-Hermes",
+    https_proxy: "http://127.0.0.1:10",
+    no_proxy: "lowercase.example.invalid",
+  };
+  const previousHostileEnvironment = Object.fromEntries(
+    Object.keys(hostileEnvironment).map((key) => [key, process.env[key]]),
+  );
+  try {
+    await mkdir(profileHome, { recursive: true });
+    await Promise.all([
+      writeFile(join(profileHome, "config.yaml"), configBytes()),
+      writeFile(join(profileHome, "SOUL.md"), soulBytes(profileId)),
+      writeFile(join(root, "hermes", "context_length_cache.yaml"), "context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000\n"),
+      writeFile(inputPath, inputText),
+      writeFile(usageSource, `${JSON.stringify(usage(runId), null, 2)}\n`),
+      writeFile(resultSource, `${JSON.stringify(result, null, 2)}\n`),
+      writeFile(traceSource, `${JSON.stringify(traceFixture({
+        profileId,
+        prompt,
+        soul: soulBytes(profileId).toString("utf8"),
+        path: inputPath,
+        fileContent: inputText,
+        result,
+        runId,
+      }))}\n`),
+      writeFile(mockBin, `#!/usr/bin/env node
+	import { appendFileSync, copyFileSync, readFileSync, writeFileSync } from "node:fs";
+	import { dirname, join } from "node:path";
+	const args = process.argv.slice(2);
+	appendFileSync(process.env.MOCK_HERMES_INVOCATION_LOG, args[0] + "\\n");
+	if (args[0] === "--version") {
+	  const versionDelay = Number(process.env.MOCK_HERMES_VERSION_DELAY_MS ?? 0);
+	  if (versionDelay > 0) await new Promise((resolve) => setTimeout(resolve, versionDelay));
+	  process.stdout.write("mock-hermes 1.0.0\\n");
+		} else if (args[0] === "--oneshot") {
+		  const toolsetIndex = args.indexOf("--toolsets");
+		  if (toolsetIndex < 0 || args.filter((value) => value === "--toolsets").length !== 1 || args[toolsetIndex + 1] !== "firefly-source-read") throw new Error("exact read-only toolset missing");
+		  if (args.includes("--approve-all") || args.includes("--safe-mode") || args.includes("--toolset")) throw new Error("unsafe or ambiguous CLI policy enabled");
+		  if (args.filter((value) => value === "--model").length !== 1 || args[args.indexOf("--model") + 1] !== "gpt-5.6-sol") throw new Error("model drifted");
+		  if (args.filter((value) => value === "--provider").length !== 1 || args[args.indexOf("--provider") + 1] !== "openai-codex") throw new Error("provider drifted");
+		  const hermesKeys = Object.keys(process.env).filter((key) => key.startsWith("HERMES_")).sort();
+		  if (JSON.stringify(hermesKeys) !== JSON.stringify(["HERMES_CONTEXT_CACHE_PATH", "HERMES_HOME"])) throw new Error("non-canonical HERMES variables leaked: " + hermesKeys.join(","));
+		  const terminalKeys = Object.keys(process.env).filter((key) => key.startsWith("TERMINAL_")).sort();
+		  if (JSON.stringify(terminalKeys) !== JSON.stringify(["TERMINAL_CWD", "TERMINAL_ENV"])) throw new Error("non-canonical TERMINAL variables leaked: " + terminalKeys.join(","));
+		  const executionRoot = dirname(dirname(dirname(process.env.HERMES_HOME)));
+		  if (process.env.HERMES_HOME.startsWith(process.env.MOCK_HERMES_FORBIDDEN_ROOT)) throw new Error("HERMES_HOME persisted under the source/run tree");
+		  if (process.env.TERMINAL_CWD !== join(executionRoot, "workspace")) throw new Error("TERMINAL_CWD drifted");
+		  if (process.env.TERMINAL_ENV !== "local") throw new Error("TERMINAL_ENV drifted");
+		  if (process.env.HERMES_CONTEXT_CACHE_PATH !== join(executionRoot, "hermes", "context_length_cache.yaml")) throw new Error("context cache drifted");
+		  if (process.env.FIREFLY_READ_MANIFEST !== join(executionRoot, "input-manifest.json")) throw new Error("read manifest path drifted");
+		  if (!/^[a-f0-9]{64}$/.test(process.env.FIREFLY_READ_MANIFEST_SHA256 ?? "")) throw new Error("read manifest digest missing");
+		  appendFileSync(process.env.MOCK_HERMES_CAPSULE_LOG, process.env.HERMES_HOME + "\\n");
+		  if (process.env.HERMES_ENVIRONMENT_HINT || process.env.HERMES_PLATFORM || process.env.HERMES_IGNORE_RULES) throw new Error("prompt override leaked");
+		  for (const key of ${JSON.stringify(Object.keys(hostileEnvironment))}) {
+		    if (process.env[key] !== undefined) throw new Error("forbidden environment override leaked: " + key);
+		  }
+		  if (process.env.PYTHONDONTWRITEBYTECODE !== "1") throw new Error("bytecode guard missing");
+		  if (process.env.MOCK_HERMES_CREATE_AUTH === "1") writeFileSync(join(process.env.HERMES_HOME, "auth.json"), "temporary-secret\\n");
+	  const delay = Number(process.env.MOCK_HERMES_DELAY_MS ?? 0);
+	  if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+	  const usageIndex = args.indexOf("--usage-file");
+	  copyFileSync(process.env.MOCK_HERMES_USAGE_SOURCE, args[usageIndex + 1]);
+	  process.stdout.write(readFileSync(process.env.MOCK_HERMES_RESULT_SOURCE));
+	  if (process.env.MOCK_HERMES_MUTATE_SELF === "1") appendFileSync(new URL(import.meta.url), "// runtime drift\\n");
+} else if (args[0] === "sessions" && args[1] === "export") {
+  copyFileSync(process.env.MOCK_HERMES_TRACE_SOURCE, args[2]);
+} else {
+  process.exitCode = 2;
+}
+`),
+    ]);
+    await chmod(mockBin, 0o755);
+    process.env.HERMES_BIN = mockBin;
+    process.env.MOCK_HERMES_USAGE_SOURCE = usageSource;
+    process.env.MOCK_HERMES_RESULT_SOURCE = resultSource;
+    process.env.MOCK_HERMES_TRACE_SOURCE = traceSource;
+    process.env.MOCK_HERMES_INVOCATION_LOG = invocationLog;
+    process.env.MOCK_HERMES_CAPSULE_LOG = join(root, "mock-capsules.log");
+    process.env.MOCK_HERMES_FORBIDDEN_ROOT = root;
+    Object.assign(process.env, hostileEnvironment);
+    process.env.HERMES_CONTEXT_CACHE_PATH = "/tmp/must-not-control-context-cache";
+    process.env.HERMES_ENVIRONMENT_HINT = "must-not-reach-Hermes";
+    process.env.HERMES_PLATFORM = "telegram";
+    process.env.HERMES_IGNORE_RULES = "1";
+    process.env.TERMINAL_CWD = "/tmp/wrong-project";
+    process.env.TERMINAL_ENV = "ssh";
+    const progress = [];
+    const options = {
+      role: "profile-synthesis",
+      runRoot,
+      profileHome,
+      profileId,
+      projectCwd: root,
+      prompt,
+      expectedReadPaths: [inputPath],
+      inputDigest: digest("bound-manager-selection-and-deep-read-inputs"),
+      outputReserveTokens: 48_000,
+      validateResult: (candidate) => {
+        assert.equal(candidate.schemaVersion, "mock-result/v1");
+        assert.equal(candidate.status, "ok");
+        return true;
+      },
+      progress: (event) => progress.push(event.event),
+    };
+    const first = await runHermesStructuredAttempt(options);
+    assert.equal(first.status, "completed");
+    assert.equal(first.reused, false);
+    assert.equal(first.receipt.exactReadCount, 1);
+    assert.equal(first.receipt.inputDigest, options.inputDigest);
+    assert.equal(validateHermesStructuredReceipt(first.receipt), true);
+    assert.deepEqual(progress, ["attempt-start", "attempt-complete"]);
+    let invocations = (await readFile(invocationLog, "utf8")).trim().split("\n");
+    assert.equal(invocations.filter((entry) => entry === "--oneshot").length, 1);
+    assert.equal(invocations.filter((entry) => entry === "sessions").length, 1);
+    assert.equal(JSON.parse(await readFile(join(runRoot, "completed.json"), "utf8")).attempt, first.attempt);
+    assert.equal(JSON.parse(await readFile(join(first.attemptDir, "completed.json"), "utf8")).completed, true);
+    const attemptFileNames = (await readdir(first.attemptDir)).sort();
+    assert.deepEqual(attemptFileNames, HERMES_STRUCTURED_ATTEMPT_EVIDENCE_FILENAMES);
+    assert.equal(validateHermesStructuredAttemptEvidenceFileNames(attemptFileNames), true);
+    const firstCapsuleHome = (await readFile(process.env.MOCK_HERMES_CAPSULE_LOG, "utf8")).trim().split("\n")[0];
+    const firstCapsuleRoot = join(firstCapsuleHome, "../../..");
+    await assert.rejects(lstat(firstCapsuleRoot), { code: "ENOENT" });
+    assert.deepEqual((await readdir(join(runRoot, ".readonly-capability"))).sort(), ["input-manifest.json"]);
+    const inputAttestationPath = join(first.attemptDir, "input-attestation.json");
+    const readCapabilityPath = join(first.attemptDir, "read-capability.json");
+    const readCapabilityBytes = await readFile(readCapabilityPath);
+    const exactInputEvidence = await loadHermesExactInputEvidence([inputPath], options.inputDigest);
+    const validatedReadCapability = validateHermesExactInputReadCapability({
+      bytes: readCapabilityBytes,
+      expectedFiles: exactInputEvidence.files,
+      sourceRuntimeIdentitySha256: first.receipt.hermesRuntimeIdentitySha256,
+    });
+    assert.equal(validatedReadCapability.sha256, first.receipt.readCapabilitySha256);
+    assert.equal(validatedReadCapability.capability.tool, "firefly_read_source");
+    const originalInputAttestationBytes = await readFile(inputAttestationPath);
+    const inputAttestation = JSON.parse(originalInputAttestationBytes.toString("utf8"));
+    const inputAttestationSha256 = digest(originalInputAttestationBytes);
+    const attemptCompletion = JSON.parse(await readFile(join(first.attemptDir, "completed.json"), "utf8"));
+    const rootCompletion = JSON.parse(await readFile(join(runRoot, "completed.json"), "utf8"));
+    assert.equal(first.attempt.endsWith(`-${inputAttestationSha256}`), true);
+    assert.equal(attemptCompletion.attemptId.endsWith(`-${inputAttestationSha256}`), true);
+    assert.equal(rootCompletion.attempt, first.attempt);
+    assert.equal(inputAttestation.inputDigest, options.inputDigest);
+    assert.equal(inputAttestation.outputReserveTokens, options.outputReserveTokens);
+    assert.equal(inputAttestation.profileId, profileId);
+    assert.deepEqual(inputAttestation.expectedReads, [{
+      path: inputPath,
+      sha256: digest(inputText),
+      sizeBytes: Buffer.byteLength(inputText),
+    }]);
+
+    process.env.MOCK_HERMES_CREATE_AUTH = "1";
+    const authArtifactRunRoot = join(root, "credential-artifact-run");
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, runRoot: authArtifactRunRoot, progress: () => {} }),
+      /forbidden credential artifact: .*auth\.json/u,
+    );
+    delete process.env.MOCK_HERMES_CREATE_AUTH;
+    const capsuleHomes = (await readFile(process.env.MOCK_HERMES_CAPSULE_LOG, "utf8")).trim().split("\n");
+    const authCapsuleRoot = join(capsuleHomes.at(-1), "../../..");
+    await assert.rejects(lstat(authCapsuleRoot), { code: "ENOENT" });
+    await assert.rejects(readFile(join(authArtifactRunRoot, "completed.json")), { code: "ENOENT" });
+
+    const firstReleasedLockName = (await readdir(runRoot))
+      .find((name) => name.startsWith(".structured-run.lock.released-"));
+    assert.equal(typeof firstReleasedLockName, "string");
+    const releasedOwnerPath = join(runRoot, firstReleasedLockName, "owner.json");
+    const releasedOwnerBackup = join(root, "released-owner-original.json");
+    const releasedOwnerBytes = await readFile(releasedOwnerPath);
+    await rename(releasedOwnerPath, releasedOwnerBackup);
+    await writeFile(releasedOwnerPath, releasedOwnerBytes, { mode: 0o600 });
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /released structured run lock drifted.*manual audit/u,
+    );
+    assert.deepEqual(await readFile(releasedOwnerPath), releasedOwnerBytes);
+    await unlink(releasedOwnerPath);
+    await rename(releasedOwnerBackup, releasedOwnerPath);
+
+    const second = await runHermesStructuredAttempt({ ...options, progress: () => {} });
+    assert.equal(second.status, "reused");
+    assert.equal(second.reused, true);
+    assert.equal(second.attempt, first.attempt);
+    invocations = (await readFile(invocationLog, "utf8")).trim().split("\n");
+    assert.equal(invocations.filter((entry) => entry === "--oneshot").length, 2);
+    assert.equal(invocations.filter((entry) => entry === "sessions").length, 2);
+
+    const validationRetryRoot = join(root, "validation-retry-run");
+    await assert.rejects(runHermesStructuredAttempt({
+      ...options,
+      runRoot: validationRetryRoot,
+      validateResult: () => {
+        throw new Error("protected surface preseal failure");
+      },
+      progress: () => {},
+    }), /protected surface preseal failure/u);
+    await assert.rejects(readFile(join(validationRetryRoot, "completed.json")), { code: "ENOENT" });
+    const [invalidAttempt] = await readdir(join(validationRetryRoot, "attempts"));
+    assert.ok(invalidAttempt);
+    await assert.rejects(
+      readFile(join(validationRetryRoot, "attempts", invalidAttempt, "completed.json")),
+      { code: "ENOENT" },
+    );
+    const validationRetry = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: validationRetryRoot,
+      progress: () => {},
+    });
+    assert.equal(validationRetry.status, "completed");
+    assert.notEqual(validationRetry.attempt, invalidAttempt);
+    assert.equal((await readdir(join(validationRetryRoot, "attempts"))).length, 2);
+
+    await writeFile(inputAttestationPath, originalInputAttestationBytes.toString("utf8").replace(
+      options.inputDigest,
+      "0".repeat(64),
+    ));
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /attempt input attestation drifted/u,
+    );
+    await writeFile(inputAttestationPath, originalInputAttestationBytes);
+
+    const candidateOutputPath = join(first.attemptDir, "candidate-output.txt");
+    const originalCandidateOutputBytes = await readFile(candidateOutputPath);
+    await writeFile(candidateOutputPath, `${JSON.stringify({ ...result, count: 999 })}\n`);
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /candidate output drifted from the stored structured result/u,
+    );
+    await writeFile(candidateOutputPath, originalCandidateOutputBytes);
+    const unexpectedAttemptFile = join(first.attemptDir, "unbound-debug.json");
+    await writeFile(unexpectedAttemptFile, "{}\n");
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /unexpected evidence file/u,
+    );
+    await unlink(unexpectedAttemptFile);
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, prompt: `${prompt} changed`, progress: () => {} }),
+      /attempt input attestation drifted/u,
+    );
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, outputReserveTokens: 47_999, progress: () => {} }),
+      /attempt input attestation drifted/u,
+    );
+    const secondInputPath = join(root, "second-input.txt");
+    await writeFile(secondInputPath, "other bound bytes\n");
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        expectedReadPaths: [inputPath, secondInputPath],
+        progress: () => {},
+      }),
+      /attempt input attestation drifted|exact-input manifest drifted/u,
+    );
+
+    const movedAttemptDir = `${first.attemptDir}.real`;
+    await rename(first.attemptDir, movedAttemptDir);
+    await symlink(movedAttemptDir, first.attemptDir, "dir");
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /symlinked path component/u,
+    );
+    await rm(first.attemptDir);
+    await rename(movedAttemptDir, first.attemptDir);
+
+    const usagePath = join(first.attemptDir, "usage.json");
+    const realUsagePath = join(root, "usage-backup.json");
+    await rename(usagePath, realUsagePath);
+    await symlink(realUsagePath, usagePath, "file");
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /symlinked path component/u,
+    );
+    await rm(usagePath);
+    await rename(realUsagePath, usagePath);
+
+    const originalMockBytes = await readFile(mockBin);
+    process.env.MOCK_HERMES_MUTATE_SELF = "1";
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, runRoot: join(root, "runtime-drift-run"), progress: () => {} }),
+      /post-execution runtime changed/u,
+    );
+    delete process.env.MOCK_HERMES_MUTATE_SELF;
+    await writeFile(mockBin, originalMockBytes);
+    await chmod(mockBin, 0o755);
+
+    await writeFile(mockBin, originalMockBytes.toString("utf8").replace("mock-hermes 1.0.0", "mock-hermes 2.0.0"));
+    await chmod(mockBin, 0o755);
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /attempt input attestation drifted/u,
+    );
+    await writeFile(mockBin, originalMockBytes);
+    await chmod(mockBin, 0o755);
+
+    await writeFile(join(root, "AGENTS.md"), "context changed\n");
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /attempt input attestation drifted/u,
+    );
+    await unlink(join(root, "AGENTS.md"));
+
+    const externalContextPath = join(root, "external-context.md");
+    await writeFile(externalContextPath, "external context changed\n");
+    await symlink(externalContextPath, join(root, "AGENTS.md"), "file");
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /project prompt context contains a symbolic link/u,
+    );
+    await unlink(join(root, "AGENTS.md"));
+
+    const receiptPath = join(first.attemptDir, "host-receipt.json");
+    const receiptBackupPath = join(root, "receipt-backup.json");
+    const externalReceiptPath = join(root, "outside", "forged-receipt.json");
+    await rename(receiptPath, receiptBackupPath);
+    await symlink(externalReceiptPath, receiptPath, "file");
+    await assert.rejects(
+      runHermesStructuredAttempt({ ...options, progress: () => {} }),
+      /symlinked path component/u,
+    );
+    await assert.rejects(readFile(externalReceiptPath), { code: "ENOENT" });
+    await unlink(receiptPath);
+    await rename(receiptBackupPath, receiptPath);
+
+    const inputDriftRoot = join(root, "input-drift-reuse-run");
+    await runHermesStructuredAttempt({ ...options, runRoot: inputDriftRoot, progress: () => {} });
+    process.env.MOCK_HERMES_VERSION_DELAY_MS = "150";
+    const driftingReuse = runHermesStructuredAttempt({
+      ...options,
+      runRoot: inputDriftRoot,
+      progress: () => {},
+    });
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    await writeFile(inputPath, "changed while runtime attestation was still running\n");
+    await assert.rejects(
+      driftingReuse,
+      /exact-input result is partial or drifted|pre-return input changed/u,
+    );
+    delete process.env.MOCK_HERMES_VERSION_DELAY_MS;
+    await writeFile(inputPath, inputText);
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: inputDriftRoot,
+        progress: async (event) => {
+          if (event.event === "attempt-reused") {
+            await writeFile(inputPath, "changed after finalization but before return\n");
+          }
+        },
+      }),
+      /pre-return input changed/u,
+    );
+    await writeFile(inputPath, inputText);
+
+    const recoveryRoot = join(root, "runtime-bound-recovery-run");
+    const recoveryA = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: recoveryRoot,
+      progress: () => {},
+    });
+    await Promise.all([
+      unlink(join(recoveryRoot, "completed.json")),
+      unlink(join(recoveryA.attemptDir, "host-receipt.json")),
+      unlink(join(recoveryA.attemptDir, "completed.json")),
+    ]);
+    const recoveryProgress = [];
+    const recoveryB = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: recoveryRoot,
+      inputDigest: digest("different-current-runtime-input-binding"),
+      progress: (event) => recoveryProgress.push(event.event),
+    });
+    assert.equal(recoveryB.status, "completed");
+    assert.notEqual(recoveryB.attempt, recoveryA.attempt);
+    assert.equal(recoveryB.receipt.inputDigest, digest("different-current-runtime-input-binding"));
+    assert.ok(recoveryProgress.includes("attempt-invalid"));
+    await assert.rejects(readFile(join(recoveryA.attemptDir, "host-receipt.json")), { code: "ENOENT" });
+    await assert.rejects(readFile(join(recoveryA.attemptDir, "completed.json")), { code: "ENOENT" });
+
+    const runtimeRecoveryRoot = join(root, "runtime-version-recovery-run");
+    const runtimeRecoveryA = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: runtimeRecoveryRoot,
+      progress: () => {},
+    });
+    await Promise.all([
+      unlink(join(runtimeRecoveryRoot, "completed.json")),
+      unlink(join(runtimeRecoveryA.attemptDir, "host-receipt.json")),
+      unlink(join(runtimeRecoveryA.attemptDir, "completed.json")),
+    ]);
+    const stableMockBytes = await readFile(mockBin);
+    await writeFile(mockBin, stableMockBytes.toString("utf8").replace("mock-hermes 1.0.0", "mock-hermes 2.0.0"));
+    await chmod(mockBin, 0o755);
+    const runtimeRecoveryProgress = [];
+    const runtimeRecoveryB = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: runtimeRecoveryRoot,
+      progress: (event) => runtimeRecoveryProgress.push(event.event),
+    });
+    assert.equal(runtimeRecoveryB.status, "completed");
+    assert.notEqual(runtimeRecoveryB.attempt, runtimeRecoveryA.attempt);
+    assert.ok(runtimeRecoveryProgress.includes("attempt-invalid"));
+    assert.notEqual(
+      runtimeRecoveryB.receipt.hermesRuntimeIdentitySha256,
+      runtimeRecoveryA.receipt.hermesRuntimeIdentitySha256,
+    );
+    await assert.rejects(readFile(join(runtimeRecoveryA.attemptDir, "host-receipt.json")), { code: "ENOENT" });
+    await writeFile(mockBin, stableMockBytes);
+    await chmod(mockBin, 0o755);
+
+    const markerlessRoot = join(root, "markerless-incomplete-run");
+    const markerlessA = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: markerlessRoot,
+      progress: () => {},
+    });
+    await Promise.all([
+      unlink(join(markerlessRoot, "completed.json")),
+      unlink(join(markerlessA.attemptDir, "host-receipt.json")),
+      unlink(join(markerlessA.attemptDir, "completed.json")),
+      unlink(join(markerlessA.attemptDir, "input-attestation.json")),
+    ]);
+    const markerlessB = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: markerlessRoot,
+      progress: () => {},
+    });
+    assert.equal(markerlessB.status, "completed");
+    assert.notEqual(markerlessB.attempt, markerlessA.attempt);
+    await assert.rejects(readFile(join(markerlessA.attemptDir, "host-receipt.json")), { code: "ENOENT" });
+
+    const invalidRecoveryRoot = join(root, "invalid-completion-recovery-run");
+    const invalidRecoveryA = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: invalidRecoveryRoot,
+      progress: () => {},
+    });
+    await Promise.all([
+      unlink(join(invalidRecoveryRoot, "completed.json")),
+      unlink(join(invalidRecoveryA.attemptDir, "host-receipt.json")),
+    ]);
+    const invalidCompletionPath = join(invalidRecoveryA.attemptDir, "completed.json");
+    const invalidCompletion = JSON.parse(await readFile(invalidCompletionPath, "utf8"));
+    invalidCompletion.hostReceiptSha256 = "0".repeat(64);
+    await writeFile(invalidCompletionPath, `${JSON.stringify(invalidCompletion, null, 2)}\n`);
+    const invalidRecoveryProgress = [];
+    const invalidRecoveryB = await runHermesStructuredAttempt({
+      ...options,
+      runRoot: invalidRecoveryRoot,
+      progress: (event) => invalidRecoveryProgress.push(event.event),
+    });
+    assert.equal(invalidRecoveryB.status, "completed");
+    assert.notEqual(invalidRecoveryB.attempt, invalidRecoveryA.attempt);
+    assert.ok(invalidRecoveryProgress.includes("attempt-invalid"));
+    await assert.rejects(readFile(join(invalidRecoveryA.attemptDir, "host-receipt.json")), { code: "ENOENT" });
+
+    process.env.MOCK_HERMES_DELAY_MS = "200";
+    const raceOptions = { ...options, runRoot: join(root, "race-run"), progress: () => {} };
+    const race = await Promise.allSettled([
+      runHermesStructuredAttempt(raceOptions),
+      runHermesStructuredAttempt(raceOptions),
+    ]);
+    delete process.env.MOCK_HERMES_DELAY_MS;
+    assert.equal(race.filter((entry) => entry.status === "fulfilled").length, 1);
+    const rejected = race.filter((entry) => entry.status === "rejected");
+    assert.equal(rejected.length, 1);
+    assert.match(rejected[0].reason.message, /run lock exists/u);
+
+    const ownerDriftRoot = join(root, "owner-inode-drift-run");
+    const ownerDriftBackup = join(root, "original-owner.json");
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: ownerDriftRoot,
+        progress: async (event) => {
+          if (event.event !== "attempt-complete") return;
+          const ownerPath = join(ownerDriftRoot, ".structured-run.lock", "owner.json");
+          const ownerBytes = await readFile(ownerPath);
+          const before = await lstat(ownerPath);
+          await rename(ownerPath, ownerDriftBackup);
+          await writeFile(ownerPath, ownerBytes, { mode: 0o600 });
+          const after = await lstat(ownerPath);
+          assert.notEqual(`${after.dev}:${after.ino}`, `${before.dev}:${before.ino}`);
+        },
+      }),
+      /lock ownership drifted.*manual audit/u,
+    );
+    assert.deepEqual(
+      await readFile(join(ownerDriftRoot, ".structured-run.lock", "owner.json")),
+      await readFile(ownerDriftBackup),
+    );
+
+    const directoryDriftRoot = join(root, "directory-inode-drift-run");
+    const directoryDriftBackup = join(root, "original-lock-directory");
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: directoryDriftRoot,
+        progress: async (event) => {
+          if (event.event !== "attempt-complete") return;
+          const lockPath = join(directoryDriftRoot, ".structured-run.lock");
+          const ownerBytes = await readFile(join(lockPath, "owner.json"));
+          await rename(lockPath, directoryDriftBackup);
+          await mkdir(lockPath);
+          await writeFile(join(lockPath, "owner.json"), ownerBytes, { mode: 0o600 });
+        },
+      }),
+      /lock ownership drifted.*manual audit/u,
+    );
+    assert.deepEqual(
+      await readFile(join(directoryDriftRoot, ".structured-run.lock", "owner.json")),
+      await readFile(join(directoryDriftBackup, "owner.json")),
+    );
+
+    const ownerBytesDriftRoot = join(root, "owner-bytes-drift-run");
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: ownerBytesDriftRoot,
+        progress: async (event) => {
+          if (event.event !== "attempt-complete") return;
+          const ownerPath = join(ownerBytesDriftRoot, ".structured-run.lock", "owner.json");
+          const before = await lstat(ownerPath);
+          await writeFile(ownerPath, `${await readFile(ownerPath, "utf8")} `);
+          const after = await lstat(ownerPath);
+          assert.equal(`${after.dev}:${after.ino}`, `${before.dev}:${before.ino}`);
+        },
+      }),
+      /lock ownership drifted.*manual audit/u,
+    );
+    assert.equal(
+      (await readFile(join(ownerBytesDriftRoot, ".structured-run.lock", "owner.json"), "utf8")).endsWith("}\n "),
+      true,
+    );
+
+    const externalRunParent = join(root, "external-run-parent");
+    const linkedRunParent = join(root, "linked-run-parent");
+    await mkdir(externalRunParent);
+    await symlink(externalRunParent, linkedRunParent, "dir");
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: join(linkedRunParent, "must-not-be-created"),
+        progress: () => {},
+      }),
+      /symbolic-link component/u,
+    );
+    await assert.rejects(readFile(join(externalRunParent, "must-not-be-created")), { code: "ENOENT" });
+
+    await mkdir(join(externalRunParent, "pre-existing-run"));
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: join(linkedRunParent, "pre-existing-run"),
+        progress: () => {},
+      }),
+      /symbolic-link component/u,
+    );
+
+    const validButWrongTraceSha = { ...first.receipt, traceSha256: "0".repeat(64) };
+    assert.throws(
+      () => validateHermesStructuredReceipt(validButWrongTraceSha, { traceSha256: first.receipt.traceSha256 }),
+      /receipt drifted: traceSha256/u,
+    );
+
+    const pointerPath = join(runRoot, "completed.json");
+    const pointer = JSON.parse(await readFile(pointerPath, "utf8"));
+    pointer.hostReceiptSha256 = "0".repeat(64);
+    await writeFile(pointerPath, `${JSON.stringify(pointer, null, 2)}\n`);
+    const oneshotsBeforePointerRecheck = (await readFile(invocationLog, "utf8")).trim().split("\n")
+      .filter((entry) => entry === "--oneshot").length;
+    await assert.rejects(runHermesStructuredAttempt({ ...options, progress: () => {} }), /completed pointer drifted/u);
+    const oneshotsAfterPointerRecheck = (await readFile(invocationLog, "utf8")).trim().split("\n")
+      .filter((entry) => entry === "--oneshot").length;
+    assert.equal(oneshotsAfterPointerRecheck, oneshotsBeforePointerRecheck);
+  } finally {
+    for (const [key, value] of [
+      ["HERMES_BIN", previousBin],
+      ["MOCK_HERMES_USAGE_SOURCE", previousUsage],
+      ["MOCK_HERMES_RESULT_SOURCE", previousResult],
+      ["MOCK_HERMES_TRACE_SOURCE", previousTrace],
+      ["MOCK_HERMES_INVOCATION_LOG", previousLog],
+      ["MOCK_HERMES_DELAY_MS", previousDelay],
+      ["MOCK_HERMES_VERSION_DELAY_MS", previousVersionDelay],
+      ["MOCK_HERMES_EXPECTED_CWD", previousExpectedCwd],
+      ["MOCK_HERMES_EXPECTED_CACHE", previousExpectedCache],
+      ["MOCK_HERMES_EXPECTED_HOME", previousExpectedHome],
+      ["MOCK_HERMES_CAPSULE_LOG", previousCapsuleLog],
+      ["MOCK_HERMES_CREATE_AUTH", previousCreateAuth],
+      ["MOCK_HERMES_FORBIDDEN_ROOT", previousForbiddenRoot],
+      ["MOCK_HERMES_MUTATE_SELF", previousMutateSelf],
+      ["HERMES_CONTEXT_CACHE_PATH", previousCache],
+      ["HERMES_ENVIRONMENT_HINT", previousEnvironmentHint],
+      ["HERMES_PLATFORM", previousHermesPlatform],
+      ["HERMES_IGNORE_RULES", previousIgnoreRules],
+      ["TERMINAL_CWD", previousTerminalCwd],
+      ["TERMINAL_ENV", previousTerminalEnv],
+      ...Object.entries(previousHostileEnvironment),
+    ]) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    await rm(root, { recursive: true, force: true });
+  }
+});
