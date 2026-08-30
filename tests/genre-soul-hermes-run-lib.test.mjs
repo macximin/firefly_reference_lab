@@ -281,6 +281,30 @@ function traceFixture({ profileId, prompt, soul, path, fileContent, result, runI
   };
 }
 
+function readToolDescriptionFixture() {
+  return {
+    name: "firefly_read_source",
+    description: "Read every host-attested Firefly input through a sequential cursor chain. Begin with only input-001, then make exactly one call per turn using the nextInputId and nextCursor returned by the prior result until nextCursor is null. This is the only file-reading capability in the session. It accepts no path, glob, command, offset, or write operation.",
+    parameters: {
+      type: "object",
+      properties: {
+        inputId: {
+          type: "string",
+          pattern: "^input-[0-9]{3}$",
+          description: "Opaque ID supplied by the host prompt, for example input-001.",
+        },
+        cursor: {
+          type: "string",
+          pattern: "^cursor-[a-f0-9]{64}$",
+          description: "Use only the exact nextCursor returned by the preceding call.",
+        },
+      },
+      required: ["inputId"],
+      additionalProperties: false,
+    },
+  };
+}
+
 test("validates the real sol/high profile, SOUL, and content-neutral runtime evidence", () => {
   const profileId = "inkos_test_profile";
   const runtime = validateHermesProfileRuntime({
@@ -392,6 +416,83 @@ test("pure trace validation rejects extra paths, non-read tools, compaction, and
     ...budget,
   });
   assert.equal(envelopeEvidence.exactReadCount, 1);
+
+  const described = structuredClone(codexEnvelope);
+  described.messages.splice(1, 0, {
+    role: "assistant",
+    finish_reason: "tool_calls",
+    compacted: 0,
+    tool_calls: [{
+      id: "call-describe-read-tool",
+      function: {
+        name: "tool_describe",
+        arguments: JSON.stringify({ name: "firefly_read_source" }),
+      },
+    }],
+  }, {
+    role: "tool",
+    tool_call_id: "call-describe-read-tool",
+    tool_name: "tool_describe",
+    compacted: 0,
+    content: JSON.stringify(readToolDescriptionFixture()),
+  });
+  const describedEvidence = validateHermesStructuredTrace({
+    trace: described,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  });
+  assert.equal(describedEvidence.exactReadCount, 1);
+
+  const describeWrongTool = structuredClone(described);
+  describeWrongTool.messages[1].tool_calls[0].function.arguments = JSON.stringify({ name: "terminal" });
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: describeWrongTool,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  }), /describe only the sealed read-only tool once before any source read/u);
+
+  const describeResultDrift = structuredClone(described);
+  const driftedDescription = readToolDescriptionFixture();
+  driftedDescription.parameters.additionalProperties = true;
+  describeResultDrift.messages[2].content = JSON.stringify(driftedDescription);
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: describeResultDrift,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  }), /description drifted from the sealed read-only schema/u);
+
+  const describeAfterRead = structuredClone(described);
+  const describePair = describeAfterRead.messages.splice(1, 2);
+  describeAfterRead.messages.splice(3, 0, ...describePair);
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: describeAfterRead,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  }), /describe only the sealed read-only tool once before any source read/u);
 
   const forbiddenEnvelope = structuredClone(codexEnvelope);
   forbiddenEnvelope.messages[1].tool_calls[0].function.arguments = JSON.stringify({

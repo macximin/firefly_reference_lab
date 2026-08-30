@@ -27,6 +27,7 @@ export const HERMES_STRUCTURED_PROVIDER = "openai-codex";
 export const HERMES_STRUCTURED_REASONING = "high";
 export const HERMES_READ_ONLY_TOOLSET = "firefly-source-read";
 export const HERMES_READ_ONLY_TOOL = "firefly_read_source";
+const HERMES_TOOL_DESCRIBE = "tool_describe";
 export const HERMES_STRUCTURED_ATTEMPT_EVIDENCE_FILENAMES = Object.freeze([
   "candidate-output.txt",
   "completed.json",
@@ -1040,6 +1041,50 @@ function normalizeHermesToolInvocation(call) {
   return { name: outerArguments.name, arguments: outerArguments.arguments };
 }
 
+function canonicalHermesReadToolDescription() {
+  return {
+    name: HERMES_READ_ONLY_TOOL,
+    description: "Read every host-attested Firefly input through a sequential cursor chain. Begin with only input-001, then make exactly one call per turn using the nextInputId and nextCursor returned by the prior result until nextCursor is null. This is the only file-reading capability in the session. It accepts no path, glob, command, offset, or write operation.",
+    parameters: {
+      type: "object",
+      properties: {
+        inputId: {
+          type: "string",
+          pattern: "^input-[0-9]{3}$",
+          description: "Opaque ID supplied by the host prompt, for example input-001.",
+        },
+        cursor: {
+          type: "string",
+          pattern: "^cursor-[a-f0-9]{64}$",
+          description: "Use only the exact nextCursor returned by the preceding call.",
+        },
+      },
+      required: ["inputId"],
+      additionalProperties: false,
+    },
+  };
+}
+
+function validateHermesToolDescriptionResult(message) {
+  if (
+    message?.role !== "tool"
+    || message.tool_name !== HERMES_TOOL_DESCRIBE
+    || typeof message.content !== "string"
+    || Buffer.byteLength(message.content, "utf8") > 16_384
+  ) {
+    throw new Error("Hermes exact-input tool description result is invalid.");
+  }
+  let described;
+  try {
+    described = JSON.parse(message.content);
+  } catch (error) {
+    throw new Error(`Hermes exact-input tool description result is not JSON: ${error.message}`);
+  }
+  if (!isDeepStrictEqual(described, canonicalHermesReadToolDescription())) {
+    throw new Error("Hermes exact-input tool description drifted from the sealed read-only schema.");
+  }
+}
+
 function inputIdForIndex(index) {
   return `input-${String(index + 1).padStart(3, "0")}`;
 }
@@ -1246,6 +1291,8 @@ function validateToolPolicy(messages, expectedReadPaths) {
   }
   const expectedIds = new Map(expectedReadPaths.map((path, index) => [inputIdForIndex(index), path]));
   const calls = [];
+  const allCalls = [];
+  let describeCall = null;
   for (const [messageIndex, message] of messages.entries()) {
     const toolCalls = message.tool_calls ?? [];
     if (!Array.isArray(toolCalls)) throw new Error("Hermes trace tool calls must be an array.");
@@ -1257,11 +1304,34 @@ function validateToolPolicy(messages, expectedReadPaths) {
     }
     for (const call of toolCalls) {
       const invocation = normalizeHermesToolInvocation(call);
+      if (
+        typeof call.id !== "string"
+        || call.id.length < 1
+        || allCalls.some((existing) => existing.id === call.id)
+      ) {
+        throw new Error("Hermes exact-input tool call IDs must be unique and non-empty.");
+      }
+      if (invocation.name === HERMES_TOOL_DESCRIBE) {
+        if (
+          call?.function?.name !== HERMES_TOOL_DESCRIBE
+          || describeCall !== null
+          || calls.length > 0
+          || !isDeepStrictEqual(Object.keys(invocation.arguments).sort(), ["name"])
+          || invocation.arguments.name !== HERMES_READ_ONLY_TOOL
+        ) {
+          throw new Error("Hermes may describe only the sealed read-only tool once before any source read.");
+        }
+        describeCall = {
+          id: call.id,
+          messageIndex,
+          resultToolName: HERMES_TOOL_DESCRIBE,
+          kind: "describe",
+        };
+        allCalls.push(describeCall);
+        continue;
+      }
       if (invocation.name !== HERMES_READ_ONLY_TOOL) {
         throw new Error(`Hermes structured run used a forbidden tool: ${String(invocation.name)}`);
-      }
-      if (typeof call.id !== "string" || call.id.length < 1 || calls.some((existing) => existing.id === call.id)) {
-        throw new Error("Hermes exact-input read call IDs must be unique and non-empty.");
       }
       const args = invocation.arguments;
       const argumentKeys = Object.keys(args).sort();
@@ -1279,7 +1349,17 @@ function validateToolPolicy(messages, expectedReadPaths) {
       if (Object.hasOwn(args, "cursor") && (typeof args.cursor !== "string" || !READ_CURSOR_PATTERN.test(args.cursor))) {
         throw new Error(`Hermes exact-input reader used an invalid cursor: ${inputId}`);
       }
-      calls.push({ id: call.id, inputId, path, args, messageIndex });
+      const readCall = {
+        id: call.id,
+        inputId,
+        path,
+        args,
+        messageIndex,
+        resultToolName: HERMES_READ_ONLY_TOOL,
+        kind: "read",
+      };
+      calls.push(readCall);
+      allCalls.push(readCall);
     }
   }
   for (const [inputId, path] of expectedIds) {
@@ -1290,22 +1370,30 @@ function validateToolPolicy(messages, expectedReadPaths) {
   const results = messages.filter((message) => message.role === "tool");
   const resultIds = results.map((message) => message.tool_call_id);
   if (
-    results.length !== calls.length
-    || results.some((message) => message.tool_name !== undefined && message.tool_name !== null && message.tool_name !== HERMES_READ_ONLY_TOOL)
-    || resultIds.some((id) => typeof id !== "string" || !calls.some((call) => call.id === id))
+    results.length !== allCalls.length
+    || results.some((message) => {
+      const call = allCalls.find((candidate) => candidate.id === message.tool_call_id);
+      return !call || (
+        message.tool_name !== undefined
+        && message.tool_name !== null
+        && message.tool_name !== call.resultToolName
+      );
+    })
+    || resultIds.some((id) => typeof id !== "string" || !allCalls.some((call) => call.id === id))
     || new Set(resultIds).size !== resultIds.length
   ) throw new Error("Hermes trace has a missing, duplicate, or unexpected tool result.");
-  for (const call of calls) {
+  for (const call of allCalls) {
     const immediateResult = messages[call.messageIndex + 1];
     if (immediateResult?.role !== "tool" || immediateResult.tool_call_id !== call.id) {
       throw new Error("Hermes exact-input cursor calls and results must form immediate sequential pairs.");
     }
+    if (call.kind === "describe") validateHermesToolDescriptionResult(immediateResult);
   }
   if (
-    messages.length !== (calls.length * 2) + 2
+    messages.length !== (allCalls.length * 2) + 2
     || messages[0]?.role !== "user"
     || messages.at(-1)?.role !== "assistant"
-    || calls.some((call, index) => call.messageIndex !== (index * 2) + 1)
+    || allCalls.some((call, index) => call.messageIndex !== (index * 2) + 1)
   ) throw new Error("Hermes exact-input trace message grammar drifted.");
   return calls;
 }
