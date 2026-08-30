@@ -60,11 +60,13 @@ const CURRENT_RUNTIME_ATTESTATION = "current-attested";
 const MAX_FINGERPRINT_BYTES = 512 * 1024 * 1024;
 const CONTEXT_PROXY_BYTES_PER_TOKEN = 2;
 const CONTEXT_STATIC_PROMPT_RESERVE_TOKENS = 16_384;
-const READ_CAPABILITY_SCHEMA = "private-hermes-exact-input-read-capability/v1";
+const READ_CAPABILITY_SCHEMA = "private-hermes-exact-input-read-capability/v2";
 const READ_MANIFEST_SCHEMA = "firefly-hermes-read-manifest/v1";
-const READ_RESULT_SCHEMA = "firefly-hermes-read-result/v1";
-const READ_RESULT_MAX_CHARS = 5_000_000;
-const READ_RESULT_HOST_PREFLIGHT_MAX_CHARS = 4_500_000;
+const READ_RESULT_SCHEMA = "firefly-hermes-read-result/v2";
+const READ_SOURCE_MAX_BYTES = 4_500_000;
+const READ_CHUNK_ENCODED_CONTENT_MAX_CHARS = 75_000;
+const READ_CHUNK_RESULT_MAX_CHARS = 80_000;
+const READ_CURSOR_PATTERN = /^cursor-[a-f0-9]{64}$/u;
 const READ_EXECUTION_TEMP_PREFIX = "firefly-hermes-readonly-";
 const READ_EXECUTION_FORBIDDEN_CREDENTIAL_NAMES = Object.freeze([
   ".anthropic_oauth.json",
@@ -460,6 +462,8 @@ const HERMES_CANONICAL_ENV_KEYS = new Set([
   "TERMINAL_CWD",
   "TERMINAL_ENV",
 ]);
+const HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY = "HERMES_BUNDLED_PLUGINS";
+const HERMES_EPHEMERAL_BUNDLED_PLUGINS_DIRECTORY = "hermes-bundled-plugins";
 
 const HERMES_EXACT_ENV_OVERRIDES = new Set([
   "AWS_CA_BUNDLE",
@@ -497,13 +501,32 @@ function isHermesExecutionOverride(key) {
     || HERMES_EXACT_ENV_OVERRIDES.has(key.toUpperCase());
 }
 
-export function buildHermesExecutionEnvironment({ profileHome, projectCwd, contextCachePath } = {}) {
+export function buildHermesExecutionEnvironment({
+  profileHome,
+  projectCwd,
+  contextCachePath,
+  bundledPluginsPath,
+} = {}) {
   if (typeof profileHome !== "string" || profileHome.length < 1) throw new Error("Hermes execution profile home is required.");
   if (typeof projectCwd !== "string" || projectCwd.length < 1) throw new Error("Hermes execution project cwd is required.");
   const absoluteProfileHome = resolve(profileHome);
   const absoluteProjectCwd = resolve(projectCwd);
   const absoluteContextCachePath = resolve(contextCachePath
     ?? join(dirname(dirname(absoluteProfileHome)), "context_length_cache.yaml"));
+  let absoluteBundledPluginsPath = null;
+  if (bundledPluginsPath !== undefined) {
+    if (typeof bundledPluginsPath !== "string" || bundledPluginsPath.length < 1) {
+      throw new Error("Hermes bundled plugin discovery path must be non-empty text.");
+    }
+    absoluteBundledPluginsPath = resolve(bundledPluginsPath);
+    const expectedBundledPluginsPath = join(
+      dirname(dirname(dirname(absoluteProfileHome))),
+      HERMES_EPHEMERAL_BUNDLED_PLUGINS_DIRECTORY,
+    );
+    if (absoluteBundledPluginsPath !== expectedBundledPluginsPath) {
+      throw new Error("Hermes bundled plugin discovery path escaped the ephemeral capsule boundary.");
+    }
+  }
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (isHermesExecutionOverride(key)) delete env[key];
@@ -514,6 +537,9 @@ export function buildHermesExecutionEnvironment({ profileHome, projectCwd, conte
   env.TERMINAL_ENV = "local";
   env.PYTHONDONTWRITEBYTECODE = "1";
   env.GIT_OPTIONAL_LOCKS = "0";
+  if (absoluteBundledPluginsPath) {
+    env[HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY] = absoluteBundledPluginsPath;
+  }
   delete env.PYTHONHOME;
   delete env.PYTHONPATH;
   const descriptor = {
@@ -527,7 +553,10 @@ export function buildHermesExecutionEnvironment({ profileHome, projectCwd, conte
     pathSha256: sha256(Buffer.from(env.PATH ?? "")),
     homeSha256: sha256(Buffer.from(env.HOME ?? "")),
     configuredTimeZone: (env.TZ ?? "").trim() || null,
-    canonicalOverrideKeys: [...HERMES_CANONICAL_ENV_KEYS].sort(),
+    canonicalOverrideKeys: [
+      ...HERMES_CANONICAL_ENV_KEYS,
+      ...(absoluteBundledPluginsPath ? [HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY] : []),
+    ].sort(),
     removedDynamicPrefixes: [
       "ANTHROPIC_", "CODEX_", "DYLD_", "GIT_", "HERMES_", "OPENAI_", "OPENROUTER_",
       "PYTHON", "TERMINAL_", "_CODEX_", "_HERMES_",
@@ -535,6 +564,7 @@ export function buildHermesExecutionEnvironment({ profileHome, projectCwd, conte
     removedProxyVariablesCaseInsensitive: ["ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"],
     removedExactVariables: [...HERMES_EXACT_ENV_OVERRIDES].sort(),
   };
+  if (absoluteBundledPluginsPath) descriptor.bundledPluginsPath = absoluteBundledPluginsPath;
   return {
     env,
     descriptor,
@@ -900,6 +930,113 @@ function inputIdForIndex(index) {
   return `input-${String(index + 1).padStart(3, "0")}`;
 }
 
+function readCursor(inputId, sourceSha256, chunkIndex) {
+  assertSha256(sourceSha256, `Hermes exact-input cursor source digest ${inputId}`);
+  assertNonNegativeInteger(chunkIndex, `Hermes exact-input cursor chunk index ${inputId}`);
+  return `cursor-${sha256(Buffer.from([
+    "firefly-hermes-read-cursor/v1",
+    inputId,
+    sourceSha256,
+    String(chunkIndex),
+  ].join("\0")))}`;
+}
+
+function splitHermesExactInputContent(content) {
+  if (typeof content !== "string") throw new Error("Hermes exact-input content must be text.");
+  if (content.length === 0) return [""];
+  const codePoints = Array.from(content);
+  const chunks = [];
+  let start = 0;
+  while (start < codePoints.length) {
+    let low = start + 1;
+    let high = Math.min(codePoints.length, start + READ_CHUNK_ENCODED_CONTENT_MAX_CHARS);
+    let best = start;
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      const candidate = codePoints.slice(start, middle).join("");
+      const encodedChars = Array.from(JSON.stringify(candidate)).length;
+      if (encodedChars <= READ_CHUNK_ENCODED_CONTENT_MAX_CHARS) {
+        best = middle;
+        low = middle + 1;
+      } else {
+        high = middle - 1;
+      }
+    }
+    if (best === start) throw new Error("Hermes exact-input content cannot fit its deterministic chunk boundary.");
+    chunks.push(codePoints.slice(start, best).join(""));
+    start = best;
+  }
+  return chunks;
+}
+
+function expectedReadChunkPayload(files, fileIndex, chunks, chunkIndex) {
+  const file = files[fileIndex];
+  const inputId = inputIdForIndex(fileIndex);
+  const finalChunk = chunkIndex + 1 === chunks.length;
+  let nextInputId = inputId;
+  let nextCursor = readCursor(inputId, file.sha256, chunkIndex + 1);
+  if (finalChunk) {
+    if (fileIndex + 1 < files.length) {
+      const nextFile = files[fileIndex + 1];
+      nextInputId = inputIdForIndex(fileIndex + 1);
+      nextCursor = readCursor(nextInputId, nextFile.sha256, 0);
+    } else {
+      nextInputId = null;
+      nextCursor = null;
+    }
+  }
+  const content = chunks[chunkIndex];
+  return {
+    schemaVersion: READ_RESULT_SCHEMA,
+    inputId,
+    sha256: file.sha256,
+    sizeBytes: file.sizeBytes,
+    chunkIndex,
+    chunkCount: chunks.length,
+    chunkSha256: sha256(Buffer.from(content, "utf8")),
+    nextInputId,
+    nextCursor,
+    content,
+  };
+}
+
+function readTranscriptProxyBytes(filesWithChunks) {
+  const files = filesWithChunks.map(({ chunks: _chunks, ...file }) => file);
+  const messages = [];
+  let expectedCursor = null;
+  let callOrdinal = 0;
+  for (const [fileIndex, file] of filesWithChunks.entries()) {
+    for (const chunkIndex of file.chunks.keys()) {
+      callOrdinal += 1;
+      const inputId = inputIdForIndex(fileIndex);
+      const args = expectedCursor === null ? { inputId } : { inputId, cursor: expectedCursor };
+      const callId = `call-${String(callOrdinal).padStart(4, "0")}-${"0".repeat(128)}`;
+      const payload = expectedReadChunkPayload(files, fileIndex, file.chunks, chunkIndex);
+      const encodedPayload = JSON.stringify(payload);
+      if (Array.from(encodedPayload).length > READ_CHUNK_RESULT_MAX_CHARS) {
+        throw new Error(`Hermes exact-input host chunk exceeds the inline result boundary: ${inputId}`);
+      }
+      messages.push({
+        role: "assistant",
+        finish_reason: "tool_calls",
+        compacted: 0,
+        tool_calls: [{
+          id: callId,
+          function: { name: HERMES_READ_ONLY_TOOL, arguments: JSON.stringify(args) },
+        }],
+      }, {
+        role: "tool",
+        tool_call_id: callId,
+        tool_name: HERMES_READ_ONLY_TOOL,
+        compacted: 0,
+        content: encodedPayload,
+      });
+      expectedCursor = payload.nextCursor;
+    }
+  }
+  return Buffer.byteLength(JSON.stringify(messages), "utf8");
+}
+
 function validateToolPolicy(messages, expectedReadPaths) {
   if (!Array.isArray(expectedReadPaths) || expectedReadPaths.length < 1) {
     throw new Error("Expected Hermes read paths must be non-empty.");
@@ -909,9 +1046,15 @@ function validateToolPolicy(messages, expectedReadPaths) {
   }
   const expectedIds = new Map(expectedReadPaths.map((path, index) => [inputIdForIndex(index), path]));
   const calls = [];
-  for (const message of messages) {
+  for (const [messageIndex, message] of messages.entries()) {
     const toolCalls = message.tool_calls ?? [];
     if (!Array.isArray(toolCalls)) throw new Error("Hermes trace tool calls must be an array.");
+    if (toolCalls.length > 0 && (message.role !== "assistant" || message.finish_reason !== "tool_calls")) {
+      throw new Error("Hermes exact-input tool calls must come from an assistant tool_calls message.");
+    }
+    if (toolCalls.length > 1) {
+      throw new Error("Hermes exact-input reader must use one sequential tool call per assistant turn.");
+    }
     for (const call of toolCalls) {
       if (call?.function?.name !== HERMES_READ_ONLY_TOOL) {
         throw new Error(`Hermes structured run used a forbidden tool: ${String(call?.function?.name)}`);
@@ -920,20 +1063,27 @@ function validateToolPolicy(messages, expectedReadPaths) {
         throw new Error("Hermes exact-input read call IDs must be unique and non-empty.");
       }
       const args = parseToolArguments(call);
-      if (!isDeepStrictEqual(Object.keys(args).sort(), ["inputId"])) {
-        throw new Error("Hermes exact-input read arguments must contain only inputId.");
+      const argumentKeys = Object.keys(args).sort();
+      if (
+        !isDeepStrictEqual(argumentKeys, ["inputId"])
+        && !isDeepStrictEqual(argumentKeys, ["cursor", "inputId"])
+      ) {
+        throw new Error("Hermes exact-input read arguments must contain only inputId and an optional cursor.");
       }
       const inputId = args.inputId;
       const path = expectedIds.get(inputId);
       if (typeof inputId !== "string" || path === undefined) {
         throw new Error(`Hermes exact-input reader used an unexpected inputId: ${String(inputId)}`);
       }
-      calls.push({ id: call.id, inputId, path });
+      if (Object.hasOwn(args, "cursor") && (typeof args.cursor !== "string" || !READ_CURSOR_PATTERN.test(args.cursor))) {
+        throw new Error(`Hermes exact-input reader used an invalid cursor: ${inputId}`);
+      }
+      calls.push({ id: call.id, inputId, path, args, messageIndex });
     }
   }
   for (const [inputId, path] of expectedIds) {
-    if (calls.filter((call) => call.inputId === inputId).length !== 1) {
-      throw new Error(`Hermes must read the exact bound input once: ${inputId} (${path})`);
+    if (calls.every((call) => call.inputId !== inputId)) {
+      throw new Error(`Hermes must read every exact bound input: ${inputId} (${path})`);
     }
   }
   const results = messages.filter((message) => message.role === "tool");
@@ -944,6 +1094,18 @@ function validateToolPolicy(messages, expectedReadPaths) {
     || resultIds.some((id) => typeof id !== "string" || !calls.some((call) => call.id === id))
     || new Set(resultIds).size !== resultIds.length
   ) throw new Error("Hermes trace has a missing, duplicate, or unexpected tool result.");
+  for (const call of calls) {
+    const immediateResult = messages[call.messageIndex + 1];
+    if (immediateResult?.role !== "tool" || immediateResult.tool_call_id !== call.id) {
+      throw new Error("Hermes exact-input cursor calls and results must form immediate sequential pairs.");
+    }
+  }
+  if (
+    messages.length !== (calls.length * 2) + 2
+    || messages[0]?.role !== "user"
+    || messages.at(-1)?.role !== "assistant"
+    || calls.some((call, index) => call.messageIndex !== (index * 2) + 1)
+  ) throw new Error("Hermes exact-input trace message grammar drifted.");
   return calls;
 }
 
@@ -962,13 +1124,41 @@ export async function validateHermesExactInputTrace({ trace, expectedFiles } = {
       .filter((message) => message.role === "tool" && typeof message.tool_call_id === "string")
       .map((message) => [message.tool_call_id, message]),
   );
-  const exactReadSha256s = [];
-  for (const [index, expected] of expectedFiles.entries()) {
+  const expectedPlans = await Promise.all(expectedFiles.map(async (expected, index) => {
     const inputId = inputIdForIndex(index);
-    const call = calls.find((entry) => entry.inputId === inputId);
-    const toolMessage = results.get(call?.id);
+    const bytes = await readHermesExactInputFile(expected.path, inputId);
+    if (bytes.byteLength !== expected.sizeBytes || sha256(bytes) !== expected.sha256) {
+      throw new Error(`Hermes exact-input expected source binding drifted: ${inputId}`);
+    }
+    const content = bytes.toString("utf8");
+    if (Buffer.from(content, "utf8").compare(bytes) !== 0) {
+      throw new Error(`Hermes exact-input expected source is not UTF-8: ${inputId}`);
+    }
+    return { bytes, chunks: splitHermesExactInputContent(content) };
+  }));
+  const exactReadSha256s = [];
+  let expectedFileIndex = 0;
+  let expectedChunkIndex = 0;
+  let expectedChunkCount = null;
+  let expectedCursor = null;
+  let restoredChunks = [];
+  for (const call of calls) {
+    const expected = expectedFiles[expectedFileIndex];
+    const expectedPlan = expectedPlans[expectedFileIndex];
+    if (!expected) throw new Error("Hermes exact-input trace continued after the final chunk.");
+    const inputId = inputIdForIndex(expectedFileIndex);
+    const expectedArguments = expectedCursor === null
+      ? { inputId }
+      : { inputId, cursor: expectedCursor };
+    if (!isDeepStrictEqual(call.args, expectedArguments)) {
+      throw new Error(`Hermes exact-input cursor chain drifted: ${inputId} chunk ${expectedChunkIndex}`);
+    }
+    const toolMessage = results.get(call.id);
     if (!toolMessage || typeof toolMessage.content !== "string") {
       throw new Error(`Hermes exact-input result is missing: ${inputId}`);
+    }
+    if (Array.from(toolMessage.content).length > READ_CHUNK_RESULT_MAX_CHARS) {
+      throw new Error(`Hermes exact-input chunk exceeded its inline result boundary: ${inputId}`);
     }
     let payload;
     try {
@@ -978,7 +1168,10 @@ export async function validateHermesExactInputTrace({ trace, expectedFiles } = {
     }
     assertExactObjectKeys(
       payload,
-      ["schemaVersion", "inputId", "sha256", "sizeBytes", "content"],
+      [
+        "schemaVersion", "inputId", "sha256", "sizeBytes", "chunkIndex", "chunkCount",
+        "chunkSha256", "nextInputId", "nextCursor", "content",
+      ],
       `Hermes exact-input result ${inputId}`,
     );
     if (
@@ -986,16 +1179,61 @@ export async function validateHermesExactInputTrace({ trace, expectedFiles } = {
       || payload.inputId !== inputId
       || payload.sha256 !== expected.sha256
       || payload.sizeBytes !== expected.sizeBytes
+      || !Number.isSafeInteger(payload.chunkIndex)
+      || payload.chunkIndex !== expectedChunkIndex
+      || !Number.isSafeInteger(payload.chunkCount)
+      || payload.chunkCount < 1
+      || payload.chunkIndex >= payload.chunkCount
+      || payload.chunkCount !== expectedPlan.chunks.length
+      || (expectedChunkCount !== null && payload.chunkCount !== expectedChunkCount)
+      || typeof payload.chunkSha256 !== "string"
+      || !/^[a-f0-9]{64}$/u.test(payload.chunkSha256)
       || typeof payload.content !== "string"
+      || payload.content !== expectedPlan.chunks[expectedChunkIndex]
     ) throw new Error(`Hermes exact-input result binding drifted: ${inputId}`);
-    const expectedBytes = await readHermesExactInputFile(expected.path, inputId);
-    const restoredBytes = Buffer.from(payload.content, "utf8");
+    if (expectedChunkCount === null) expectedChunkCount = payload.chunkCount;
+    const chunkBytes = Buffer.from(payload.content, "utf8");
     if (
-      expectedBytes.byteLength !== expected.sizeBytes
-      || sha256(expectedBytes) !== expected.sha256
-      || restoredBytes.compare(expectedBytes) !== 0
-    ) throw new Error(`Hermes exact-input result is partial or drifted: ${inputId}`);
-    exactReadSha256s.push(expected.sha256);
+      sha256(chunkBytes) !== payload.chunkSha256
+      || (chunkBytes.byteLength === 0 && !(expected.sizeBytes === 0 && payload.chunkCount === 1))
+    ) throw new Error(`Hermes exact-input chunk bytes drifted: ${inputId} chunk ${expectedChunkIndex}`);
+    restoredChunks.push(chunkBytes);
+    const finalChunk = expectedChunkIndex + 1 === payload.chunkCount;
+    let expectedNextInputId = inputId;
+    let expectedNextCursor = readCursor(inputId, expected.sha256, expectedChunkIndex + 1);
+    if (finalChunk) {
+      if (expectedFileIndex + 1 < expectedFiles.length) {
+        const next = expectedFiles[expectedFileIndex + 1];
+        expectedNextInputId = inputIdForIndex(expectedFileIndex + 1);
+        expectedNextCursor = readCursor(expectedNextInputId, next.sha256, 0);
+      } else {
+        expectedNextInputId = null;
+        expectedNextCursor = null;
+      }
+    }
+    if (payload.nextInputId !== expectedNextInputId || payload.nextCursor !== expectedNextCursor) {
+      throw new Error(`Hermes exact-input next-cursor binding drifted: ${inputId} chunk ${expectedChunkIndex}`);
+    }
+    if (finalChunk) {
+      const expectedBytes = expectedPlan.bytes;
+      const restoredBytes = Buffer.concat(restoredChunks);
+      if (
+        expectedBytes.byteLength !== expected.sizeBytes
+        || sha256(expectedBytes) !== expected.sha256
+        || restoredBytes.compare(expectedBytes) !== 0
+      ) throw new Error(`Hermes exact-input result is partial or drifted: ${inputId}`);
+      exactReadSha256s.push(expected.sha256);
+      expectedFileIndex += 1;
+      expectedChunkIndex = 0;
+      expectedChunkCount = null;
+      restoredChunks = [];
+    } else {
+      expectedChunkIndex += 1;
+    }
+    expectedCursor = expectedNextCursor;
+  }
+  if (expectedFileIndex !== expectedFiles.length || expectedCursor !== null || restoredChunks.length > 0) {
+    throw new Error("Hermes exact-input trace ended before the complete cursor chain.");
   }
   return { exactReadCount: expectedFiles.length, exactReadSha256s };
 }
@@ -1094,7 +1332,7 @@ export function validateHermesStructuredTrace({
   if (!Number.isFinite(endedAt) || endedAt <= 0) throw new Error("Hermes structured trace end time is invalid.");
   return {
     runId: usage.session_id,
-    exactReadCount: calls.length,
+    exactReadCount: expectedReadPaths.length,
     contextInputProxyTokens,
     contextOutputReserveTokens,
     contextBudgetUpperBoundTokens,
@@ -1493,11 +1731,17 @@ export async function loadHermesRuntimeEvidence(profileHome, profileId, options 
     profileHome: absoluteProfileHome,
     projectCwd,
     contextCachePath: executionEnvironment?.contextCachePath,
+    ...(executionEnvironment?.env?.[HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY] === undefined
+      ? {}
+      : { bundledPluginsPath: executionEnvironment.env[HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY] }),
   });
   const allowedCanonicalOverrides = new Set([
     ...HERMES_CANONICAL_ENV_KEYS,
     "GIT_OPTIONAL_LOCKS",
     "PYTHONDONTWRITEBYTECODE",
+    ...(executionEnvironment?.env?.[HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY] === undefined
+      ? []
+      : [HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY]),
   ]);
   const leakedOverrides = Object.keys(executionEnvironment?.env ?? {})
     .filter((key) => isHermesExecutionOverride(key) && !allowedCanonicalOverrides.has(key));
@@ -1635,30 +1879,26 @@ export async function loadHermesExactInputEvidence(expectedReadPaths, inputDiges
   if (!Array.isArray(expectedReadPaths) || expectedReadPaths.length < 1 || new Set(expectedReadPaths).size !== expectedReadPaths.length) {
     throw new Error("Expected Hermes read paths must be unique and non-empty.");
   }
-  const files = await Promise.all(expectedReadPaths.map(async (path, index) => {
+  const filesWithChunks = await Promise.all(expectedReadPaths.map(async (path, index) => {
     const inputId = inputIdForIndex(index);
     const bytes = await readHermesExactInputFile(path, inputId);
     const content = bytes.toString("utf8");
     if (Buffer.from(content, "utf8").compare(bytes) !== 0) {
       throw new Error(`Hermes exact-input source must be valid UTF-8: ${inputId}`);
     }
-    const fileSha256 = sha256(bytes);
-    const resultChars = JSON.stringify({
-      schemaVersion: READ_RESULT_SCHEMA,
-      inputId,
-      sha256: fileSha256,
-      sizeBytes: bytes.byteLength,
-      content,
-    }).length;
-    if (resultChars > READ_RESULT_HOST_PREFLIGHT_MAX_CHARS || resultChars > READ_RESULT_MAX_CHARS) {
-      throw new Error(`Hermes exact-input source exceeds the reader result boundary: ${inputId}`);
+    if (bytes.byteLength > READ_SOURCE_MAX_BYTES) {
+      throw new Error(`Hermes exact-input source exceeds the reader source boundary: ${inputId}`);
     }
-    return { inputId, path, sha256: fileSha256, sizeBytes: bytes.byteLength, resultChars };
+    const fileSha256 = sha256(bytes);
+    const chunks = splitHermesExactInputContent(content);
+    return { inputId, path, sha256: fileSha256, sizeBytes: bytes.byteLength, chunks };
   }));
+  const files = filesWithChunks.map(({ chunks, ...file }) => ({ ...file, chunkCount: chunks.length }));
   const digestFiles = files.map(({ path, sha256: fileSha256 }) => ({ path, sha256: fileSha256 }));
   return {
     files,
     totalBytes: files.reduce((total, file) => total + file.sizeBytes, 0),
+    readTranscriptProxyBytes: readTranscriptProxyBytes(filesWithChunks),
     inputSha256: sha256(jsonBytes(digestFiles)),
   };
 }
@@ -1747,11 +1987,19 @@ function buildReadCapabilityEnvironment(baseEnvironment, manifestPath, manifestS
 
 function canonicalReadExecutionPolicy() {
   return {
-    schemaVersion: "hermes-exact-input-execution-policy/v1",
+    schemaVersion: "hermes-exact-input-execution-policy/v2",
     homeScope: "ephemeral-system-temp",
     workspaceScope: "empty-ephemeral-system-temp",
     cleanup: "required-before-finalization",
     credentialPersistence: "forbidden",
+    pluginDiscovery: "ephemeral-bundled-root",
+    readProtocol: "sequential-cursor-chunks-v2",
+    resultSchema: READ_RESULT_SCHEMA,
+    cursorProtocol: "firefly-hermes-read-cursor/v1",
+    maxSourceBytes: READ_SOURCE_MAX_BYTES,
+    maxEncodedContentChars: READ_CHUNK_ENCODED_CONTENT_MAX_CHARS,
+    maxResultChars: READ_CHUNK_RESULT_MAX_CHARS,
+    preflightAccounting: "deterministic-chunk-transcript",
     forbiddenCredentialNames: [...READ_EXECUTION_FORBIDDEN_CREDENTIAL_NAMES],
     pythonDontWriteBytecode: "1",
     gitOptionalLocks: "0",
@@ -1760,8 +2008,9 @@ function canonicalReadExecutionPolicy() {
 
 function computeReadExecutionEnvironmentSha256(executionPolicy) {
   return sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-environment-template/v1",
+    schemaVersion: "hermes-exact-input-environment-template/v2",
     executionPolicy,
+    baseEnvironmentKeys: [HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY],
     manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
     addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
   }));
@@ -1774,7 +2023,7 @@ function computeReadExecutionRuntimeIdentitySha256({
   executionEnvironmentSha256,
 }) {
   return sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-runtime-identity/v1",
+    schemaVersion: "hermes-exact-input-runtime-identity/v2",
     sourceRuntimeIdentitySha256,
     manifestSha256,
     pluginFiles,
@@ -1997,11 +2246,13 @@ async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runt
     }
     const hermesRoot = join(root, "hermes");
     const profileHome = join(hermesRoot, "profiles", profileId);
-    const pluginRoot = join(profileHome, "plugins", HERMES_READ_ONLY_TOOLSET);
+    const bundledPluginsRoot = join(root, HERMES_EPHEMERAL_BUNDLED_PLUGINS_DIRECTORY);
+    const pluginRoot = join(bundledPluginsRoot, HERMES_READ_ONLY_TOOLSET);
     const workspace = join(root, "workspace");
     const contextCachePath = join(hermesRoot, "context_length_cache.yaml");
     const manifestPath = join(root, "input-manifest.json");
     await Promise.all([
+      mkdir(profileHome, { recursive: true, mode: 0o700 }),
       mkdir(pluginRoot, { recursive: true, mode: 0o700 }),
       mkdir(workspace, { mode: 0o700 }),
     ]);
@@ -2021,6 +2272,7 @@ async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runt
       profileHome,
       projectCwd: workspace,
       contextCachePath,
+      bundledPluginsPath: bundledPluginsRoot,
     });
     const executionEnvironment = buildReadCapabilityEnvironment(
       baseExecutionEnvironment,
@@ -2036,6 +2288,7 @@ async function createHermesExactInputExecutionCapsule({ runRoot, profileId, runt
       root,
       rootIdentity: { dev: rootInfo.dev, ino: rootInfo.ino },
       profileHome,
+      bundledPluginsRoot,
       pluginRoot,
       workspace,
       contextCachePath,
@@ -2059,11 +2312,12 @@ async function assertHermesExactInputExecutionCapsuleStable(capsule, sourceRunti
     || rootInfo.dev !== capsule.rootIdentity.dev
     || rootInfo.ino !== capsule.rootIdentity.ino
   ) throw new Error(`${label} root identity drifted.`);
-  const [configBytes, soulBytes, contextCacheBytes, manifestBytes, pluginEntries, workspaceEntries] = await Promise.all([
+  const [configBytes, soulBytes, contextCacheBytes, manifestBytes, bundledPluginEntries, pluginEntries, workspaceEntries] = await Promise.all([
     readFile(join(capsule.profileHome, "config.yaml")),
     readFile(join(capsule.profileHome, "SOUL.md")),
     readFile(capsule.contextCachePath),
     readFile(capsule.manifestPath),
+    readdir(capsule.bundledPluginsRoot),
     readdir(capsule.pluginRoot),
     readdir(capsule.workspace),
   ]);
@@ -2072,6 +2326,7 @@ async function assertHermesExactInputExecutionCapsuleStable(capsule, sourceRunti
     || soulBytes.compare(sourceRuntime.soulBytes) !== 0
     || contextCacheBytes.compare(readCapability.contextCacheBytes) !== 0
     || manifestBytes.compare(readCapability.manifestBytes) !== 0
+    || !isDeepStrictEqual(bundledPluginEntries.sort(), [HERMES_READ_ONLY_TOOLSET])
     || !isDeepStrictEqual(pluginEntries.sort(), [...READ_PLUGIN_FILES].sort())
     || workspaceEntries.length !== 0
   ) throw new Error(`${label} static capability bytes drifted.`);
@@ -2839,7 +3094,7 @@ export async function runHermesStructuredAttempt({
       input.runtime.profilePromptContextBytes
       + input.readCapability.pluginFiles.reduce((total, file) => total + file.sizeBytes, 0)
       + Buffer.byteLength(prompt, "utf8")
-      + input.inputEvidence.totalBytes
+      + input.inputEvidence.readTranscriptProxyBytes
     ) / CONTEXT_PROXY_BYTES_PER_TOKEN);
     const preflightBudgetTokens = preflightInputProxyTokens + outputReserveTokens;
     if (preflightBudgetTokens >= input.runtime.contextLimit) {

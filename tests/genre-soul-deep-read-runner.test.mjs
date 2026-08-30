@@ -142,7 +142,7 @@ test("binds target segmentation and current runtime identity into the work diges
 test("fresh deep-read prompts and domain seals bind only opaque exact inputs", () => {
   const manifest = {
     schemaVersion: "private-genre-soul-deep-read-segment-manifest/v2",
-    promptContractVersion: "private-genre-soul-deep-read-segment-prompt/v4",
+    promptContractVersion: "private-genre-soul-deep-read-segment-prompt/v5",
     profileId: "inkos_male_murim",
     sourceId: "gdrive-deep-current",
     sourceSha256: "a".repeat(64),
@@ -159,7 +159,13 @@ test("fresh deep-read prompts and domain seals bind only opaque exact inputs", (
   assert.match(prompt, /input-001/u);
   assert.match(prompt, /input-002/u);
   assert.match(prompt, /input-003/u);
+  assert.match(prompt, /nextInputId and nextCursor/u);
+  assert.doesNotMatch(prompt, /exactly once/u);
   assert.doesNotMatch(prompt, /read_file|\/private\/|\.txt/u);
+  assert.throws(() => buildCurrentDeepReadSegmentPrompt({
+    ...manifest,
+    promptContractVersion: "private-genre-soul-deep-read-segment-prompt/v4",
+  }), /canonical pathless manifest/u);
   const workInputDigest = "d".repeat(64);
   const segmentInputDigest = buildCurrentDeepReadSegmentInputDigest({ workInputDigest, manifest, prompt });
   const result = {

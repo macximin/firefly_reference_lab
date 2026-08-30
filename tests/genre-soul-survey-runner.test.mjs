@@ -237,7 +237,7 @@ test("fresh survey prompts and domain seals bind only opaque exact inputs", () =
   const manifest = {
     schemaVersion: "private-genre-soul-survey-manifest/v3",
     inputDigest,
-    promptContractVersion: "private-genre-soul-survey-prompt/v3",
+    promptContractVersion: "private-genre-soul-survey-prompt/v4",
     sourceId: "gdrive-survey-current",
     sourceSha256: "b".repeat(64),
     sourceSizeBytes: 240,
@@ -256,7 +256,13 @@ test("fresh survey prompts and domain seals bind only opaque exact inputs", () =
   assert.match(prompt, /input-001/u);
   assert.match(prompt, /input-002/u);
   assert.match(prompt, /input-003/u);
+  assert.match(prompt, /nextInputId and nextCursor/u);
+  assert.doesNotMatch(prompt, /exactly once/u);
   assert.doesNotMatch(prompt, /read_file|\/private\/|\.txt/u);
+  assert.throws(() => buildCurrentSurveyPrompt({
+    ...manifest,
+    promptContractVersion: "private-genre-soul-survey-prompt/v3",
+  }), /canonical pathless manifest/u);
 
   const result = {
     schemaVersion: "private-genre-soul-survey-result/v1",

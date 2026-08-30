@@ -1,5 +1,5 @@
 name: firefly-source-read
-version: 1.0.0
+version: 2.0.0
 description: "Reference Lab exact-input read capability. Exposes one pathless, read-only tool bound to a host-attested manifest."
 author: Firefly Reference Lab
 kind: backend

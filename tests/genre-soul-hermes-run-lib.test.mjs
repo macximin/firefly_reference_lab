@@ -18,6 +18,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import {
@@ -251,10 +252,15 @@ function traceFixture({ profileId, prompt, soul, path, fileContent, result, runI
         tool_call_id: "call-read-1",
         compacted: 0,
         content: JSON.stringify({
-          schemaVersion: "firefly-hermes-read-result/v1",
+          schemaVersion: "firefly-hermes-read-result/v2",
           inputId: "input-001",
           sha256: digest(fileBytes),
           sizeBytes: fileBytes.byteLength,
+          chunkIndex: 0,
+          chunkCount: 1,
+          chunkSha256: digest(fileBytes),
+          nextInputId: null,
+          nextCursor: null,
           content: fileContent,
         }),
       },
@@ -464,7 +470,7 @@ test("public exact-input APIs bind opaque IDs to complete UTF-8 result bytes", a
   pathArgument.messages[1].tool_calls[0].function.arguments = JSON.stringify({ path: inputPath });
   await assert.rejects(
     validateHermesExactInputTrace({ trace: pathArgument, expectedFiles: evidence.files }),
-    /arguments must contain only inputId/u,
+    /arguments must contain only inputId and an optional cursor/u,
   );
   const partial = structuredClone(trace);
   partial.messages[2].content = JSON.stringify({
@@ -473,19 +479,178 @@ test("public exact-input APIs bind opaque IDs to complete UTF-8 result bytes", a
   });
   await assert.rejects(
     validateHermesExactInputTrace({ trace: partial, expectedFiles: evidence.files }),
-    /partial or drifted/u,
+    /result binding drifted/u,
   );
-  const oversizedPath = join(root, "oversized-result.txt");
-  await writeFile(oversizedPath, "\u0000".repeat(800_000));
+  const chunkedPath = join(root, "chunked-result.txt");
+  await writeFile(chunkedPath, "\u0000".repeat(800_000));
+  const chunkedEvidence = await loadHermesExactInputEvidence([chunkedPath], inputDigest);
+  assert.ok(chunkedEvidence.files[0].chunkCount > 1);
+  const oversizedPath = join(root, "oversized-source.txt");
+  await writeFile(oversizedPath, Buffer.alloc(4_500_001, 0x61));
   await assert.rejects(
     loadHermesExactInputEvidence([oversizedPath], inputDigest),
-    /exceeds the reader result boundary/u,
+    /exceeds the reader source boundary/u,
   );
   const linkedPath = join(root, "linked-input.txt");
   await symlink(inputPath, linkedPath, "file");
   await assert.rejects(
     loadHermesExactInputEvidence([linkedPath], inputDigest),
     /symbolic-link component/u,
+  );
+});
+
+test("allows only the capsule-owned bundled plugin discovery root", { concurrency: false }, async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-bundled-plugin-env-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const profileHome = join(root, "hermes", "profiles", "inkos_test_profile");
+  const projectCwd = join(root, "workspace");
+  const bundledPluginsPath = join(root, "hermes-bundled-plugins");
+  const previous = process.env.HERMES_BUNDLED_PLUGINS;
+  try {
+    process.env.HERMES_BUNDLED_PLUGINS = "/tmp/hostile-bundled-plugins";
+    const sourceEnvironment = buildHermesExecutionEnvironment({ profileHome, projectCwd });
+    assert.equal(sourceEnvironment.env.HERMES_BUNDLED_PLUGINS, undefined);
+    const capsuleEnvironment = buildHermesExecutionEnvironment({
+      profileHome,
+      projectCwd,
+      bundledPluginsPath,
+    });
+    assert.equal(capsuleEnvironment.env.HERMES_BUNDLED_PLUGINS, bundledPluginsPath);
+    assert.equal(capsuleEnvironment.descriptor.bundledPluginsPath, bundledPluginsPath);
+    assert.throws(() => buildHermesExecutionEnvironment({
+      profileHome,
+      projectCwd,
+      bundledPluginsPath: join(root, "arbitrary-plugins"),
+    }), /escaped the ephemeral capsule boundary/u);
+  } finally {
+    if (previous === undefined) delete process.env.HERMES_BUNDLED_PLUGINS;
+    else process.env.HERMES_BUNDLED_PLUGINS = previous;
+  }
+});
+
+test("the installed plugin API delivers a live-size deterministic cursor chain inline", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-chunked-reader-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const inputPath = join(root, "input.txt");
+  const manifestPath = join(root, "manifest.json");
+  const unit = "재벌의 압박과 보상🚀\\\"\\\\\n";
+  const targetBytes = 377_857;
+  const unitBytes = Buffer.byteLength(unit);
+  let content = unit.repeat(Math.floor(targetBytes / unitBytes));
+  content += "x".repeat(targetBytes - Buffer.byteLength(content));
+  assert.equal(Buffer.byteLength(content), targetBytes);
+  await writeFile(inputPath, content);
+  const manifestBytes = jsonBytes({
+    schemaVersion: "firefly-hermes-read-manifest/v1",
+    inputs: [{
+      inputId: "input-001",
+      path: inputPath,
+      sha256: digest(Buffer.from(content)),
+      sizeBytes: targetBytes,
+    }],
+  });
+  await writeFile(manifestPath, manifestBytes);
+  const pluginRoot = fileURLToPath(new URL("../tools/hermes-plugins/firefly-source-read", import.meta.url));
+  const python = String.raw`
+import importlib.util, json, os, sys
+root = sys.argv[1]
+spec = importlib.util.spec_from_file_location(
+    "firefly_source_read", os.path.join(root, "__init__.py"),
+    submodule_search_locations=[root],
+)
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+class Context:
+    def register_tool(self, name, toolset, schema, handler, check_fn=None,
+                      requires_env=None, is_async=False, description="", emoji="", override=False):
+        self.registration = (name, toolset, schema, handler)
+ctx = Context()
+module.register(ctx)
+name, toolset, schema, handler = ctx.registration
+assert name == "firefly_read_source" and toolset == "firefly-source-read"
+args = {"inputId": "input-001"}
+payloads = []
+arguments = []
+while True:
+    arguments.append(args)
+    raw = handler(args)
+    payload = json.loads(raw)
+    assert len(raw) <= 80000
+    payloads.append(raw)
+    if payload["nextCursor"] is None:
+        break
+    args = {"inputId": payload["nextInputId"], "cursor": payload["nextCursor"]}
+print(json.dumps({"arguments": arguments, "payloads": payloads}, ensure_ascii=False, separators=(",", ":")))
+`;
+  const executed = await execFileAsync("python3", ["-c", python, pluginRoot], {
+    env: {
+      ...process.env,
+      FIREFLY_READ_MANIFEST: manifestPath,
+      FIREFLY_READ_MANIFEST_SHA256: digest(manifestBytes),
+      PYTHONDONTWRITEBYTECODE: "1",
+    },
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  const observed = JSON.parse(executed.stdout);
+  assert.ok(observed.payloads.length > 1);
+  assert.ok(observed.payloads.every((raw) => Array.from(raw).length <= 80_000));
+  const trace = {
+    messages: [
+      { role: "user", content: "read the complete cursor chain" },
+      ...observed.payloads.flatMap((raw, index) => {
+        const callId = `call-${index + 1}`;
+        return [{
+          role: "assistant",
+          finish_reason: "tool_calls",
+          tool_calls: [{
+            id: callId,
+            function: { name: "firefly_read_source", arguments: JSON.stringify(observed.arguments[index]) },
+          }],
+        }, {
+          role: "tool",
+          tool_call_id: callId,
+          content: raw,
+        }];
+      }),
+      { role: "assistant", finish_reason: "stop", content: "{}" },
+    ],
+  };
+  const evidence = await loadHermesExactInputEvidence([inputPath], digest("live-size-chunk-fixture"));
+  assert.equal(evidence.files[0].chunkCount, observed.payloads.length);
+  assert.ok(evidence.readTranscriptProxyBytes > targetBytes);
+  assert.deepEqual(await validateHermesExactInputTrace({ trace, expectedFiles: evidence.files }), {
+    exactReadCount: 1,
+    exactReadSha256s: [digest(Buffer.from(content))],
+  });
+
+  const resegmented = structuredClone(trace);
+  const firstPayload = JSON.parse(resegmented.messages[2].content);
+  const secondPayload = JSON.parse(resegmented.messages[4].content);
+  const moved = Array.from(secondPayload.content)[0];
+  firstPayload.content += moved;
+  secondPayload.content = Array.from(secondPayload.content).slice(1).join("");
+  firstPayload.chunkSha256 = digest(Buffer.from(firstPayload.content));
+  secondPayload.chunkSha256 = digest(Buffer.from(secondPayload.content));
+  resegmented.messages[2].content = JSON.stringify(firstPayload);
+  resegmented.messages[4].content = JSON.stringify(secondPayload);
+  await assert.rejects(
+    validateHermesExactInputTrace({ trace: resegmented, expectedFiles: evidence.files }),
+    /result binding drifted/u,
+  );
+
+  const missing = structuredClone(trace);
+  missing.messages.splice(3, 2);
+  await assert.rejects(
+    validateHermesExactInputTrace({ trace: missing, expectedFiles: evidence.files }),
+    /cursor chain drifted|message grammar drifted|ended before/u,
+  );
+
+  const parallel = structuredClone(trace);
+  parallel.messages[1].tool_calls.push(parallel.messages[3].tool_calls[0]);
+  await assert.rejects(
+    validateHermesExactInputTrace({ trace: parallel, expectedFiles: evidence.files }),
+    /one sequential tool call/u,
   );
 });
 
@@ -750,7 +915,7 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
 		  if (args.filter((value) => value === "--model").length !== 1 || args[args.indexOf("--model") + 1] !== "gpt-5.6-sol") throw new Error("model drifted");
 		  if (args.filter((value) => value === "--provider").length !== 1 || args[args.indexOf("--provider") + 1] !== "openai-codex") throw new Error("provider drifted");
 		  const hermesKeys = Object.keys(process.env).filter((key) => key.startsWith("HERMES_")).sort();
-		  if (JSON.stringify(hermesKeys) !== JSON.stringify(["HERMES_CONTEXT_CACHE_PATH", "HERMES_HOME"])) throw new Error("non-canonical HERMES variables leaked: " + hermesKeys.join(","));
+		  if (JSON.stringify(hermesKeys) !== JSON.stringify(["HERMES_BUNDLED_PLUGINS", "HERMES_CONTEXT_CACHE_PATH", "HERMES_HOME"])) throw new Error("non-canonical HERMES variables leaked: " + hermesKeys.join(","));
 		  const terminalKeys = Object.keys(process.env).filter((key) => key.startsWith("TERMINAL_")).sort();
 		  if (JSON.stringify(terminalKeys) !== JSON.stringify(["TERMINAL_CWD", "TERMINAL_ENV"])) throw new Error("non-canonical TERMINAL variables leaked: " + terminalKeys.join(","));
 		  const executionRoot = dirname(dirname(dirname(process.env.HERMES_HOME)));
@@ -758,6 +923,7 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
 		  if (process.env.TERMINAL_CWD !== join(executionRoot, "workspace")) throw new Error("TERMINAL_CWD drifted");
 		  if (process.env.TERMINAL_ENV !== "local") throw new Error("TERMINAL_ENV drifted");
 		  if (process.env.HERMES_CONTEXT_CACHE_PATH !== join(executionRoot, "hermes", "context_length_cache.yaml")) throw new Error("context cache drifted");
+		  if (process.env.HERMES_BUNDLED_PLUGINS !== join(executionRoot, "hermes-bundled-plugins")) throw new Error("bundled plugin discovery root drifted");
 		  if (process.env.FIREFLY_READ_MANIFEST !== join(executionRoot, "input-manifest.json")) throw new Error("read manifest path drifted");
 		  if (!/^[a-f0-9]{64}$/.test(process.env.FIREFLY_READ_MANIFEST_SHA256 ?? "")) throw new Error("read manifest digest missing");
 		  appendFileSync(process.env.MOCK_HERMES_CAPSULE_LOG, process.env.HERMES_HOME + "\\n");
@@ -1046,7 +1212,7 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     await writeFile(inputPath, "changed while runtime attestation was still running\n");
     await assert.rejects(
       driftingReuse,
-      /exact-input result is partial or drifted|pre-return input changed/u,
+      /expected source binding drifted|exact-input result is partial or drifted|pre-return input changed/u,
     );
     delete process.env.MOCK_HERMES_VERSION_DELAY_MS;
     await writeFile(inputPath, inputText);

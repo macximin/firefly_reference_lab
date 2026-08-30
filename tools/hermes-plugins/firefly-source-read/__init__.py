@@ -10,5 +10,4 @@ def register(ctx):
         toolset="firefly-source-read",
         schema=READ_SOURCE_SCHEMA,
         handler=read_source,
-        max_result_size_chars=5_000_000,
     )

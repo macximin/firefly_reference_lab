@@ -18,17 +18,22 @@ from pathlib import PurePath
 
 
 _MANIFEST_SCHEMA = "firefly-hermes-read-manifest/v1"
-_RESULT_SCHEMA = "firefly-hermes-read-result/v1"
-_MAX_RESULT_CHARS = 5_000_000
+_RESULT_SCHEMA = "firefly-hermes-read-result/v2"
+_MAX_SOURCE_BYTES = 4_500_000
+_MAX_ENCODED_CONTENT_CHARS = 75_000
+_MAX_RESULT_CHARS = 80_000
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _INPUT_ID = re.compile(r"^input-[0-9]{3}$")
+_CURSOR = re.compile(r"^cursor-[a-f0-9]{64}$")
 
 READ_SOURCE_SCHEMA = {
     "name": "firefly_read_source",
     "description": (
-        "Read one host-attested Firefly input by opaque inputId. This is the "
-        "only file-reading capability in the session. It accepts no path, "
-        "glob, command, offset, or write operation."
+        "Read every host-attested Firefly input through a sequential cursor "
+        "chain. Begin with only input-001, then make exactly one call per turn "
+        "using the nextInputId and nextCursor returned by the prior result until "
+        "nextCursor is null. This is the only file-reading capability in the "
+        "session. It accepts no path, glob, command, offset, or write operation."
     ),
     "parameters": {
         "type": "object",
@@ -37,6 +42,11 @@ READ_SOURCE_SCHEMA = {
                 "type": "string",
                 "pattern": "^input-[0-9]{3}$",
                 "description": "Opaque ID supplied by the host prompt, for example input-001.",
+            },
+            "cursor": {
+                "type": "string",
+                "pattern": "^cursor-[a-f0-9]{64}$",
+                "description": "Use only the exact nextCursor returned by the preceding call.",
             },
         },
         "required": ["inputId"],
@@ -128,7 +138,7 @@ def _exact_keys(value: object, keys: set[str], label: str) -> dict:
     return value
 
 
-def _load_manifest() -> dict[str, dict]:
+def _load_manifest() -> tuple[dict[str, dict], str]:
     manifest_path = os.environ.get("FIREFLY_READ_MANIFEST", "")
     manifest_sha256 = os.environ.get("FIREFLY_READ_MANIFEST_SHA256", "")
     if not manifest_path or not _SHA256.fullmatch(manifest_sha256):
@@ -165,20 +175,64 @@ def _load_manifest() -> dict[str, dict]:
         entries[input_id] = entry
     if not entries:
         raise ValueError("host manifest has no inputs")
-    return entries
+    return entries, manifest_sha256
+
+
+def _split_content(content: str) -> list[str]:
+    """Split text so each encoded JSON content string stays safely inline."""
+    if content == "":
+        return [""]
+    chunks: list[str] = []
+    start = 0
+    while start < len(content):
+        low = start + 1
+        high = min(len(content), start + _MAX_ENCODED_CONTENT_CHARS)
+        best = start
+        while low <= high:
+            middle = (low + high) // 2
+            encoded_chars = len(_json(content[start:middle]))
+            if encoded_chars <= _MAX_ENCODED_CONTENT_CHARS:
+                best = middle
+                low = middle + 1
+            else:
+                high = middle - 1
+        if best == start:
+            raise ValueError("bound input cannot be split inside the reader result boundary")
+        chunks.append(content[start:best])
+        start = best
+    return chunks
+
+
+def _cursor(input_id: str, source_sha256: str, chunk_index: int) -> str:
+    material = "\0".join((
+        "firefly-hermes-read-cursor/v1",
+        input_id,
+        source_sha256,
+        str(chunk_index),
+    )).encode("utf-8")
+    return "cursor-" + hashlib.sha256(material).hexdigest()
 
 
 def read_source(args: dict, **_kwargs) -> str:
-    """Return the exact bound UTF-8 bytes for one opaque input ID."""
+    """Return one inline chunk from the exact bound UTF-8 cursor chain."""
     try:
-        _exact_keys(args, {"inputId"}, "tool arguments")
+        if not isinstance(args, dict) or set(args) not in ({"inputId"}, {"inputId", "cursor"}):
+            raise ValueError("tool arguments keys drifted")
         input_id = args["inputId"]
         if not isinstance(input_id, str) or not _INPUT_ID.fullmatch(input_id):
             raise ValueError("inputId is invalid")
-        entry = _load_manifest().get(input_id)
+        entries, _manifest_sha256 = _load_manifest()
+        entry = entries.get(input_id)
         if entry is None:
             raise ValueError("inputId is not authorized")
+        cursor = args.get("cursor")
+        if cursor is None and input_id != "input-001":
+            raise ValueError("the cursor chain must begin with input-001")
+        if cursor is not None and (not isinstance(cursor, str) or not _CURSOR.fullmatch(cursor)):
+            raise ValueError("cursor is invalid")
         data = _read_regular_file(entry["path"])
+        if len(data) > _MAX_SOURCE_BYTES:
+            raise ValueError("bound input exceeds the exact-reader source boundary")
         observed_sha256 = hashlib.sha256(data).hexdigest()
         if len(data) != entry["sizeBytes"] or not hmac.compare_digest(observed_sha256, entry["sha256"]):
             raise ValueError("bound input bytes drifted")
@@ -186,12 +240,40 @@ def read_source(args: dict, **_kwargs) -> str:
             content = data.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise ValueError("bound input is not UTF-8") from exc
+        chunks = _split_content(content)
+        if cursor is None:
+            chunk_index = 0
+        else:
+            matches = [
+                index for index in range(len(chunks))
+                if hmac.compare_digest(cursor, _cursor(input_id, observed_sha256, index))
+            ]
+            if len(matches) != 1:
+                raise ValueError("cursor is not authorized for this input")
+            chunk_index = matches[0]
+        input_ids = list(entries)
+        input_index = input_ids.index(input_id)
+        if chunk_index + 1 < len(chunks):
+            next_input_id = input_id
+            next_cursor = _cursor(input_id, observed_sha256, chunk_index + 1)
+        elif input_index + 1 < len(input_ids):
+            next_input_id = input_ids[input_index + 1]
+            next_cursor = _cursor(next_input_id, entries[next_input_id]["sha256"], 0)
+        else:
+            next_input_id = None
+            next_cursor = None
+        chunk = chunks[chunk_index]
         result = _json({
             "schemaVersion": _RESULT_SCHEMA,
             "inputId": input_id,
             "sha256": observed_sha256,
             "sizeBytes": len(data),
-            "content": content,
+            "chunkIndex": chunk_index,
+            "chunkCount": len(chunks),
+            "chunkSha256": hashlib.sha256(chunk.encode("utf-8")).hexdigest(),
+            "nextInputId": next_input_id,
+            "nextCursor": next_cursor,
+            "content": chunk,
         })
         if len(result) > _MAX_RESULT_CHARS:
             raise ValueError("bound input exceeds the exact-reader result boundary")

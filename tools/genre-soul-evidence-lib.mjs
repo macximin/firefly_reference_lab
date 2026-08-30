@@ -1153,7 +1153,7 @@ async function validateSurveyPrivateEvidence(input) {
     || receipt.completedAt !== located.pointer.completedAt
   )) throw new Error(`${label} current receipt input/Soul/completion binding drifted.`);
   if (currentV3 && (
-    receipt.promptContractVersion !== "private-genre-soul-survey-prompt/v3"
+    receipt.promptContractVersion !== "private-genre-soul-survey-prompt/v4"
     || !same(receipt.observationIds, trackedEntry.observationIds)
     || receipt.structuredRunRoot !== "structured"
     || receipt.structuredRunRoot !== located.pointer.structuredRunRoot
@@ -1227,9 +1227,9 @@ async function validateSurveyPrivateEvidence(input) {
       ? "private-genre-soul-survey-manifest/v2"
       : "private-genre-soul-survey-manifest/v3")
     || manifest.inputDigest !== located.inputDigest
-    || manifest.promptContractVersion !== (currentV2
-      ? LEGACY_SURVEY_PROMPT_CONTRACT_VERSION
-      : "private-genre-soul-survey-prompt/v3")
+    || (currentV2
+      ? manifest.promptContractVersion !== LEGACY_SURVEY_PROMPT_CONTRACT_VERSION
+      : manifest.promptContractVersion !== "private-genre-soul-survey-prompt/v4")
     || manifest.soulId !== soulId
     || manifest.profileId !== profileId
     || receipt.manifestSha256 !== sha256(manifestFile.bytes)
@@ -1424,6 +1424,7 @@ async function validateSurveyPrivateEvidence(input) {
       soulSha256: runtime.soulSha256,
       windowBytes: LEGACY_SURVEY_WINDOW_BYTES,
       windows: expectedDescriptorWindows,
+      promptContractVersion: manifest.promptContractVersion,
     }) : null;
     if (
       runInputFile.bytes.compare(canonicalJsonBytes(descriptor)) !== 0
@@ -1431,9 +1432,9 @@ async function validateSurveyPrivateEvidence(input) {
       || descriptor?.schemaVersion !== (currentV3
         ? "private-genre-soul-survey-run-input-digest/v2"
         : "private-genre-soul-survey-run-input-digest/v1")
-      || descriptor.promptContractVersion !== (currentV3
-        ? "private-genre-soul-survey-prompt/v3"
-        : LEGACY_SURVEY_PROMPT_CONTRACT_VERSION)
+      || (currentV3
+        ? descriptor.promptContractVersion !== "private-genre-soul-survey-prompt/v4"
+        : descriptor.promptContractVersion !== LEGACY_SURVEY_PROMPT_CONTRACT_VERSION)
       || descriptor.genre !== genre
       || descriptor.soulId !== soulId
       || descriptor.profileId !== profileId
@@ -1923,7 +1924,7 @@ async function loadWork(input) {
     }
     if (
       manifest?.schemaVersion !== expectedManifestSchema
-      || (currentSegment && manifest.promptContractVersion !== "private-genre-soul-deep-read-segment-prompt/v4")
+      || (currentSegment && manifest.promptContractVersion !== "private-genre-soul-deep-read-segment-prompt/v5")
       || (currentSegment && manifest.profileId !== profileId)
       || manifest.sourceId !== selected.sourceId
       || manifest.sourceSha256 !== selected.sourceSha256

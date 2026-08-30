@@ -49,12 +49,18 @@ session trace, profile config, usage와 결과를 ignored `exports/`에 보존�
 신규 실행은 경로를 프롬프트에 노출하지 않고 opaque input ID별
 `firefly_read_source` 응답을 각 private window 원본과 exact byte 비교한다. 기존
 `read_file` trace는 역사적 receipt 검증에서만 line-number wrapper를 복원해 읽는다.
+현재 exact-input capability v2는 플러그인을 임시 bundled root에서만 발견하고,
+큰 UTF-8 입력을 결정론적 cursor chunk로 순차 전달한다. 모델은 직전 응답의
+`nextInputId`·`nextCursor`만 따라가며, host는 누락·병렬·재분할·재정렬·변조를
+거절한 뒤 모든 chunk를 원본 SHA와 byte 크기로 재조립한다. 당시 플러그인을
+실제로 등록하지 못했던 미완료 structured v1 attempt는 호환 완료본으로 간주하지
+않고 audit trail로만 보존한다.
 각 survey 옆에는 전체 available 원문 코퍼스와 대조한 zero-match 누출 검사
 영수증을 함께 둔다. `needs-manager-review`는 자동 완료하지 않는다.
 
 `tools/genre-soul-deep-read-runner.mjs`는 자연 회차 파일을 bounded segment로
 묶고 opaque input ID별 `firefly_read_source` 응답을 모든 chapter 원본과 exact
-byte 검증한다. 실패 attempt는
+byte 검증한다. 동일한 capability v2 cursor chain을 쓰며 실패 attempt는
 삭제·덮어쓰기 없이 보존하며, 전 구간이 gap-free이고 trace에 compaction이
 없을 때만 raw 없는 work-study receipt와 zero-match 누출 영수증을 만든다. 기존
 9편의 역사적 receipt는 `legacy-unattested`로만 읽으며 current 증거로 재표기하지

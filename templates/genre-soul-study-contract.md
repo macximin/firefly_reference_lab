@@ -16,9 +16,16 @@ source ID, UTF-8 byte 범위, SHA-256, 파생 관찰과 판정 영수증만 둔�
 
 신규 Hermes 실행은 경로·glob·offset을 모델에 주지 않는다. host가 exact input bytes를
 opaque input ID에 결속하고, 격리된 임시 capsule은 `firefly_read_source` 하나만
-노출한다. trace의 도구 이름·호출 순서·인자·반환 bytes와 runtime/plugin/input
-attestation이 모두 일치해야 실행을 완료한다. capsule은 성공과 실패 뒤 모두 삭제하며
+bundled plugin root를 통해 노출한다. capability v2는 큰 UTF-8 원문을 결정론적
+cursor chunk로 나누고 직전 결과의 `nextInputId`·`nextCursor`를 한 번에 하나씩만
+따르게 한다. host가 누락·병렬·재분할·재정렬·변조를 거절하고 완전한 원본 bytes로
+재조립한 뒤에만 읽기를 인정한다. trace의 도구 이름·호출 순서·인자·반환 bytes와
+runtime/plugin/input attestation이 모두 일치해야 실행을 완료한다. capsule은 성공과 실패 뒤 모두 삭제하며
 인증 자료나 private 원문을 repository에 영속하지 않는다.
+
+플러그인이 등록되지 않아 완료될 수 없었던 pre-v2 structured attempt는 audit
+trail로만 보존하고 current evidence로 재사용하지 않는다. 실제 역사적 v1 survey와
+deep-read receipt는 기존 별도 validator로 계속 읽으며 새 증거로 재표기하지 않는다.
 
 기존 9편의 역사적 deep-read receipt는 `legacy-unattested` 상태 그대로 보존한다.
 신규 실행만 현재 runtime을 재검증한 `current-attested`이며

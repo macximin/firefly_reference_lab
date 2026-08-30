@@ -78,6 +78,12 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function exactReadCursor(inputId, sourceSha256, chunkIndex = 0) {
+  return `cursor-${sha256(Buffer.from([
+    "firefly-hermes-read-cursor/v1", inputId, sourceSha256, String(chunkIndex),
+  ].join("\0")))}`;
+}
+
 function jsonBytes(value) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 }
@@ -99,30 +105,39 @@ function buildFixtureReadCapability(expectedFiles, runtime) {
     sizeBytes: index + 1,
   }));
   const executionPolicy = {
-    schemaVersion: "hermes-exact-input-execution-policy/v1",
+    schemaVersion: "hermes-exact-input-execution-policy/v2",
     homeScope: "ephemeral-system-temp",
     workspaceScope: "empty-ephemeral-system-temp",
     cleanup: "required-before-finalization",
     credentialPersistence: "forbidden",
+    pluginDiscovery: "ephemeral-bundled-root",
+    readProtocol: "sequential-cursor-chunks-v2",
+    resultSchema: "firefly-hermes-read-result/v2",
+    cursorProtocol: "firefly-hermes-read-cursor/v1",
+    maxSourceBytes: 4_500_000,
+    maxEncodedContentChars: 75_000,
+    maxResultChars: 80_000,
+    preflightAccounting: "deterministic-chunk-transcript",
     forbiddenCredentialNames: [".anthropic_oauth.json", ".env", "auth.json", "credentials.json", "oauth.json", "tokens.json"],
     pythonDontWriteBytecode: "1",
     gitOptionalLocks: "0",
   };
   const executionEnvironmentSha256 = sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-environment-template/v1",
+    schemaVersion: "hermes-exact-input-environment-template/v2",
     executionPolicy,
+    baseEnvironmentKeys: ["HERMES_BUNDLED_PLUGINS"],
     manifestBinding: "attempt-scoped-absolute-path-plus-sha256",
     addedEnvironmentKeys: ["FIREFLY_READ_MANIFEST", "FIREFLY_READ_MANIFEST_SHA256"],
   }));
   const executionRuntimeIdentitySha256 = sha256(jsonBytes({
-    schemaVersion: "hermes-exact-input-runtime-identity/v1",
+    schemaVersion: "hermes-exact-input-runtime-identity/v2",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
     manifestSha256: sha256(manifestBytes),
     pluginFiles,
     executionEnvironmentSha256,
   }));
   const capability = {
-    schemaVersion: "private-hermes-exact-input-read-capability/v1",
+    schemaVersion: "private-hermes-exact-input-read-capability/v2",
     toolset: "firefly-source-read",
     tool: "firefly_read_source",
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
@@ -312,6 +327,7 @@ async function writeFixtureStructuredAttempt(input) {
   };
   const readMessages = expectedFiles.flatMap((file, index) => {
     const callId = `${runId}-read-${index + 1}`;
+    const nextFile = expectedFiles[index + 1] ?? null;
     return [
       {
         role: "assistant",
@@ -319,7 +335,12 @@ async function writeFixtureStructuredAttempt(input) {
         finish_reason: "tool_calls",
         tool_calls: [{
           id: callId,
-          function: { name: "firefly_read_source", arguments: JSON.stringify({ inputId: file.inputId }) },
+          function: {
+            name: "firefly_read_source",
+            arguments: JSON.stringify(index === 0
+              ? { inputId: file.inputId }
+              : { inputId: file.inputId, cursor: exactReadCursor(file.inputId, file.sha256) }),
+          },
         }],
       },
       {
@@ -328,10 +349,15 @@ async function writeFixtureStructuredAttempt(input) {
         tool_call_id: callId,
         tool_name: "firefly_read_source",
         content: JSON.stringify({
-          schemaVersion: "firefly-hermes-read-result/v1",
+          schemaVersion: "firefly-hermes-read-result/v2",
           inputId: file.inputId,
           sha256: file.sha256,
           sizeBytes: file.sizeBytes,
+          chunkIndex: 0,
+          chunkCount: 1,
+          chunkSha256: file.sha256,
+          nextInputId: nextFile?.inputId ?? null,
+          nextCursor: nextFile ? exactReadCursor(nextFile.inputId, nextFile.sha256) : null,
           content: file.bytes.toString("utf8"),
         }),
       },
@@ -514,7 +540,7 @@ async function writePrivateCurrentV2Work(root, input, privateRegistrySha256, obs
     }
     const manifest = {
       schemaVersion: "private-genre-soul-deep-read-segment-manifest/v2",
-      promptContractVersion: "private-genre-soul-deep-read-segment-prompt/v4",
+      promptContractVersion: "private-genre-soul-deep-read-segment-prompt/v5",
       profileId,
       sourceId: selected.sourceId,
       sourceSha256: selected.sourceSha256,
@@ -1436,6 +1462,7 @@ async function writePrivateCurrentV3SurveyWork(root, input) {
     };
   });
   const runInput = buildSurveyRunInputDescriptor({
+    promptContractVersion: "private-genre-soul-survey-prompt/v4",
     genre,
     soulId,
     profileId,
@@ -1459,7 +1486,7 @@ async function writePrivateCurrentV3SurveyWork(root, input) {
   const manifest = {
     schemaVersion: "private-genre-soul-survey-manifest/v3",
     inputDigest: runInput.inputDigest,
-    promptContractVersion: "private-genre-soul-survey-prompt/v3",
+    promptContractVersion: "private-genre-soul-survey-prompt/v4",
     sourceId: selected.sourceId,
     sourceSha256: selected.sourceSha256,
     sourceSizeBytes: selected.sizeBytes,
@@ -1549,6 +1576,7 @@ async function writePrivateCurrentV3SurveyWork(root, input) {
   };
   const readMessages = expectedFiles.flatMap((file, index) => {
     const callId = `survey-v3-call-${index + 1}`;
+    const nextFile = expectedFiles[index + 1] ?? null;
     return [
       {
         role: "assistant",
@@ -1556,7 +1584,12 @@ async function writePrivateCurrentV3SurveyWork(root, input) {
         finish_reason: "tool_calls",
         tool_calls: [{
           id: callId,
-          function: { name: "firefly_read_source", arguments: JSON.stringify({ inputId: file.inputId }) },
+          function: {
+            name: "firefly_read_source",
+            arguments: JSON.stringify(index === 0
+              ? { inputId: file.inputId }
+              : { inputId: file.inputId, cursor: exactReadCursor(file.inputId, file.sha256) }),
+          },
         }],
       },
       {
@@ -1565,10 +1598,15 @@ async function writePrivateCurrentV3SurveyWork(root, input) {
         tool_call_id: callId,
         tool_name: "firefly_read_source",
         content: JSON.stringify({
-          schemaVersion: "firefly-hermes-read-result/v1",
+          schemaVersion: "firefly-hermes-read-result/v2",
           inputId: file.inputId,
           sha256: file.sha256,
           sizeBytes: file.sizeBytes,
+          chunkIndex: 0,
+          chunkCount: 1,
+          chunkSha256: file.sha256,
+          nextInputId: nextFile?.inputId ?? null,
+          nextCursor: nextFile ? exactReadCursor(nextFile.inputId, nextFile.sha256) : null,
           content: file.bytes.toString("utf8"),
         }),
       },
