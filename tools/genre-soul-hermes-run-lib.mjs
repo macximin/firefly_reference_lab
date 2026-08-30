@@ -1017,6 +1017,29 @@ function parseToolArguments(call) {
   throw new Error("Hermes exact-input read arguments are invalid.");
 }
 
+function normalizeHermesToolInvocation(call) {
+  const outerName = call?.function?.name;
+  const outerArguments = parseToolArguments(call);
+  if (outerName !== "tool_call") {
+    return { name: outerName, arguments: outerArguments };
+  }
+
+  assertExactObjectKeys(
+    outerArguments,
+    ["name", "arguments"],
+    "Hermes Codex tool-call envelope",
+  );
+  if (
+    typeof outerArguments.name !== "string"
+    || !outerArguments.arguments
+    || typeof outerArguments.arguments !== "object"
+    || Array.isArray(outerArguments.arguments)
+  ) {
+    throw new Error("Hermes Codex tool-call envelope is invalid.");
+  }
+  return { name: outerArguments.name, arguments: outerArguments.arguments };
+}
+
 function inputIdForIndex(index) {
   return `input-${String(index + 1).padStart(3, "0")}`;
 }
@@ -1233,13 +1256,14 @@ function validateToolPolicy(messages, expectedReadPaths) {
       throw new Error("Hermes exact-input reader must use one sequential tool call per assistant turn.");
     }
     for (const call of toolCalls) {
-      if (call?.function?.name !== HERMES_READ_ONLY_TOOL) {
-        throw new Error(`Hermes structured run used a forbidden tool: ${String(call?.function?.name)}`);
+      const invocation = normalizeHermesToolInvocation(call);
+      if (invocation.name !== HERMES_READ_ONLY_TOOL) {
+        throw new Error(`Hermes structured run used a forbidden tool: ${String(invocation.name)}`);
       }
       if (typeof call.id !== "string" || call.id.length < 1 || calls.some((existing) => existing.id === call.id)) {
         throw new Error("Hermes exact-input read call IDs must be unique and non-empty.");
       }
-      const args = parseToolArguments(call);
+      const args = invocation.arguments;
       const argumentKeys = Object.keys(args).sort();
       if (
         !isDeepStrictEqual(argumentKeys, ["inputId"])

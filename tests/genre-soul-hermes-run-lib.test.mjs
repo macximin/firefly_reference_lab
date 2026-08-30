@@ -371,6 +371,63 @@ test("pure trace validation rejects extra paths, non-read tools, compaction, and
   assert.equal(evidence.contextOutputReserveTokens, 48_000);
   assert.equal(evidence.contextBudgetUpperBoundTokens, evidence.contextInputProxyTokens + 48_000);
 
+  const codexEnvelope = structuredClone(trace);
+  const directArguments = JSON.parse(codexEnvelope.messages[1].tool_calls[0].function.arguments);
+  codexEnvelope.messages[1].tool_calls[0].function = {
+    name: "tool_call",
+    arguments: JSON.stringify({
+      name: "firefly_read_source",
+      arguments: directArguments,
+    }),
+  };
+  const envelopeEvidence = validateHermesStructuredTrace({
+    trace: codexEnvelope,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  });
+  assert.equal(envelopeEvidence.exactReadCount, 1);
+
+  const forbiddenEnvelope = structuredClone(codexEnvelope);
+  forbiddenEnvelope.messages[1].tool_calls[0].function.arguments = JSON.stringify({
+    name: "terminal",
+    arguments: directArguments,
+  });
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: forbiddenEnvelope,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  }), /forbidden tool/u);
+
+  const widenedEnvelope = structuredClone(codexEnvelope);
+  widenedEnvelope.messages[1].tool_calls[0].function.arguments = JSON.stringify({
+    name: "firefly_read_source",
+    arguments: directArguments,
+    approval: "always",
+  });
+  assert.throws(() => validateHermesStructuredTrace({
+    trace: widenedEnvelope,
+    usage: usage(),
+    profileId,
+    prompt,
+    soulText: soul,
+    expectedReadPaths: [path],
+    result,
+    contextLimit: 272000,
+    ...budget,
+  }), /Codex tool-call envelope keys drifted/u);
+
   const unexpected = structuredClone(trace);
   unexpected.messages[1].tool_calls[0].function.arguments = JSON.stringify({ inputId: "input-002" });
   assert.throws(() => validateHermesStructuredTrace({
