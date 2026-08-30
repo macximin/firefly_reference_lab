@@ -81,6 +81,14 @@ lock 아래 zero-match support receipt를 먼저 쓰고 work-study visibility ma
 available corpus 누출 검사 통과 후에만 함께 게시한다. 미해결 충돌이 있으면
 후보를 게시하지 않는다.
 
+이 상한은 raw 파일 크기의 근사치가 아니라 실제 capability v2 cursor chain의
+assistant/tool transcript를 결정론적으로 직렬화한 값이다. profile context,
+bundled plugin, stage prompt, static reserve와 output reserve까지 공용 Hermes
+preflight와 같은 공식으로 합산하고 `budget < contextLimit`일 때만 실행한다.
+각 work partition은 provider 호출 전에 이 영수증을 run-input digest v2에 봉인하고
+실행 직전에 다시 계산한다. 이전 공식으로 만들어진 미완료 run은 수정하거나
+재사용하지 않고 audit trail로 남기며, 새 budget 계약은 새 digest/run root를 쓴다.
+
 `tools/genre-soul-manager-qa-runner.mjs`는 프로필 합성 run을 재사용하지 않는다.
 별도 `gpt-5.6-sol/high` manager run이 각 작품의 early·middle·late 원문
 sub-slice 9개를 새로 읽고, 세 작품의 상업 엔진을 세 쌍 모두 비교한다. 프로필

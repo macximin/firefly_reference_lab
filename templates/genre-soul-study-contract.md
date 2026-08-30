@@ -23,6 +23,14 @@ cursor chunk로 나누고 직전 결과의 `nextInputId`·`nextCursor`를 한 �
 runtime/plugin/input attestation이 모두 일치해야 실행을 완료한다. capsule은 성공과 실패 뒤 모두 삭제하며
 인증 자료나 private 원문을 repository에 영속하지 않는다.
 
+Profile partition budget은 raw source byte 수가 아니라 위 cursor chain의 실제
+assistant/tool transcript byte 수를 사용한다. profile context, bundled plugin,
+stage prompt, static reserve와 output reserve를 공용 Hermes preflight와 동일하게
+합산하며 총합이 context limit과 같아도 거절한다. 모든 work partition은 provider
+호출 전에 계획되고 run-input digest v2에 영수증으로 봉인되며 실행 직전에 exact
+재검증한다. 이전 budget 계약의 미완료 run root는 audit trail로 보존하고 새 실행에
+복사·수정·재사용하지 않는다.
+
 플러그인이 등록되지 않아 완료될 수 없었던 pre-v2 structured attempt는 audit
 trail로만 보존하고 current evidence로 재사용하지 않는다. 실제 역사적 v1 survey와
 deep-read receipt는 기존 별도 validator로 계속 읽으며 새 증거로 재표기하지 않는다.

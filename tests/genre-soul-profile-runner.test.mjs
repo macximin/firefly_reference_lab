@@ -23,6 +23,7 @@ import {
   HERMES_STRUCTURED_ATTEMPT_INPUT_ATTESTATION_SCHEMA,
   buildHermesExecutionEnvironment,
   buildHermesStructuredAttemptInputAttestation,
+  measureHermesExactInputTranscript,
 } from "../tools/genre-soul-hermes-run-lib.mjs";
 import { writePrivateGenreSoulSurfaceHilDecision } from "../tools/genre-soul-surface-hil-decision.mjs";
 import { validateGenreProfileArtifact } from "../tools/genre-soul-study-contract.mjs";
@@ -48,9 +49,10 @@ const CASE_ALIAS_REPOSITORY_ROOT = ACTUAL_REPOSITORY_ROOT.replace("/firefly_stud
 
 function runtimeEvidence(overrides = {}) {
   const runtime = {
-    schemaVersion: "genre-soul-hermes-runtime-evidence/v1",
+    schemaVersion: "genre-soul-hermes-runtime-evidence/v2",
     profileId: "inkos_male_modern_fantasy",
     contextLimit: 272_000,
+    profilePromptContextBytes: 4_096,
     profileConfigSha256: fixedSha("9"),
     soulSha256: hash(Buffer.from(TEST_SOUL_TEXT)),
     contentNeutralContractId: "fiction-content-neutral-ko/v1",
@@ -94,11 +96,12 @@ function buildFixtureReadCapability(input, runtime, inputBytes) {
     schemaVersion: "firefly-hermes-read-manifest/v1",
     inputs: expectedInputs,
   });
-  const pluginFiles = ["__init__.py", "plugin.yaml", "reader.py"].map((name, index) => ({
-    name,
-    sha256: hash(`fixture-plugin-${index}`),
-    sizeBytes: index + 1,
-  }));
+  const pluginFiles = input.expectedPluginPlanningEvidence?.files
+    ?? ["__init__.py", "plugin.yaml", "reader.py"].map((name, index) => ({
+      name,
+      sha256: hash(`fixture-plugin-${index}`),
+      sizeBytes: index + 1,
+    }));
   const executionPolicy = {
     schemaVersion: "hermes-exact-input-execution-policy/v2",
     homeScope: "ephemeral-system-temp",
@@ -825,19 +828,55 @@ test("partitions every observation exactly and fails closed at the context ceili
   const work = makeWork("gdrive-partition", "commercial-anchor", 1);
   const parts = buildBoundedWorkPartitions(work, {
     workPartitionInputBuilder: fakePartitionInput,
-    maxInputConservativeTokenProxy: 3_200,
+    maxInputConservativeTokenProxy: 8_000,
     outputReserveTokens: 48_000,
   });
   const ids = parts.flatMap((part) => part.observationIds);
   assert.deepEqual(ids, work.observations.map((observation) => observation.observationId));
   assert.equal(new Set(ids).size, work.observations.length);
   assert.ok(parts.length > 1);
+  const repeated = buildBoundedWorkPartitions(work, {
+    workPartitionInputBuilder: fakePartitionInput,
+    maxInputConservativeTokenProxy: 8_000,
+    outputReserveTokens: 48_000,
+  });
+  assert.deepEqual(
+    repeated.map((part) => ({
+      partId: part.partId,
+      observationIds: part.observationIds,
+      inputSha256: hash(part.bytes),
+      contextBudget: part.contextBudget,
+    })),
+    parts.map((part) => ({
+      partId: part.partId,
+      observationIds: part.observationIds,
+      inputSha256: hash(part.bytes),
+      contextBudget: part.contextBudget,
+    })),
+  );
+  for (const part of parts) {
+    const measurement = measureHermesExactInputTranscript([part.bytes]);
+    assert.equal(part.contextBudget.readTranscriptProxyBytes, measurement.readTranscriptProxyBytes);
+    assert.equal(part.contextBudget.conservativeTokenProxy, measurement.contextProxyTokens);
+    assert.ok(part.contextBudget.conservativeTokenProxy <= 8_000);
+    assert.equal(part.contextBudget.contextPlan.fits, true);
+  }
   assert.throws(() => assertPrivateInputContextBudget(Buffer.alloc(1_002), {
     maxInputConservativeTokenProxy: 500,
     outputReserveTokens: 48_000,
   }), /context budget failed/u);
-  assert.equal(assertPrivateInputContextBudget(Buffer.alloc(380_000)).conservativeTokenProxy, 190_000);
-  assert.throws(() => assertPrivateInputContextBudget(Buffer.alloc(380_002)), /190001 > 190000/u);
+  const plain = Buffer.alloc(300_000, 0x61);
+  const plainMeasurement = measureHermesExactInputTranscript([plain]);
+  const plainReceipt = assertPrivateInputContextBudget(plain);
+  assert.equal(plainReceipt.conservativeTokenProxy, plainMeasurement.contextProxyTokens);
+  assert.ok(plainReceipt.conservativeTokenProxy < 190_000);
+  const cursorRegression = Buffer.alloc(377_857, 0x61);
+  assert.ok(Math.ceil(cursorRegression.byteLength / 2) < 190_000);
+  assert.ok(measureHermesExactInputTranscript([cursorRegression]).contextProxyTokens > 190_000);
+  assert.throws(() => assertPrivateInputContextBudget(cursorRegression), /context budget failed/u);
+  const escapeHeavy = Buffer.alloc(100_000);
+  assert.ok(measureHermesExactInputTranscript([escapeHeavy]).contextProxyTokens > 190_000);
+  assert.throws(() => assertPrivateInputContextBudget(escapeHeavy), /context budget failed/u);
 });
 
 test("rejects wrong part evidence, work identity, and non-canonical engine shape", () => {
@@ -1258,6 +1297,18 @@ test("publishes only scanned candidates, keeps raw private, and reuses the immut
     });
     assert.equal(first.status, "completed");
     assert.equal(counter.calls, 7);
+    const manifest = JSON.parse(await readFile(join(
+      root,
+      `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${first.inputDigest}/manifest.json`,
+    ), "utf8"));
+    assert.equal(manifest.schemaVersion, "private-genre-soul-profile-run-input-digest/v2");
+    assert.equal(manifest.contextBudgetContractVersion, "genre-soul-profile-context-budget/v1");
+    assert.equal(manifest.outputReserveTokens, 48_000);
+    assert.equal(manifest.exactInputPluginPlanningEvidence.schemaVersion, "hermes-exact-input-plugin-planning-evidence/v1");
+    assert.ok(manifest.workInputs.every((work) => work.parts.every((part) => (
+      part.contextBudget?.schemaVersion === "genre-soul-private-input-context-budget/v1"
+      && part.contextBudget.contextPlan?.fits === true
+    ))));
     assert.equal(validateGenreProfileArtifact(first.profile), true);
     assert.deepEqual(first.profile.evidenceSet.sources.map((source) => source.selectionBasis), bases);
     assert.equal(first.profile.synthesis.privateInput.observationCount, 27);
@@ -1326,6 +1377,49 @@ test("publishes only scanned candidates, keeps raw private, and reuses the immut
       testOnlyScanner: async (input) => passingScan(input),
     }), /released quarantine owner contract drifted; manual audit is required/u);
     assert.equal(counter.calls, 7);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects a consistently sealed Hermes capability that differs from the profile plugin plan", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-plugin-plan-drift-"));
+  const evidence = makeEvidence();
+  const counter = { calls: 0 };
+  const baseExecutor = makeFakeExecutor(counter);
+  try {
+    await assert.rejects(runGenreSoulProfile({
+      testOnlyRepositoryRoot: root,
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => evidence,
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: async (input) => {
+        const planned = input.expectedPluginPlanningEvidence;
+        const driftedDescriptor = {
+          schemaVersion: planned.schemaVersion,
+          files: planned.files.map((file, index) => (
+            index === 0 ? { ...file, sha256: hash("transient-plugin-bytes") } : file
+          )),
+          totalBytes: planned.totalBytes,
+        };
+        return baseExecutor({
+          ...input,
+          expectedPluginPlanningEvidence: {
+            ...driftedDescriptor,
+            sha256: hash(jsonBytes(driftedDescriptor)),
+          },
+        });
+      },
+      testOnlyScanner: async (input) => passingScan(input),
+    }), /sealed plugin capability drifted from the sealed planning evidence/u);
+    assert.equal(counter.calls, 1);
+    assert.equal(await pathExists(join(
+      root,
+      "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
+    )), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

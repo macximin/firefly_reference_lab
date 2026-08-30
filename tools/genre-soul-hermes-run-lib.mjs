@@ -61,6 +61,7 @@ const MAX_FINGERPRINT_BYTES = 512 * 1024 * 1024;
 const CONTEXT_PROXY_BYTES_PER_TOKEN = 2;
 const CONTEXT_STATIC_PROMPT_RESERVE_TOKENS = 16_384;
 const READ_CAPABILITY_SCHEMA = "private-hermes-exact-input-read-capability/v2";
+const READ_PLUGIN_PLANNING_EVIDENCE_SCHEMA = "hermes-exact-input-plugin-planning-evidence/v1";
 const READ_MANIFEST_SCHEMA = "firefly-hermes-read-manifest/v1";
 const READ_RESULT_SCHEMA = "firefly-hermes-read-result/v2";
 const READ_SOURCE_MAX_BYTES = 4_500_000;
@@ -1037,6 +1038,92 @@ function readTranscriptProxyBytes(filesWithChunks) {
   return Buffer.byteLength(JSON.stringify(messages), "utf8");
 }
 
+export function measureHermesExactInputTranscript(inputBuffers) {
+  if (!Array.isArray(inputBuffers) || inputBuffers.length < 1) {
+    throw new Error("Hermes exact-input transcript measurement requires a non-empty Buffer array.");
+  }
+  const filesWithChunks = inputBuffers.map((bytes, index) => {
+    const inputId = inputIdForIndex(index);
+    if (!Buffer.isBuffer(bytes)) {
+      throw new Error(`Hermes exact-input transcript source must be a Buffer: ${inputId}`);
+    }
+    if (bytes.byteLength > READ_SOURCE_MAX_BYTES) {
+      throw new Error(`Hermes exact-input source exceeds the reader source boundary: ${inputId}`);
+    }
+    const content = bytes.toString("utf8");
+    if (Buffer.from(content, "utf8").compare(bytes) !== 0) {
+      throw new Error(`Hermes exact-input source must be valid UTF-8: ${inputId}`);
+    }
+    const chunks = splitHermesExactInputContent(content);
+    return {
+      inputId,
+      sha256: sha256(bytes),
+      sizeBytes: bytes.byteLength,
+      chunkCount: chunks.length,
+      chunks,
+    };
+  });
+  const files = filesWithChunks.map(({ chunks: _chunks, ...file }) => file);
+  const totalBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
+  if (!Number.isSafeInteger(totalBytes)) {
+    throw new Error("Hermes exact-input transcript total bytes exceeded the safe integer boundary.");
+  }
+  const transcriptBytes = readTranscriptProxyBytes(filesWithChunks);
+  return {
+    schemaVersion: "hermes-exact-input-transcript-measurement/v1",
+    files,
+    totalBytes,
+    readTranscriptProxyBytes: transcriptBytes,
+    contextProxyTokens: Math.ceil(transcriptBytes / CONTEXT_PROXY_BYTES_PER_TOKEN),
+  };
+}
+
+export function planHermesStructuredContextBudget({
+  profilePromptContextBytes,
+  pluginContextBytes,
+  prompt,
+  readTranscriptProxyBytes: transcriptBytes,
+  outputReserveTokens,
+  contextLimit,
+} = {}) {
+  assertNonNegativeInteger(profilePromptContextBytes, "Hermes profile prompt context bytes");
+  assertNonNegativeInteger(pluginContextBytes, "Hermes plugin context bytes");
+  if (typeof prompt !== "string") throw new Error("Hermes structured context budget prompt must be text.");
+  assertNonNegativeInteger(transcriptBytes, "Hermes exact-input transcript proxy bytes");
+  assertNonNegativeInteger(outputReserveTokens, "Hermes structured output reserve tokens");
+  if (outputReserveTokens < 1) throw new Error("Hermes structured output reserve tokens must be positive.");
+  assertNonNegativeInteger(contextLimit, "Hermes structured context limit");
+  if (contextLimit < 1) throw new Error("Hermes structured context limit must be positive.");
+  const promptSizeBytes = Buffer.byteLength(prompt, "utf8");
+  const measuredContextBytes = profilePromptContextBytes
+    + pluginContextBytes
+    + promptSizeBytes
+    + transcriptBytes;
+  if (!Number.isSafeInteger(measuredContextBytes)) {
+    throw new Error("Hermes structured context budget bytes exceeded the safe integer boundary.");
+  }
+  const contextInputProxyTokens = CONTEXT_STATIC_PROMPT_RESERVE_TOKENS
+    + Math.ceil(measuredContextBytes / CONTEXT_PROXY_BYTES_PER_TOKEN);
+  const preflightBudgetTokens = contextInputProxyTokens + outputReserveTokens;
+  if (!Number.isSafeInteger(preflightBudgetTokens)) {
+    throw new Error("Hermes structured context budget tokens exceeded the safe integer boundary.");
+  }
+  return {
+    schemaVersion: "hermes-structured-context-budget/v1",
+    contextProxyBytesPerToken: CONTEXT_PROXY_BYTES_PER_TOKEN,
+    staticPromptReserveTokens: CONTEXT_STATIC_PROMPT_RESERVE_TOKENS,
+    profilePromptContextBytes,
+    pluginContextBytes,
+    promptSizeBytes,
+    readTranscriptProxyBytes: transcriptBytes,
+    contextInputProxyTokens,
+    outputReserveTokens,
+    preflightBudgetTokens,
+    contextLimit,
+    fits: preflightBudgetTokens < contextLimit,
+  };
+}
+
 function validateToolPolicy(messages, expectedReadPaths) {
   if (!Array.isArray(expectedReadPaths) || expectedReadPaths.length < 1) {
     throw new Error("Expected Hermes read paths must be non-empty.");
@@ -1879,26 +1966,22 @@ export async function loadHermesExactInputEvidence(expectedReadPaths, inputDiges
   if (!Array.isArray(expectedReadPaths) || expectedReadPaths.length < 1 || new Set(expectedReadPaths).size !== expectedReadPaths.length) {
     throw new Error("Expected Hermes read paths must be unique and non-empty.");
   }
-  const filesWithChunks = await Promise.all(expectedReadPaths.map(async (path, index) => {
-    const inputId = inputIdForIndex(index);
-    const bytes = await readHermesExactInputFile(path, inputId);
-    const content = bytes.toString("utf8");
-    if (Buffer.from(content, "utf8").compare(bytes) !== 0) {
-      throw new Error(`Hermes exact-input source must be valid UTF-8: ${inputId}`);
-    }
-    if (bytes.byteLength > READ_SOURCE_MAX_BYTES) {
-      throw new Error(`Hermes exact-input source exceeds the reader source boundary: ${inputId}`);
-    }
-    const fileSha256 = sha256(bytes);
-    const chunks = splitHermesExactInputContent(content);
-    return { inputId, path, sha256: fileSha256, sizeBytes: bytes.byteLength, chunks };
+  const inputBuffers = await Promise.all(expectedReadPaths.map((path, index) => (
+    readHermesExactInputFile(path, inputIdForIndex(index))
+  )));
+  const measurement = measureHermesExactInputTranscript(inputBuffers);
+  const files = measurement.files.map((file, index) => ({
+    inputId: file.inputId,
+    path: expectedReadPaths[index],
+    sha256: file.sha256,
+    sizeBytes: file.sizeBytes,
+    chunkCount: file.chunkCount,
   }));
-  const files = filesWithChunks.map(({ chunks, ...file }) => ({ ...file, chunkCount: chunks.length }));
   const digestFiles = files.map(({ path, sha256: fileSha256 }) => ({ path, sha256: fileSha256 }));
   return {
     files,
-    totalBytes: files.reduce((total, file) => total + file.sizeBytes, 0),
-    readTranscriptProxyBytes: readTranscriptProxyBytes(filesWithChunks),
+    totalBytes: measurement.totalBytes,
+    readTranscriptProxyBytes: measurement.readTranscriptProxyBytes,
     inputSha256: sha256(jsonBytes(digestFiles)),
   };
 }
@@ -1967,6 +2050,66 @@ async function loadReadPluginFiles() {
     files.push({ name, path, bytes, sha256: sha256(bytes), sizeBytes: bytes.byteLength });
   }
   return files;
+}
+
+export async function loadHermesExactInputPluginPlanningEvidence() {
+  const pluginFiles = await loadReadPluginFiles();
+  const files = pluginFiles.map(({ name, sha256: fileSha256, sizeBytes }) => ({
+    name,
+    sha256: fileSha256,
+    sizeBytes,
+  }));
+  const totalBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
+  const evidence = {
+    schemaVersion: READ_PLUGIN_PLANNING_EVIDENCE_SCHEMA,
+    files,
+    totalBytes,
+  };
+  return validateHermesExactInputPluginPlanningEvidence({
+    ...evidence,
+    sha256: sha256(jsonBytes(evidence)),
+  });
+}
+
+export function validateHermesExactInputPluginPlanningEvidence(evidence) {
+  assertExactObjectKeys(
+    evidence,
+    ["schemaVersion", "files", "totalBytes", "sha256"],
+    "Hermes exact-input plugin planning evidence",
+  );
+  if (
+    evidence.schemaVersion !== READ_PLUGIN_PLANNING_EVIDENCE_SCHEMA
+    || !Array.isArray(evidence.files)
+    || evidence.files.length !== READ_PLUGIN_FILES.length
+  ) throw new Error("Hermes exact-input plugin planning evidence identity drifted.");
+  let totalBytes = 0;
+  evidence.files.forEach((file, index) => {
+    assertExactObjectKeys(file, ["name", "sha256", "sizeBytes"], `Hermes exact-input planning file ${index}`);
+    if (file.name !== READ_PLUGIN_FILES[index]) {
+      throw new Error("Hermes exact-input plugin planning file order drifted.");
+    }
+    assertSha256(file.sha256, `Hermes exact-input planning file ${file.name} digest`);
+    assertNonNegativeInteger(file.sizeBytes, `Hermes exact-input planning file ${file.name} size`);
+    if (file.sizeBytes < 1) throw new Error(`Hermes exact-input planning file is empty: ${file.name}`);
+    totalBytes += file.sizeBytes;
+  });
+  if (!Number.isSafeInteger(totalBytes) || evidence.totalBytes !== totalBytes) {
+    throw new Error("Hermes exact-input plugin planning evidence total bytes drifted.");
+  }
+  assertSha256(evidence.sha256, "Hermes exact-input plugin planning evidence digest");
+  const { sha256: evidenceSha256, ...descriptor } = evidence;
+  if (evidenceSha256 !== sha256(jsonBytes(descriptor))) {
+    throw new Error("Hermes exact-input plugin planning evidence digest drifted.");
+  }
+  return evidence;
+}
+
+export function assertHermesExactInputPluginPlanningMatch(pluginFiles, evidence, label = "Hermes exact-input plugin") {
+  const validated = validateHermesExactInputPluginPlanningEvidence(evidence);
+  if (!Array.isArray(pluginFiles) || !isDeepStrictEqual(pluginFiles, validated.files)) {
+    throw new Error(`${label} drifted from the sealed planning evidence.`);
+  }
+  return true;
 }
 
 function buildReadCapabilityEnvironment(baseEnvironment, manifestPath, manifestSha256) {
@@ -2125,6 +2268,7 @@ export async function prepareHermesExactInputReadCapability({
   profileId,
   runtime,
   inputEvidence,
+  expectedPluginPlanningEvidence,
 } = {}) {
   const absoluteRunRoot = resolve(runRoot ?? "");
   await assertRealRunPath(absoluteRunRoot, absoluteRunRoot, "Hermes exact-input capability run root", {
@@ -2137,11 +2281,6 @@ export async function prepareHermesExactInputReadCapability({
   const capabilityRoot = join(absoluteRunRoot, ".readonly-capability");
   const capabilityRootInfo = await lstatOrNull(capabilityRoot);
   const requireExisting = capabilityRootInfo !== null;
-  if (!requireExisting) await ensureRealAbsoluteDirectory(capabilityRoot, "Hermes exact-input capability root");
-  await assertRealRunPath(absoluteRunRoot, capabilityRoot, "Hermes exact-input capability root", {
-    requireExisting: true,
-    targetType: "directory",
-  });
   const manifestBytes = jsonBytes(buildHermesExactInputReadManifest(inputEvidence.files));
   const manifestPath = join(capabilityRoot, "input-manifest.json");
   const contextCacheBytes = Buffer.from(
@@ -2151,6 +2290,23 @@ export async function prepareHermesExactInputReadCapability({
     throw new Error("Hermes exact-input context cache drifted from the source runtime.");
   }
   const pluginFiles = await loadReadPluginFiles();
+  const pluginFileReceipts = pluginFiles.map(({ name, sha256: fileSha256, sizeBytes }) => ({
+    name,
+    sha256: fileSha256,
+    sizeBytes,
+  }));
+  if (expectedPluginPlanningEvidence !== undefined) {
+    assertHermesExactInputPluginPlanningMatch(
+      pluginFileReceipts,
+      expectedPluginPlanningEvidence,
+      "Hermes exact-input capability plugin",
+    );
+  }
+  if (!requireExisting) await ensureRealAbsoluteDirectory(capabilityRoot, "Hermes exact-input capability root");
+  await assertRealRunPath(absoluteRunRoot, capabilityRoot, "Hermes exact-input capability root", {
+    requireExisting: true,
+    targetType: "directory",
+  });
   await writeOrReuseRunFile(
     absoluteRunRoot,
     manifestPath,
@@ -2164,7 +2320,6 @@ export async function prepareHermesExactInputReadCapability({
   }
   const executionPolicy = canonicalReadExecutionPolicy();
   const executionEnvironmentSha256 = computeReadExecutionEnvironmentSha256(executionPolicy);
-  const pluginFileReceipts = pluginFiles.map(({ name, sha256: fileSha256, sizeBytes }) => ({ name, sha256: fileSha256, sizeBytes }));
   const executionRuntimeIdentitySha256 = computeReadExecutionRuntimeIdentitySha256({
     sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
     manifestSha256: sha256(manifestBytes),
@@ -2423,6 +2578,7 @@ async function revalidateStructuredRunInputs(input, label) {
     profileId: input.profileId,
     runtime: input.runtime,
     inputEvidence,
+    expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
   });
   assertReadCapabilityEqual(input.readCapability, readCapability, `${label} read capability`);
 }
@@ -3029,6 +3185,7 @@ export async function runHermesStructuredAttempt({
   prompt,
   expectedReadPaths,
   inputDigest,
+  expectedPluginPlanningEvidence,
   outputReserveTokens,
   validateResult,
   progress = () => {},
@@ -3043,6 +3200,9 @@ export async function runHermesStructuredAttempt({
   if (outputReserveTokens < 1) throw new Error("Hermes structured output reserve tokens must be positive.");
   if (typeof validateResult !== "function") throw new Error("Hermes structured result validator is required.");
   if (typeof progress !== "function") throw new Error("Hermes structured progress callback must be a function.");
+  const sealedPluginPlanningEvidence = expectedPluginPlanningEvidence === undefined
+    ? undefined
+    : JSON.parse(jsonBytes(validateHermesExactInputPluginPlanningEvidence(expectedPluginPlanningEvidence)).toString("utf8"));
   const absoluteRunRoot = resolve(runRoot);
   const absoluteProfileHome = resolve(profileHome);
   const absoluteProjectCwd = resolve(projectCwd);
@@ -3067,6 +3227,7 @@ export async function runHermesStructuredAttempt({
     prompt,
     expectedReadPaths: absoluteExpectedReadPaths,
     inputDigest,
+    expectedPluginPlanningEvidence: sealedPluginPlanningEvidence,
     outputReserveTokens,
     validateResult,
     progress: async (event) => progress(event),
@@ -3089,16 +3250,18 @@ export async function runHermesStructuredAttempt({
       profileId: input.profileId,
       runtime: input.runtime,
       inputEvidence: input.inputEvidence,
+      expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
     });
-    const preflightInputProxyTokens = CONTEXT_STATIC_PROMPT_RESERVE_TOKENS + Math.ceil((
-      input.runtime.profilePromptContextBytes
-      + input.readCapability.pluginFiles.reduce((total, file) => total + file.sizeBytes, 0)
-      + Buffer.byteLength(prompt, "utf8")
-      + input.inputEvidence.readTranscriptProxyBytes
-    ) / CONTEXT_PROXY_BYTES_PER_TOKEN);
-    const preflightBudgetTokens = preflightInputProxyTokens + outputReserveTokens;
-    if (preflightBudgetTokens >= input.runtime.contextLimit) {
-      throw new Error(`Hermes structured preflight context boundary failed: ${preflightBudgetTokens} >= ${input.runtime.contextLimit}`);
+    const preflight = planHermesStructuredContextBudget({
+      profilePromptContextBytes: input.runtime.profilePromptContextBytes,
+      pluginContextBytes: input.readCapability.pluginFiles.reduce((total, file) => total + file.sizeBytes, 0),
+      prompt,
+      readTranscriptProxyBytes: input.inputEvidence.readTranscriptProxyBytes,
+      outputReserveTokens,
+      contextLimit: input.runtime.contextLimit,
+    });
+    if (!preflight.fits) {
+      throw new Error(`Hermes structured preflight context boundary failed: ${preflight.preflightBudgetTokens} >= ${preflight.contextLimit}`);
     }
     if (await exists(input.completedPath)) {
       const finalized = await validateCompletedPointer(input);
@@ -3149,6 +3312,7 @@ export async function runHermesStructuredAttempt({
       profileId: input.profileId,
       runtime: input.runtime,
       inputEvidence: input.inputEvidence,
+      expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
     });
     assertReadCapabilityEqual(input.readCapability, immediatelyBeforeCapability, "Hermes pre-execution read capability");
     let capsule;
@@ -3193,6 +3357,7 @@ export async function runHermesStructuredAttempt({
         profileId: input.profileId,
         runtime: input.runtime,
         inputEvidence: input.inputEvidence,
+        expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
       });
       assertReadCapabilityEqual(input.readCapability, immediatelyAfterCapability, "Hermes post-execution read capability");
       await assertHermesExactInputExecutionCapsuleStable(
@@ -3233,6 +3398,7 @@ export async function runHermesStructuredAttempt({
         profileId: input.profileId,
         runtime: input.runtime,
         inputEvidence: input.inputEvidence,
+        expectedPluginPlanningEvidence: input.expectedPluginPlanningEvidence,
       });
       assertReadCapabilityEqual(input.readCapability, afterCapabilityTraceExport, "Hermes post-export read capability");
       await assertHermesExactInputExecutionCapsuleStable(

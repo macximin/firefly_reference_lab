@@ -32,7 +32,10 @@ import {
   extractHermesContextLimitEntry,
   loadHermesBinaryRuntimeEvidence,
   loadHermesExactInputEvidence,
+  loadHermesExactInputPluginPlanningEvidence,
   loadHermesRuntimeEvidence,
+  measureHermesExactInputTranscript,
+  planHermesStructuredContextBudget,
   runHermesStructuredAttempt,
   validateHermesStructuredAttemptEvidenceFileNames,
   validateHermesProfileRuntime,
@@ -497,6 +500,111 @@ test("public exact-input APIs bind opaque IDs to complete UTF-8 result bytes", a
     loadHermesExactInputEvidence([linkedPath], inputDigest),
     /symbolic-link component/u,
   );
+});
+
+test("in-memory exact-input transcript measurement matches file evidence for ordered mixed UTF-8 inputs", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-transcript-measurement-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const inputBuffers = [
+    Buffer.from("한글, quote=\", slash=\\\\, newline=\n, emoji=😀, nul=\u0000, 끝\n", "utf8"),
+    Buffer.alloc(0),
+    Buffer.from("第二入力と café\r\n", "utf8"),
+  ];
+  const inputPaths = inputBuffers.map((_, index) => join(root, `source-${index + 1}.txt`));
+  await Promise.all(inputPaths.map((path, index) => writeFile(path, inputBuffers[index])));
+  const measurement = measureHermesExactInputTranscript(inputBuffers);
+  const evidence = await loadHermesExactInputEvidence(inputPaths, digest("ordered-mixed-inputs"));
+  assert.equal(measurement.schemaVersion, "hermes-exact-input-transcript-measurement/v1");
+  assert.deepEqual(
+    evidence.files.map(({ path: _path, ...file }) => file),
+    measurement.files,
+  );
+  assert.equal(evidence.totalBytes, measurement.totalBytes);
+  assert.equal(evidence.readTranscriptProxyBytes, measurement.readTranscriptProxyBytes);
+  assert.equal(
+    measurement.contextProxyTokens,
+    Math.ceil(measurement.readTranscriptProxyBytes / 2),
+  );
+  assert.deepEqual(measurement.files.map((file) => file.inputId), ["input-001", "input-002", "input-003"]);
+  assert.equal(measurement.files[1].sizeBytes, 0);
+  assert.equal(measurement.files[1].chunkCount, 1);
+  assert.throws(
+    () => measureHermesExactInputTranscript([]),
+    /requires a non-empty Buffer array/u,
+  );
+  assert.throws(
+    () => measureHermesExactInputTranscript([new Uint8Array([0x61])]),
+    /must be a Buffer/u,
+  );
+  assert.throws(
+    () => measureHermesExactInputTranscript([Buffer.from([0xc3, 0x28])]),
+    /must be valid UTF-8/u,
+  );
+  assert.throws(
+    () => measureHermesExactInputTranscript([Buffer.alloc(4_500_001, 0x61)]),
+    /exceeds the reader source boundary/u,
+  );
+});
+
+test("structured context planning uses the generic preflight formula and rejects equality", () => {
+  const transcript = measureHermesExactInputTranscript([
+    Buffer.from("한글 \\\\ \" 😀 \u0000\n", "utf8"),
+    Buffer.from("second input", "utf8"),
+  ]);
+  const options = {
+    profilePromptContextBytes: 1_237,
+    pluginContextBytes: 2_345,
+    prompt: "Unicode prompt: 분석 😀",
+    readTranscriptProxyBytes: transcript.readTranscriptProxyBytes,
+    outputReserveTokens: 48_000,
+    contextLimit: 272_000,
+  };
+  const plan = planHermesStructuredContextBudget(options);
+  const expectedInputTokens = 16_384 + Math.ceil((
+    options.profilePromptContextBytes
+    + options.pluginContextBytes
+    + Buffer.byteLength(options.prompt, "utf8")
+    + options.readTranscriptProxyBytes
+  ) / 2);
+  assert.deepEqual(plan, {
+    schemaVersion: "hermes-structured-context-budget/v1",
+    contextProxyBytesPerToken: 2,
+    staticPromptReserveTokens: 16_384,
+    profilePromptContextBytes: options.profilePromptContextBytes,
+    pluginContextBytes: options.pluginContextBytes,
+    promptSizeBytes: Buffer.byteLength(options.prompt, "utf8"),
+    readTranscriptProxyBytes: options.readTranscriptProxyBytes,
+    contextInputProxyTokens: expectedInputTokens,
+    outputReserveTokens: options.outputReserveTokens,
+    preflightBudgetTokens: expectedInputTokens + options.outputReserveTokens,
+    contextLimit: options.contextLimit,
+    fits: true,
+  });
+  const equalBoundary = planHermesStructuredContextBudget({
+    ...options,
+    contextLimit: plan.preflightBudgetTokens,
+  });
+  assert.equal(equalBoundary.preflightBudgetTokens, equalBoundary.contextLimit);
+  assert.equal(equalBoundary.fits, false);
+  assert.equal(planHermesStructuredContextBudget({
+    ...options,
+    contextLimit: plan.preflightBudgetTokens + 1,
+  }).fits, true);
+});
+
+test("exact-input plugin planning evidence binds the canonical three-file set", async () => {
+  const evidence = await loadHermesExactInputPluginPlanningEvidence();
+  assert.equal(evidence.schemaVersion, "hermes-exact-input-plugin-planning-evidence/v1");
+  assert.deepEqual(evidence.files.map((file) => file.name), ["__init__.py", "plugin.yaml", "reader.py"]);
+  assert.equal(
+    evidence.totalBytes,
+    evidence.files.reduce((total, file) => total + file.sizeBytes, 0),
+  );
+  assert.equal(evidence.sha256, digest(jsonBytes({
+    schemaVersion: evidence.schemaVersion,
+    files: evidence.files,
+    totalBytes: evidence.totalBytes,
+  })));
 });
 
 test("allows only the capsule-owned bundled plugin discovery root", { concurrency: false }, async (t) => {
@@ -979,6 +1087,32 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
       },
       progress: (event) => progress.push(event.event),
     };
+    const pluginPlanningEvidence = await loadHermesExactInputPluginPlanningEvidence();
+    const driftedPlanningDescriptor = {
+      schemaVersion: pluginPlanningEvidence.schemaVersion,
+      files: pluginPlanningEvidence.files.map((file, index) => (
+        index === 0 ? { ...file, sha256: digest("canonical-but-not-live-plugin") } : file
+      )),
+      totalBytes: pluginPlanningEvidence.totalBytes,
+    };
+    const driftedPluginPlanningEvidence = {
+      ...driftedPlanningDescriptor,
+      sha256: digest(jsonBytes(driftedPlanningDescriptor)),
+    };
+    const pluginPlanningDriftRunRoot = join(root, "plugin-planning-drift-run");
+    await assert.rejects(
+      runHermesStructuredAttempt({
+        ...options,
+        runRoot: pluginPlanningDriftRunRoot,
+        expectedPluginPlanningEvidence: driftedPluginPlanningEvidence,
+        progress: () => {},
+      }),
+      /plugin.*drifted from the sealed planning evidence/u,
+    );
+    let preflightInvocations = (await readFile(invocationLog, "utf8")).trim().split("\n");
+    assert.equal(preflightInvocations.filter((entry) => entry === "--oneshot").length, 0);
+    await assert.rejects(lstat(join(pluginPlanningDriftRunRoot, ".readonly-capability")), { code: "ENOENT" });
+    options.expectedPluginPlanningEvidence = pluginPlanningEvidence;
     const first = await runHermesStructuredAttempt(options);
     assert.equal(first.status, "completed");
     assert.equal(first.reused, false);
