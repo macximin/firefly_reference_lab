@@ -52,8 +52,13 @@ input/result/prompt가 예산 안에 들면 HIL gate v3와 owner request v4 경�
 단일 finding도 맞지 않으면 실패한다. 각 part의 v1 input/result와 별도 reviewer
 host receipt를 검증한 뒤 host만
 `private-genre-soul-surface-semantic-review-aggregate/v1`을 만든다. LLM 재합성은
-없다. plan·모든 part·aggregate 실제 bytes는 completion seal과 재사용 readback의
-필수 증거다.
+없다. Profile reviewer의 raw result는 모델이 반환한 bytes 그대로 보존하고 host
+receipt는 그 raw result에 결속한다. 다만 `windowCoverageComplete:false` finding의 raw verdict가 uncertain이
+아니면 host가 aggregate seal 전에 effective verdict만 `uncertain` /
+`insufficient-context`로 fail-closed 투영하고 evidence window ID는 보존한다.
+aggregate decision union·part projection·count·outcome·HIL은 이 effective verdict를
+사용한다. plan·모든 raw part·aggregate 실제 bytes는 completion seal과 재사용
+readback의 필수 증거다.
 
 Hermes v0.19의 일반 profile process는 global singleton을 읽은 뒤에도 profile-local
 lock/write 경로로 refresh할 수 있다. upstream source-aware Codex transaction이
@@ -84,18 +89,21 @@ seal이 없으면 profile을 완료 후보로 보거나 QA를 시작·재사용�
 과승격하지 않고 bounded candidate/private window finding으로 만든다. 별도
 producer가 아닌 `gpt-5.6-sol/high` semantic reviewer가 모든 finding을 정확히 한
 번씩 `generic-overlap`, `protected-identity`, `uncertain`으로 판정한다. window
-coverage가 불완전하면 반드시 `uncertain`이다. protected 하나라도 있으면 owner가
-우회할 수 없는 전역 차단이고, uncertain만 owner HIL로 간다. `대기업` 같은 짧은
-일반 상업 메커니즘은 길이만으로 자동 거절하지 않는다. InkOS chapter 전용
-Storyyard Review Packet v2를 이 분석 판정으로 재라벨하지 않는다.
+coverage가 불완전하면 effective 판정은 반드시 `uncertain`이다. Profile에서는
+모델의 다른 raw 의견도 감사 증거로 보존하되 host projection이 안전 판정을
+소유한다. Manager QA는 기존처럼 이런 raw 의견 자체를 invalid output으로 거절한다.
+protected 하나라도 있으면 owner가 우회할 수 없는 전역 차단이고, uncertain만 owner
+HIL로 간다. `대기업` 같은 짧은 일반 상업 메커니즘은 길이만으로 자동 거절하지
+않는다. InkOS chapter 전용 Storyyard Review Packet v2를 이 분석 판정으로
+재라벨하지 않는다.
 
 Single semantic 경로는 legacy v1 input/result/prompt와
 `genre-soul-protected-surface-hil/v3`,
 `private-genre-soul-ambiguous-surface-request/v4`,
 `private-genre-soul-ambiguous-surface-decision/v3`를 사용한다. request v4는 전체
-finding-set SHA와 generic/protected/uncertain ID partition을 semantic result
-reference와 함께 결속한다. 과거 request v3는 읽기·결정 재생 호환만 유지하며 새로
-쓰지 않는다. Profile overflow
+finding-set SHA와 host-effective generic/protected/uncertain ID partition을 raw
+semantic result reference와 함께 결속한다. 과거 request v3는 읽기·결정 재생
+호환만 유지하며 새로 쓰지 않는다. Profile overflow
 경로는 모든 part의 exact finding union과 reviewer role/run 분리를 host aggregate가
 재구성한다. protected가 없고 uncertain이 있을 때에만 part별 요청 대신 정확히 한
 개의 `private-genre-soul-batch-ambiguous-surface-request/v4`와

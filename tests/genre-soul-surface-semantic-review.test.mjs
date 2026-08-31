@@ -32,12 +32,12 @@ const producerRuns = [{
   hostReceiptSha256: sha256("producer-receipt"),
 }];
 
-function evaluate({ candidate, samples, bindings = [] }) {
+function evaluate({ candidate, samples, bindings = [], stage = "profile" }) {
   return evaluateGenreSoulSurfaceHil({
-    stage: "profile",
+    stage,
     genre: "modern-fantasy-ko",
     soulId: "male-modern-fantasy-ko",
-    inputDigest: sha256("profile-input"),
+    inputDigest: sha256(`${stage}-input`),
     candidatePath: "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/test/genre/candidate.json",
     candidate,
     selectionBindings: bindings,
@@ -363,7 +363,7 @@ test("strict review coverage and fresh reviewer receipt fail closed", () => {
   );
 });
 
-test("raw evidence windows are globally bounded per finding and incomplete coverage fails closed to uncertain", () => {
+test("profile host projects incomplete raw opinions to uncertain while preserving evidence and Manager stays strict", () => {
   const candidate = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [
     `mechanism${String(index).padStart(2, "0")}`,
     `김광 방식 ${index}`,
@@ -381,11 +381,101 @@ test("raw evidence windows are globally bounded per finding and incomplete cover
   assert.equal(finding.windowCoverageComplete, false);
 
   const input = buildPrivateGenreSoulSurfaceSemanticReviewInput({ evaluation, producerRuns });
+  const rawGeneric = reviewResult(input, () => "generic-overlap");
+  const rawGenericBytes = Buffer.from(rawGeneric.bytes);
+  const rawGenericDecision = structuredClone(rawGeneric.result.findingDecisions[0]);
+  const genericRun = reviewRun(input, rawGeneric);
+  assert.equal(genericRun.receipt.resultSha256, rawGeneric.sha256);
+  assert.equal(validateGenreSoulSurfaceSemanticReviewReceipt(genericRun.receipt, {
+    input: input.bytes,
+    inputPath: genericRun.inputPath,
+    prompt: genericRun.prompt,
+    result: rawGeneric.bytes,
+    producerRuns,
+  }), true);
+  const genericResolution = resolveGenreSoulSurfaceSemanticReview({
+    evaluation,
+    input: input.bytes,
+    result: rawGeneric.bytes,
+    reviewRun: genericRun,
+  });
+  assert.equal(genericResolution.status, "pending_hil");
+  assert.deepEqual(genericResolution.semanticProjection.uncertainFindingIds, [finding.findingId]);
+  assert.deepEqual(genericResolution.semanticProjection.genericFindingIds, []);
+  assert.equal(genericResolution.semanticReview.result.sha256, rawGeneric.sha256);
+  assert.equal(rawGeneric.bytes.compare(rawGenericBytes), 0);
+  assert.deepEqual(rawGeneric.result.findingDecisions[0], rawGenericDecision);
+
+  const rawProtected = reviewResult(input, () => "protected-identity");
+  const protectedResolution = resolveGenreSoulSurfaceSemanticReview({
+    evaluation,
+    input: input.bytes,
+    result: rawProtected.bytes,
+    reviewRun: reviewRun(input, rawProtected),
+  });
+  assert.equal(rawProtected.result.findingDecisions[0].verdict, "protected-identity");
+  assert.equal(protectedResolution.status, "pending_hil");
+  assert.deepEqual(protectedResolution.blockers, []);
+  assert.deepEqual(protectedResolution.semanticProjection.uncertainFindingIds, [finding.findingId]);
+
+  const invalidEvidence = structuredClone(rawGeneric.result);
+  invalidEvidence.findingDecisions[0].evidenceWindowIds = [finding.candidateWindows[0].windowId];
   assert.throws(
-    () => reviewResult(input, () => "generic-overlap"),
+    () => validatePrivateGenreSoulSurfaceSemanticReviewResult(invalidEvidence, { input: input.bytes }),
+    /candidate and private-source evidence/u,
+  );
+
+  const plan = buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+    evaluation,
+    producerRuns,
+    contextBudgetForPart: twoFindingBudget,
+  });
+  const aggregateBase = {
+    evaluation,
+    producerRuns,
+    plan: plan.bytes,
+    planPath: "exports/private/surface-review/partition-plan.json",
+    aggregatePath: "exports/private/surface-review/aggregate.json",
+    contextBudgetForPart: twoFindingBudget,
+  };
+  const protectedParts = aggregateParts(plan, () => "protected-identity");
+  const rawPartResultBytes = Buffer.from(protectedParts[0].result);
+  const rawPartDecision = JSON.parse(rawPartResultBytes).findingDecisions[0];
+  const projected = buildPrivateGenreSoulSurfaceSemanticReviewAggregate({
+    ...aggregateBase,
+    parts: protectedParts,
+  });
+  assert.equal(projected.status, "pending_hil");
+  assert.deepEqual(projected.aggregate.findingDecisions[0], {
+    ...rawPartDecision,
+    verdict: "uncertain",
+    reasonCode: "insufficient-context",
+  });
+  assert.deepEqual(projected.semanticReviewBinding.parts[0].uncertainFindingIds, [finding.findingId]);
+  assert.deepEqual(projected.semanticReviewBinding.parts[0].protectedFindingIds, []);
+  assert.equal(projected.semanticReviewBinding.verdictCounts.uncertain, 1);
+  assert.equal(projected.semanticReviewBinding.verdictCounts.protectedIdentity, 0);
+  assert.equal(projected.semanticReviewBinding.parts[0].result.sha256, sha256(rawPartResultBytes));
+  assert.equal(protectedParts[0].reviewRun.receipt.resultSha256, sha256(rawPartResultBytes));
+  assert.equal(protectedParts[0].result.compare(rawPartResultBytes), 0);
+
+  const uncertainParts = aggregateParts(plan, () => "uncertain");
+  const alreadyUncertain = JSON.parse(uncertainParts[0].result).findingDecisions[0];
+  const idempotent = buildPrivateGenreSoulSurfaceSemanticReviewAggregate({
+    ...aggregateBase,
+    parts: uncertainParts,
+  });
+  assert.deepEqual(idempotent.aggregate.findingDecisions[0], alreadyUncertain);
+
+  const managerEvaluation = evaluate({ candidate, samples, stage: "manager-qa" });
+  const managerInput = buildPrivateGenreSoulSurfaceSemanticReviewInput({
+    evaluation: managerEvaluation,
+    producerRuns,
+  });
+  assert.throws(
+    () => reviewResult(managerInput, () => "generic-overlap"),
     /must remain uncertain/u,
   );
-  assert.equal(reviewResult(input, () => "uncertain").result.findingDecisions[0].verdict, "uncertain");
 });
 
 test("legacy single v1 input and prompt bytes stay stable while shared context preflight is exact", () => {

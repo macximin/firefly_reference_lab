@@ -549,7 +549,7 @@ function makeOverflowAmbiguousTerms(count = 36) {
   return Array.from({ length: count }, (_, index) => `김${String.fromCharCode(0xac00 + index)}`);
 }
 
-function makeAmbiguousSurfaceEvidence(terms = null) {
+function makeAmbiguousSurfaceEvidence(terms = null, { sampleSelectorCount = 8 } = {}) {
   const evidence = makeEvidence();
   const surfaceWork = evidence.bindings.find((binding) => binding.sourceId === "gdrive-surface");
   const sourceText = terms === null
@@ -557,7 +557,7 @@ function makeAmbiguousSurfaceEvidence(terms = null) {
     : terms.map((term) => `${term} 원천맥락아자차카타파하`).join(" ");
   const selectors = terms === null
     ? [surfaceWork.observations[0].selectors[0]]
-    : surfaceWork.observations.slice(0, 8).map((observation) => observation.selectors[0]);
+    : surfaceWork.observations.slice(0, sampleSelectorCount).map((observation) => observation.selectors[0]);
   selectors.forEach((selector) => bindTestSourceText(selector, sourceText));
   return evidence;
 }
@@ -2855,6 +2855,98 @@ test("profile production-budget overflow partitions all-generic findings and reu
       profile: completed.profile,
       soulText: TEST_SOUL_TEXT,
     }), /aggregate drifted|verdictCounts|partition evidence/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile partition aggregate preserves raw verdict evidence and fail-closes incomplete windows to HIL", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-overflow-incomplete-"));
+  const counter = { calls: 0 };
+  const terms = makeOverflowAmbiguousTerms();
+  const options = {
+    testOnlyRepositoryRoot: root,
+    genre: "modern-fantasy-ko",
+    testOnly: true,
+    testOnlySoulText: TEST_SOUL_TEXT,
+    testOnlyEvidenceLoader: async () => makeAmbiguousSurfaceEvidence(terms, { sampleSelectorCount: 9 }),
+    testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+    testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+    testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), (result, input) => {
+      injectAmbiguousWorkSurface(result, input, terms);
+    }),
+    testOnlyScanner: async (input) => passingScan(input),
+  };
+  try {
+    const pending = await runGenreSoulProfile(options);
+    assert.equal(pending.status, "pending_hil");
+    assert.equal(pending.surfaceReview.mode, "partitioned");
+    assert.equal(pending.surfaceReview.status, "pending_hil");
+
+    const plan = JSON.parse(await readFile(join(root, pending.surfaceReview.partitionPlanPath), "utf8"));
+    const surfaceRoot = dirname(pending.surfaceReview.partitionPlanPath);
+    let incompleteCount = 0;
+    let selected = null;
+    for (const part of plan.parts) {
+      const partRoot = join(surfaceRoot, "parts", part.partId);
+      const input = JSON.parse(await readFile(join(root, partRoot, "input.json"), "utf8"));
+      const incompleteFindings = input.findings.filter((finding) => !finding.windowCoverageComplete);
+      incompleteCount += incompleteFindings.length;
+      if (selected !== null || incompleteFindings.length < 1) continue;
+      const finding = incompleteFindings[0];
+      const rawResultBytes = await readFile(join(root, partRoot, "accepted.json"));
+      const rawResult = JSON.parse(rawResultBytes);
+      const rawDecision = rawResult.findingDecisions.find((decision) => decision.findingId === finding.findingId);
+      const acceptedReceipt = JSON.parse(await readFile(
+        join(root, partRoot, "accepted-host-receipt.json"),
+        "utf8",
+      ));
+      const completedPointer = JSON.parse(await readFile(join(root, partRoot, "hermes", "completed.json"), "utf8"));
+      const attemptRoot = join(partRoot, "hermes", completedPointer.attempt);
+      const candidateOutput = JSON.parse(await readFile(join(root, attemptRoot, "candidate-output.txt"), "utf8"));
+      const attemptResultBytes = await readFile(join(root, attemptRoot, "result.json"));
+      selected = {
+        partId: part.partId,
+        finding,
+        rawDecision,
+        rawResult,
+        rawResultBytes,
+        acceptedReceipt,
+        candidateOutput,
+        attemptResultBytes,
+      };
+    }
+    assert.ok(selected);
+    assert.ok(incompleteCount > 0);
+    assert.equal(selected.rawDecision.verdict, "generic-overlap");
+    assert.equal(selected.rawDecision.reasonCode, "common-lexeme");
+    assert.deepEqual(selected.candidateOutput, selected.rawResult);
+    assert.equal(selected.attemptResultBytes.compare(selected.rawResultBytes), 0);
+    assert.equal(selected.acceptedReceipt.resultSha256, hash(selected.rawResultBytes));
+
+    const aggregate = JSON.parse(await readFile(join(root, pending.surfaceReview.aggregatePath), "utf8"));
+    const effectiveDecision = aggregate.findingDecisions.find((decision) => (
+      decision.findingId === selected.finding.findingId
+    ));
+    assert.deepEqual(effectiveDecision, {
+      ...selected.rawDecision,
+      verdict: "uncertain",
+      reasonCode: "insufficient-context",
+    });
+    assert.equal(aggregate.verdictCounts.uncertain, incompleteCount);
+    assert.equal(aggregate.verdictCounts.protectedIdentity, 0);
+    assert.equal(aggregate.outcome, "pending_hil");
+    const aggregatePart = aggregate.parts.find((part) => part.partId === selected.partId);
+    assert.ok(aggregatePart.uncertainFindingIds.includes(selected.finding.findingId));
+    assert.equal(aggregatePart.result.sha256, hash(selected.rawResultBytes));
+
+    const request = JSON.parse(await readFile(join(root, pending.surfaceHil.requestPath), "utf8"));
+    assert.equal(request.findings.length, incompleteCount);
+    assert.ok(request.findings.some((finding) => finding.findingId === selected.finding.findingId));
+    assert.equal(await pathExists(join(
+      root,
+      `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${pending.inputDigest}/completed.json`,
+    )), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

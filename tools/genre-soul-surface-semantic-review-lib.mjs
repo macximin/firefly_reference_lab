@@ -566,7 +566,13 @@ function validateResultObject(result, inputValidation) {
     if (!REASON_CODES.get(decision.verdict)?.has(decision.reasonCode)) {
       throw new Error(`findingDecisions[${index}] reasonCode is invalid for its verdict.`);
     }
-    if (!finding.windowCoverageComplete && decision.verdict !== "uncertain") {
+    // Profile keeps the raw reviewer opinion as evidence; its effective gate
+    // verdict is fail-closed below. Manager QA retains strict raw compliance.
+    if (
+      input.stage !== "profile"
+      && !finding.windowCoverageComplete
+      && decision.verdict !== "uncertain"
+    ) {
       throw new Error(`findingDecisions[${index}] must remain uncertain because window coverage is incomplete.`);
     }
     const candidateIds = new Set(finding.candidateWindows.map((window) => window.windowId));
@@ -597,6 +603,25 @@ export function validatePrivateGenreSoulSurfaceSemanticReviewResult(value, { inp
   const bytes = canonicalJsonBytes(parsed.value);
   if (parsed.suppliedBytes && !parsed.suppliedBytes.equals(bytes)) throw new Error("Semantic review result bytes are not canonical.");
   return { result: parsed.value, bytes, sha256: sha256(bytes) };
+}
+
+function effectiveFindingDecisions(input, rawFindingDecisions) {
+  const findingById = new Map(input.findings.map((finding) => [finding.findingId, finding]));
+  return rawFindingDecisions.map((decision) => {
+    const finding = findingById.get(decision.findingId);
+    if (
+      input.stage === "profile"
+      && finding?.windowCoverageComplete === false
+      && decision.verdict !== "uncertain"
+    ) {
+      return {
+        ...structuredClone(decision),
+        verdict: "uncertain",
+        reasonCode: "insufficient-context",
+      };
+    }
+    return structuredClone(decision);
+  });
 }
 
 export function validateGenreSoulSurfaceSemanticReviewReceipt(receipt, {
@@ -750,8 +775,12 @@ function calculateSemanticReviewAggregate({
     });
     reviewerRoles.push(part.reviewRun.receipt.role);
     reviewerRunIds.push(part.reviewRun.receipt.runId);
-    findingDecisions.push(...structuredClone(resultValidation.result.findingDecisions));
-    const verdictProjection = semanticVerdictProjection(resultValidation.result.findingDecisions);
+    const effectiveDecisions = effectiveFindingDecisions(
+      inputValidation.input,
+      resultValidation.result.findingDecisions,
+    );
+    findingDecisions.push(...effectiveDecisions);
+    const verdictProjection = semanticVerdictProjection(effectiveDecisions);
     partProjections.push({
       partId: part.partId,
       findingIds: structuredClone(expected.findingIds),
@@ -894,7 +923,10 @@ export function resolveGenreSoulSurfaceSemanticReview({ evaluation, input, resul
       promptSha256: reviewRun.receipt.promptSha256,
     },
   };
-  const decisions = new Map(resultValidation.result.findingDecisions.map((decision) => [decision.findingId, decision]));
+  const decisions = new Map(effectiveFindingDecisions(
+    inputValidation.input,
+    resultValidation.result.findingDecisions,
+  ).map((decision) => [decision.findingId, decision]));
   const semanticProjection = {
     findingSetSha256: evaluation.findingSetSha256,
     genericFindingIds: evaluation.findings
