@@ -670,7 +670,10 @@ export function validateManagerQaReceipt(receipt, context = {}) {
   assertExactKeys(receipt.privateInput, [
     "schemaVersion", "path", "sha256", "sizeBytes", "sourceIds", "rawSampleCount",
   ], "managerQa.privateInput");
-  if (receipt.privateInput.schemaVersion !== "private-genre-soul-manager-qa-input/v1") {
+  if (!new Set([
+    "private-genre-soul-manager-qa-input/v1",
+    "private-genre-soul-manager-qa-input/v2",
+  ]).has(receipt.privateInput.schemaVersion)) {
     throw new Error("Manager QA private input schema is invalid.");
   }
   assertRepoRelativePath(receipt.privateInput.path, "managerQa.privateInput.path");
@@ -767,7 +770,13 @@ export function validateManagerQaReceipt(receipt, context = {}) {
         || review.decision.outcome !== "approved"
         || review.decision.decidedByRole !== "owner"
       ) throw new Error("Manager QA surface review proof requires an exact approved owner decision.");
-    } else if (currentSurfaceContract && review.schemaVersion === "genre-soul-manager-surface-review-proof/v2") {
+    } else if (
+      currentSurfaceContract
+      && new Set([
+        "genre-soul-manager-surface-review-proof/v2",
+        "genre-soul-manager-surface-review-proof/v3",
+      ]).has(review.schemaVersion)
+    ) {
       assertExactKeys(review, [
         "schemaVersion", "gateVersion", "extractorVersion", "mode", "candidate", "deterministic",
         "semantic", "ownerDecision", "authority",
@@ -842,10 +851,19 @@ export function validateManagerQaReceipt(receipt, context = {}) {
         throw new Error("Manager QA deterministic surface status is unsupported.");
       }
       if (review.semantic !== null) {
-        assertExactKeys(review.semantic, [
+        const semanticKeys = [
           "input", "result", "receipt", "reviewer", "findingDecisions", "verdictCounts", "outcome",
-        ], "managerQa.surfaceReview.semantic");
-        for (const key of ["input", "result", "receipt"]) {
+        ];
+        if (review.schemaVersion === "genre-soul-manager-surface-review-proof/v3") {
+          semanticKeys.splice(3, 0, "readCapability");
+          semanticKeys.splice(5, 0, "contextEvidence");
+        }
+        assertExactKeys(review.semantic, semanticKeys, "managerQa.surfaceReview.semantic");
+        const referenceKeys = ["input", "result", "receipt"];
+        if (review.schemaVersion === "genre-soul-manager-surface-review-proof/v3") {
+          referenceKeys.push("readCapability");
+        }
+        for (const key of referenceKeys) {
           assertBoundReference(review.semantic[key], `managerQa.surfaceReview.semantic.${key}`);
         }
         if (
@@ -868,6 +886,77 @@ export function validateManagerQaReceipt(receipt, context = {}) {
           || review.semantic.reviewer.reasoningEffort !== "high"
         ) throw new Error("Manager QA semantic reviewer identity or run separation drifted.");
         assertSha(review.semantic.reviewer.promptSha256, "managerQa.surfaceReview.semantic.reviewer.promptSha256");
+        if (review.schemaVersion === "genre-soul-manager-surface-review-proof/v3") {
+          if (receipt.privateInput.schemaVersion !== "private-genre-soul-manager-qa-input/v2") {
+            throw new Error("Manager QA surface proof v3 requires private Manager input v2.");
+          }
+          const contextEvidence = review.semantic.contextEvidence;
+          assertExactKeys(contextEvidence, [
+            "schemaVersion", "runDescriptor", "budget",
+          ], "managerQa.surfaceReview.semantic.contextEvidence");
+          if (contextEvidence.schemaVersion !== "private-genre-soul-manager-surface-context-evidence/v1") {
+            throw new Error("Manager QA semantic context evidence schema is invalid.");
+          }
+          assertBoundReference(
+            contextEvidence.runDescriptor,
+            "managerQa.surfaceReview.semantic.contextEvidence.runDescriptor",
+          );
+          if (
+            contextEvidence.runDescriptor.path !== `${structuredRunRoot}/run-descriptor.json`
+            || contextEvidence.runDescriptor.sha256 !== receipt.manager.inputDigest
+          ) {
+            throw new Error("Manager QA semantic context evidence is not bound to the current run descriptor.");
+          }
+          const readCapabilityPrefix = `${surfaceRoot}/semantic/hermes/attempts/`;
+          if (
+            !review.semantic.readCapability.path.startsWith(readCapabilityPrefix)
+            || !review.semantic.readCapability.path.endsWith("/read-capability.json")
+          ) throw new Error("Manager QA semantic read capability path is not bound to its reviewer attempt.");
+          const budget = contextEvidence.budget;
+          assertExactKeys(budget, [
+            "schemaVersion", "inputSha256", "inputSizeBytes", "chunkCount", "readTranscriptProxyBytes",
+            "conservativeTokenProxy", "maxInputConservativeTokenProxy", "promptSha256", "promptSizeBytes",
+            "outputReserveTokens", "contextLimit", "profilePromptContextBytes", "projectPromptContextBytes",
+            "pluginContextBytes", "contextPlan",
+          ], "managerQa.surfaceReview.semantic.contextEvidence.budget");
+          assertExactKeys(budget.contextPlan, [
+            "schemaVersion", "contextProxyBytesPerToken", "staticPromptReserveTokens",
+            "profilePromptContextBytes", "projectPromptContextBytes", "pluginContextBytes", "promptSizeBytes",
+            "readTranscriptProxyBytes", "contextInputProxyTokens", "outputReserveTokens",
+            "preflightBudgetTokens", "contextLimit", "fits",
+          ], "managerQa.surfaceReview.semantic.contextEvidence.budget.contextPlan");
+          const nonNegativeIntegers = [
+            "inputSizeBytes", "chunkCount", "readTranscriptProxyBytes", "conservativeTokenProxy",
+            "maxInputConservativeTokenProxy", "promptSizeBytes", "outputReserveTokens", "contextLimit",
+            "profilePromptContextBytes", "projectPromptContextBytes", "pluginContextBytes",
+          ];
+          if (
+            budget.schemaVersion !== "genre-soul-surface-semantic-review-context-budget/v2"
+            || budget.inputSha256 !== review.semantic.input.sha256
+            || budget.inputSizeBytes !== review.semantic.input.sizeBytes
+            || budget.promptSha256 !== review.semantic.reviewer.promptSha256
+            || nonNegativeIntegers.some((key) => !Number.isSafeInteger(budget[key]) || budget[key] < 0)
+            || budget.inputSizeBytes < 1
+            || budget.chunkCount < 1
+            || budget.outputReserveTokens !== 8_192
+            || budget.contextLimit !== 272_000
+            || budget.maxInputConservativeTokenProxy < 1
+            || budget.maxInputConservativeTokenProxy > 190_000
+            || budget.conservativeTokenProxy > budget.maxInputConservativeTokenProxy
+            || budget.contextPlan.schemaVersion !== "hermes-structured-context-budget/v2"
+            || budget.contextPlan.profilePromptContextBytes !== budget.profilePromptContextBytes
+            || budget.contextPlan.projectPromptContextBytes !== budget.projectPromptContextBytes
+            || budget.contextPlan.pluginContextBytes !== budget.pluginContextBytes
+            || budget.contextPlan.promptSizeBytes !== budget.promptSizeBytes
+            || budget.contextPlan.readTranscriptProxyBytes !== budget.readTranscriptProxyBytes
+            || budget.contextPlan.outputReserveTokens !== budget.outputReserveTokens
+            || budget.contextPlan.contextLimit !== budget.contextLimit
+            || budget.contextPlan.preflightBudgetTokens
+              !== budget.contextPlan.contextInputProxyTokens + budget.contextPlan.outputReserveTokens
+            || budget.contextPlan.fits !== true
+            || budget.contextPlan.preflightBudgetTokens >= budget.contextPlan.contextLimit
+          ) throw new Error("Manager QA semantic context budget proof is invalid.");
+        }
         if (!Array.isArray(review.semantic.findingDecisions) || review.semantic.findingDecisions.length !== findingIds.length) {
           throw new Error("Manager QA semantic finding decisions must cover the deterministic finding set exactly.");
         }

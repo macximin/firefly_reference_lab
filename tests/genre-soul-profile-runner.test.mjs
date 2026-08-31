@@ -27,6 +27,7 @@ import {
   measureHermesExactInputTranscript,
 } from "../tools/genre-soul-hermes-run-lib.mjs";
 import { writePrivateGenreSoulSurfaceHilDecision } from "../tools/genre-soul-surface-hil-decision.mjs";
+import { buildPrivateGenreSoulAmbiguousSurfaceRequestV3 } from "../tools/genre-soul-surface-hil-lib.mjs";
 import { validateGenreProfileArtifact } from "../tools/genre-soul-study-contract.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
@@ -48,12 +49,48 @@ const bases = ["commercial-anchor", "genre-breadth", "surface-anchor"];
 const ACTUAL_REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CASE_ALIAS_REPOSITORY_ROOT = ACTUAL_REPOSITORY_ROOT.replace("/firefly_studio/", "/FIREFLY_STUDIO/");
 
+function fixtureReadCursor(inputId, sourceSha256, chunkIndex) {
+  return `cursor-${hash(Buffer.from([
+    "firefly-hermes-read-cursor/v1",
+    inputId,
+    sourceSha256,
+    String(chunkIndex),
+  ].join("\0")))}`;
+}
+
+function fixtureReadChunks(content) {
+  if (content.length === 0) return [""];
+  const codePoints = Array.from(content);
+  const chunks = [];
+  let start = 0;
+  while (start < codePoints.length) {
+    let low = start + 1;
+    let high = Math.min(codePoints.length, start + 75_000);
+    let best = start;
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      const candidate = codePoints.slice(start, middle).join("");
+      if (Array.from(JSON.stringify(candidate)).length <= 75_000) {
+        best = middle;
+        low = middle + 1;
+      } else {
+        high = middle - 1;
+      }
+    }
+    if (best === start) throw new Error("Fixture exact-input content cannot fit its chunk boundary.");
+    chunks.push(codePoints.slice(start, best).join(""));
+    start = best;
+  }
+  return chunks;
+}
+
 function runtimeEvidence(overrides = {}) {
   const runtime = {
-    schemaVersion: "genre-soul-hermes-runtime-evidence/v2",
+    schemaVersion: "genre-soul-hermes-runtime-evidence/v3",
     profileId: "inkos_male_modern_fantasy",
     contextLimit: 272_000,
     profilePromptContextBytes: 4_096,
+    projectPromptContextBytes: 1_024,
     profileConfigSha256: fixedSha("9"),
     soulSha256: hash(Buffer.from(TEST_SOUL_TEXT)),
     contentNeutralContractId: "fiction-content-neutral-ko/v1",
@@ -508,19 +545,37 @@ function makeEvidence() {
   };
 }
 
-function makeAmbiguousSurfaceEvidence() {
+function makeOverflowAmbiguousTerms(count = 36) {
+  return Array.from({ length: count }, (_, index) => `김${String.fromCharCode(0xac00 + index)}`);
+}
+
+function makeAmbiguousSurfaceEvidence(terms = null) {
   const evidence = makeEvidence();
   const surfaceWork = evidence.bindings.find((binding) => binding.sourceId === "gdrive-surface");
-  bindTestSourceText(
-    surfaceWork.observations[0].selectors[0],
-    "차도윤과 함께 움직였다. 일반 행동 묘사가 이어졌다.",
-  );
+  const sourceText = terms === null
+    ? "차도윤과 함께 움직였다. 일반 행동 묘사가 이어졌다."
+    : terms.map((term) => `${term} 원천맥락아자차카타파하`).join(" ");
+  const selectors = terms === null
+    ? [surfaceWork.observations[0].selectors[0]]
+    : surfaceWork.observations.slice(0, 8).map((observation) => observation.selectors[0]);
+  selectors.forEach((selector) => bindTestSourceText(selector, sourceText));
   return evidence;
 }
 
-function injectAmbiguousWorkSurface(result, input) {
+function injectAmbiguousWorkSurface(result, input, terms = null) {
   if (input.role === "genre-soul-work-consolidation:gdrive-surface") {
-    result.primaryCommercialEngine.mechanism.pressure = "차도윤 방식은 기회가 닫히기 전에 압박을 회수한다";
+    if (terms === null) {
+      result.primaryCommercialEngine.mechanism.pressure = "차도윤 방식은 기회가 닫히기 전에 압박을 회수한다";
+    } else {
+      const candidateText = terms.map((term) => `${term} 후보맥락가나다라마바사`).join(" ");
+      for (const key of Object.keys(result.primaryCommercialEngine.mechanism)) {
+        result.primaryCommercialEngine.mechanism[key] = candidateText;
+      }
+    }
+  } else if (terms !== null && input.role === "genre-soul-profile-synthesis") {
+    const candidateText = terms.map((term) => `${term} 후보맥락가나다라마바사`).join(" ");
+    result.patterns[0].guidance = candidateText;
+    result.patterns[0].commercialFunction = candidateText;
   }
 }
 
@@ -748,6 +803,45 @@ function makeFakeExecutor(counter, runtime = runtimeEvidence(), mutateResult = n
       failed: false,
       service_tier: null,
     };
+    const inputChunks = fixtureReadChunks(inputBytes.toString("utf8"));
+    const readMessages = [];
+    let readCursor = null;
+    for (const [chunkIndex, content] of inputChunks.entries()) {
+      const callId = `call-read-profile-input-${String(chunkIndex + 1).padStart(4, "0")}`;
+      const argumentsValue = readCursor === null
+        ? { inputId: "input-001" }
+        : { inputId: "input-001", cursor: readCursor };
+      const finalChunk = chunkIndex + 1 === inputChunks.length;
+      const nextCursor = finalChunk
+        ? null
+        : fixtureReadCursor("input-001", hash(inputBytes), chunkIndex + 1);
+      readMessages.push({
+        role: "assistant",
+        finish_reason: "tool_calls",
+        compacted: 0,
+        tool_calls: [{
+          id: callId,
+          function: { name: "firefly_read_source", arguments: JSON.stringify(argumentsValue) },
+        }],
+      }, {
+        role: "tool",
+        tool_call_id: callId,
+        compacted: 0,
+        content: JSON.stringify({
+          schemaVersion: "firefly-hermes-read-result/v2",
+          inputId: "input-001",
+          sha256: hash(inputBytes),
+          sizeBytes: inputBytes.byteLength,
+          chunkIndex,
+          chunkCount: inputChunks.length,
+          chunkSha256: hash(Buffer.from(content, "utf8")),
+          nextInputId: finalChunk ? null : "input-001",
+          nextCursor,
+          content,
+        }),
+      });
+      readCursor = nextCursor;
+    }
     const trace = {
       id: runId,
       model: "gpt-5.6-sol",
@@ -768,32 +862,7 @@ function makeFakeExecutor(counter, runtime = runtimeEvidence(), mutateResult = n
       system_prompt: `${TEST_SOUL_TEXT}\nHermes fixture runtime context`,
       messages: [
         { role: "user", content: input.prompt, compacted: 0 },
-        {
-          role: "assistant",
-          finish_reason: "tool_calls",
-          compacted: 0,
-          tool_calls: [{
-            id: "call-read-profile-input",
-            function: { name: "firefly_read_source", arguments: JSON.stringify({ inputId: "input-001" }) },
-          }],
-        },
-        {
-          role: "tool",
-          tool_call_id: "call-read-profile-input",
-          compacted: 0,
-          content: JSON.stringify({
-            schemaVersion: "firefly-hermes-read-result/v2",
-            inputId: "input-001",
-            sha256: hash(inputBytes),
-            sizeBytes: inputBytes.byteLength,
-            chunkIndex: 0,
-            chunkCount: 1,
-            chunkSha256: hash(inputBytes),
-            nextInputId: null,
-            nextCursor: null,
-            content: inputBytes.toString("utf8"),
-          }),
-        },
+        ...readMessages,
         { role: "assistant", finish_reason: "stop", compacted: 0, content: JSON.stringify(result) },
       ],
     };
@@ -976,6 +1045,19 @@ test("partitions every observation exactly and fails closed at the context ceili
     assert.ok(part.contextBudget.conservativeTokenProxy <= 8_000);
     assert.equal(part.contextBudget.contextPlan.fits, true);
   }
+  const projectBound = assertPrivateInputContextBudget(Buffer.alloc(128, 0x61), {
+    prompt: "profile budget fixture",
+    profilePromptContextBytes: 4_096,
+    projectPromptContextBytes: 1_024,
+    pluginContextBytes: 2_048,
+  });
+  assert.equal(projectBound.schemaVersion, "genre-soul-private-input-context-budget/v2");
+  assert.equal(projectBound.contextPlan.profilePromptContextBytes, 4_096);
+  assert.equal(projectBound.contextPlan.projectPromptContextBytes, 1_024);
+  assert.equal(projectBound.contextPlan.pluginContextBytes, 2_048);
+  assert.throws(() => assertPrivateInputContextBudget(Buffer.alloc(128, 0x61), {
+    projectPromptContextBytes: 600_000,
+  }), /preflight context boundary failed/u);
   assert.throws(() => assertPrivateInputContextBudget(Buffer.alloc(1_002), {
     maxInputConservativeTokenProxy: 500,
     outputReserveTokens: 48_000,
@@ -1509,12 +1591,35 @@ test("publishes only scanned candidates, keeps raw private, and reuses the immut
       root,
       `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${first.inputDigest}/manifest.json`,
     ), "utf8"));
-    assert.equal(manifest.schemaVersion, "private-genre-soul-profile-run-input-digest/v4");
+    assert.equal(manifest.schemaVersion, "private-genre-soul-profile-run-input-digest/v6");
     assert.equal(
       manifest.semanticReviewPromptContractVersion,
       "genre-soul-surface-semantic-review-prompt/v1",
     );
-    assert.equal(manifest.contextBudgetContractVersion, "genre-soul-profile-context-budget/v1");
+    assert.equal(
+      manifest.semanticReviewPartitionAlgorithmVersion,
+      "genre-soul-surface-semantic-review-greedy-prefix/v1",
+    );
+    assert.equal(
+      manifest.semanticReviewPartitionPlanSchemaVersion,
+      "private-genre-soul-surface-semantic-review-partition-plan/v1",
+    );
+    assert.equal(
+      manifest.semanticReviewAggregateSchemaVersion,
+      "private-genre-soul-surface-semantic-review-aggregate/v1",
+    );
+    const { inputDigest: sealedInputDigest, ...sealedDescriptor } = manifest;
+    assert.equal(hash(jsonBytes(sealedDescriptor)), sealedInputDigest);
+    for (const key of [
+      "semanticReviewPartitionAlgorithmVersion",
+      "semanticReviewPartitionPlanSchemaVersion",
+      "semanticReviewAggregateSchemaVersion",
+    ]) {
+      const driftedDescriptor = structuredClone(sealedDescriptor);
+      driftedDescriptor[key] = `${driftedDescriptor[key]}-drifted`;
+      assert.notEqual(hash(jsonBytes(driftedDescriptor)), sealedInputDigest, key);
+    }
+    assert.equal(manifest.contextBudgetContractVersion, "genre-soul-profile-context-budget/v2");
     assert.equal(manifest.outputReserveTokens, 48_000);
     assert.equal(manifest.exactInputPluginPlanningEvidence.schemaVersion, "hermes-exact-input-plugin-planning-evidence/v1");
     assert.equal(
@@ -1530,7 +1635,7 @@ test("publishes only scanned candidates, keeps raw private, and reuses the immut
       HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
     );
     assert.ok(manifest.workInputs.every((work) => work.parts.every((part) => (
-      part.contextBudget?.schemaVersion === "genre-soul-private-input-context-budget/v1"
+      part.contextBudget?.schemaVersion === "genre-soul-private-input-context-budget/v2"
       && part.contextBudget.contextPlan?.fits === true
     ))));
     assert.equal(validateGenreProfileArtifact(first.profile), true);
@@ -1601,6 +1706,54 @@ test("publishes only scanned candidates, keeps raw private, and reuses the immut
       testOnlyScanner: async (input) => passingScan(input),
     }), /released quarantine owner contract drifted; manual audit is required/u);
     assert.equal(counter.calls, 7);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile completion rejects resealed semantic partition contract drift and reuses the restored descriptor", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-partition-contract-drift-"));
+  const counter = { calls: 0 };
+  const options = {
+    testOnlyRepositoryRoot: root,
+    genre: "modern-fantasy-ko",
+    testOnly: true,
+    testOnlySoulText: TEST_SOUL_TEXT,
+    testOnlyEvidenceLoader: async () => makeEvidence(),
+    testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+    testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+    testOnlyExecutor: makeFakeExecutor(counter),
+    testOnlyScanner: async (input) => passingScan(input),
+  };
+  try {
+    const completed = await runGenreSoulProfile(options);
+    const profilePath = "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json";
+    const manifestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${completed.inputDigest}/manifest.json`;
+    const originalManifest = JSON.parse(await readFile(join(root, manifestPath), "utf8"));
+    for (const key of [
+      "semanticReviewPartitionAlgorithmVersion",
+      "semanticReviewPartitionPlanSchemaVersion",
+      "semanticReviewAggregateSchemaVersion",
+    ]) {
+      const driftedManifest = structuredClone(originalManifest);
+      driftedManifest[key] = `${driftedManifest[key]}-drifted`;
+      await writeFile(join(root, manifestPath), jsonBytes(driftedManifest));
+      await refreshProfileCompletionSeal(root, completed, [manifestPath]);
+      await assert.rejects(readCompletedGenreSoulProfileRun({
+        repositoryRoot: root,
+        profilePath,
+        profileBytes: await readFile(join(root, profilePath)),
+        profile: completed.profile,
+        soulText: TEST_SOUL_TEXT,
+      }), /run manifest identity|input digest drifted/u, key);
+      await writeFile(join(root, manifestPath), jsonBytes(originalManifest));
+      await refreshProfileCompletionSeal(root, completed, [manifestPath]);
+    }
+    const callsAfterCompletion = counter.calls;
+    const reused = await runGenreSoulProfile(options);
+    assert.equal(reused.status, "reused");
+    assert.equal(reused.inputDigest, completed.inputDigest);
+    assert.equal(counter.calls, callsAfterCompletion);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -2008,6 +2161,7 @@ test("runtime bytes and canonical prompt-contract bytes change the top-level run
   });
   const changedProjectContextRuntime = runtimeEvidence({
     hermesProjectContextSha256: fixedSha("0"),
+    projectPromptContextBytes: 2_048,
     hermesRuntimeIdentitySha256: fixedSha("1"),
   });
   const run = async (root, runtime, promptContractEvidenceFactory) => runGenreSoulProfile({
@@ -2638,6 +2792,209 @@ test("profile semantic reviewer auto-passes generic overlap once and seals its i
   }
 });
 
+test("profile production-budget overflow partitions all-generic findings and reuses exact completion", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-overflow-pass-"));
+  const counter = { calls: 0 };
+  const terms = makeOverflowAmbiguousTerms();
+  let semanticCallCount = 0;
+  const options = {
+    testOnlyRepositoryRoot: root,
+    genre: "modern-fantasy-ko",
+    testOnly: true,
+    testOnlySoulText: TEST_SOUL_TEXT,
+    testOnlyEvidenceLoader: async () => makeAmbiguousSurfaceEvidence(terms),
+    testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+    testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+    testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), (result, input) => {
+      injectAmbiguousWorkSurface(result, input, terms);
+      if (input.role.startsWith("genre-soul-surface-semantic-review:")) semanticCallCount += 1;
+    }),
+    testOnlyScanner: async (input) => passingScan(input),
+  };
+  try {
+    const completed = await runGenreSoulProfile(options);
+    assert.equal(completed.status, "completed");
+    assert.equal(completed.surfaceReview.mode, "partitioned");
+    assert.equal(completed.surfaceReview.status, "pass");
+    assert.ok(completed.surfaceReview.partCount >= 2);
+    assert.equal(semanticCallCount, completed.surfaceReview.partCount);
+    assert.equal(completed.surfaceHil, undefined);
+    const plan = JSON.parse(await readFile(join(root, completed.surfaceReview.partitionPlanPath), "utf8"));
+    assert.equal(plan.parts.length, completed.surfaceReview.partCount);
+    assert.equal(plan.parts.every((part) => (
+      part.contextBudgetReceipt.maxInputConservativeTokenProxy === 190_000
+      && part.contextBudgetReceipt.conservativeTokenProxy <= 190_000
+    )), true);
+    const profilePath = "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json";
+    const readback = await readCompletedGenreSoulProfileRun({
+      repositoryRoot: root,
+      profilePath,
+      profileBytes: await readFile(join(root, profilePath)),
+      profile: completed.profile,
+      soulText: TEST_SOUL_TEXT,
+    });
+    assert.equal(readback.inputDigest, completed.inputDigest);
+
+    const callsAfterCompletion = counter.calls;
+    const reused = await runGenreSoulProfile(options);
+    assert.equal(reused.status, "reused");
+    assert.equal(reused.surfaceReview.mode, "partitioned");
+    assert.equal(reused.surfaceReview.status, "pass");
+    assert.equal(counter.calls, callsAfterCompletion);
+    assert.equal(semanticCallCount, completed.surfaceReview.partCount);
+
+    const aggregatePath = completed.surfaceReview.aggregatePath;
+    const aggregate = JSON.parse(await readFile(join(root, aggregatePath), "utf8"));
+    aggregate.verdictCounts.genericOverlap += 1;
+    await writeFile(join(root, aggregatePath), jsonBytes(aggregate));
+    await refreshProfileCompletionSeal(root, completed, [aggregatePath]);
+    await assert.rejects(readCompletedGenreSoulProfileRun({
+      repositoryRoot: root,
+      profilePath,
+      profileBytes: await readFile(join(root, profilePath)),
+      profile: completed.profile,
+      soulText: TEST_SOUL_TEXT,
+    }), /aggregate drifted|verdictCounts|partition evidence/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile overflow emits one batch v4 HIL request and completes after one owner decision", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-overflow-hil-"));
+  const counter = { calls: 0 };
+  const terms = makeOverflowAmbiguousTerms();
+  let uncertainAssigned = false;
+  const options = {
+    testOnlyRepositoryRoot: root,
+    genre: "modern-fantasy-ko",
+    testOnly: true,
+    testOnlySoulText: TEST_SOUL_TEXT,
+    testOnlyEvidenceLoader: async () => makeAmbiguousSurfaceEvidence(terms),
+    testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+    testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+    testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), (result, input) => {
+      injectAmbiguousWorkSurface(result, input, terms);
+      if (input.role.startsWith("genre-soul-surface-semantic-review:") && !uncertainAssigned) {
+        result.findingDecisions[0].verdict = "uncertain";
+        result.findingDecisions[0].reasonCode = "insufficient-context";
+        uncertainAssigned = true;
+      }
+    }),
+    testOnlyScanner: async (input) => passingScan(input),
+  };
+  try {
+    const pending = await runGenreSoulProfile(options);
+    assert.equal(pending.status, "pending_hil");
+    assert.equal(pending.surfaceReview.mode, "partitioned");
+    assert.ok(pending.surfaceReview.partCount >= 2);
+    assert.equal(pending.surfaceReview.status, "pending_hil");
+    assert.equal(pending.surfaceHil.findingCount, 1);
+    const request = JSON.parse(await readFile(join(root, pending.surfaceHil.requestPath), "utf8"));
+    assert.equal(request.schemaVersion, "private-genre-soul-batch-ambiguous-surface-request/v4");
+    assert.equal(request.findings.length, 1);
+    assert.equal(request.batchSemanticReview.parts.length, pending.surfaceReview.partCount);
+    assert.equal((await readdir(join(root, dirname(pending.surfaceHil.requestPath)))).length, 1);
+    assert.equal(await pathExists(join(
+      root,
+      `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${pending.inputDigest}/completed.json`,
+    )), false);
+
+    const callsAtHil = counter.calls;
+    const decision = await writePrivateGenreSoulSurfaceHilDecision({
+      repositoryRoot: root,
+      requestPath: pending.surfaceHil.requestPath,
+      decision: "approve",
+      actorId: "owner:test",
+      decidedAt: "2026-08-30T00:00:00.000Z",
+      testOnly: true,
+      testOnlyRepositoryRoot: root,
+    });
+    assert.equal(decision.outcome, "approved");
+    const completed = await runGenreSoulProfile(options);
+    assert.equal(completed.status, "completed");
+    assert.equal(completed.surfaceReview.mode, "partitioned");
+    assert.equal(completed.surfaceReview.status, "pending_hil");
+    assert.equal(completed.surfaceHil.outcome, "pass");
+    assert.equal(completed.surfaceHil.decisionPath, decision.decisionPath);
+    assert.equal(counter.calls, callsAtHil);
+    assert.equal((await readdir(join(root, dirname(decision.decisionPath)))).length, 1);
+    const requestArtifacts = completed.completion.artifacts.filter((artifact) => (
+      artifact.path.includes("/genre/surface-review/owner-hil/requests/")
+    ));
+    const decisionArtifacts = completed.completion.artifacts.filter((artifact) => (
+      artifact.path.includes("/genre/surface-review/owner-hil/decisions/")
+    ));
+    assert.equal(requestArtifacts.length, 1);
+    assert.equal(decisionArtifacts.length, 1);
+    const profilePath = "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json";
+    const readback = await readCompletedGenreSoulProfileRun({
+      repositoryRoot: root,
+      profilePath,
+      profileBytes: await readFile(join(root, profilePath)),
+      profile: completed.profile,
+      soulText: TEST_SOUL_TEXT,
+    });
+    assert.equal(readback.inputDigest, completed.inputDigest);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile overflow protected verdict blocks after aggregate with no HIL or completion", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-overflow-block-"));
+  const counter = { calls: 0 };
+  const terms = makeOverflowAmbiguousTerms();
+  let protectedAssigned = false;
+  try {
+    await assert.rejects(runGenreSoulProfile({
+      testOnlyRepositoryRoot: root,
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => makeAmbiguousSurfaceEvidence(terms),
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), (result, input) => {
+        injectAmbiguousWorkSurface(result, input, terms);
+        if (input.role.startsWith("genre-soul-surface-semantic-review:") && !protectedAssigned) {
+          result.findingDecisions[0].verdict = "protected-identity";
+          result.findingDecisions[0].reasonCode = "same-person-identity";
+          protectedAssigned = true;
+        }
+      }),
+      testOnlyScanner: async (input) => passingScan(input),
+    }), /semantic reviewer found a protected private identity/u);
+    const [runDigest] = await readdir(join(
+      root,
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+    ));
+    const reviewRoot = join(
+      root,
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+      runDigest,
+      "genre/surface-review",
+    );
+    const aggregate = JSON.parse(await readFile(join(reviewRoot, "aggregate.json"), "utf8"));
+    assert.equal(aggregate.outcome, "blocked");
+    assert.equal(aggregate.verdictCounts.protectedIdentity, 1);
+    assert.ok(aggregate.parts.length >= 2);
+    assert.equal(await pathExists(join(reviewRoot, "owner-hil")), false);
+    assert.equal(await pathExists(join(
+      root,
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+      runDigest,
+      "completed.json",
+    )), false);
+    assert.equal(await pathExists(join(
+      root,
+      "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
+    )), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("profile semantic reviewer preserves sealed evidence but blocks a protected identity before publication", async () => {
   const root = await mkdtemp(join(tmpdir(), "genre-profile-semantic-block-"));
   const counter = { calls: 0 };
@@ -2888,6 +3245,86 @@ test("profile run keeps an ambiguous surface private until an exact owner decisi
       soulText: TEST_SOUL_TEXT,
     });
     assert.equal(readback.inputDigest, completed.inputDigest);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("profile run resumes an approved historical single v3 owner HIL without generating v4", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-legacy-v3-surface-"));
+  const counter = { calls: 0 };
+  const evidence = makeEvidence();
+  for (const observation of evidence.bindings[0].observations) {
+    for (const selector of observation.selectors) {
+      bindTestSourceText(selector, "차도윤과 함께 움직였다. 일반 행동 묘사가 이어졌다.");
+    }
+  }
+  const leakWorkMechanism = (result, input) => {
+    if (input.role.startsWith("genre-soul-work-consolidation:")) {
+      result.primaryCommercialEngine.mechanism.pressure = "차도윤 방식은 기회가 닫히기 전에 압박을 회수한다";
+    } else if (input.role.startsWith("genre-soul-surface-semantic-review:")) {
+      for (const finding of result.findingDecisions) {
+        finding.verdict = "uncertain";
+        finding.reasonCode = "insufficient-context";
+      }
+    }
+  };
+  try {
+    const runOptions = {
+      testOnlyRepositoryRoot: root,
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => evidence,
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: makeFakeExecutor(counter, runtimeEvidence(), leakWorkMechanism),
+      testOnlyScanner: async (input) => passingScan(input),
+    };
+    const pending = await runGenreSoulProfile(runOptions);
+    assert.equal(pending.status, "pending_hil");
+    const currentRequestAbsolutePath = join(root, pending.surfaceHil.requestPath);
+    const currentRequest = JSON.parse(await readFile(currentRequestAbsolutePath, "utf8"));
+    const legacy = buildPrivateGenreSoulAmbiguousSurfaceRequestV3({
+      stage: currentRequest.stage,
+      genre: currentRequest.genre,
+      soulId: currentRequest.soulId,
+      inputDigest: currentRequest.inputDigest,
+      candidate: currentRequest.candidate,
+      privateEvidence: currentRequest.privateEvidence,
+      semanticReview: currentRequest.semanticReview,
+      findings: currentRequest.findings,
+    });
+    const legacyRequestPath = pending.surfaceHil.requestPath.replace(
+      pending.surfaceHil.requestSha256,
+      legacy.sha256,
+    );
+    await rm(currentRequestAbsolutePath);
+    await writeFile(join(root, legacyRequestPath), legacy.bytes);
+    const decision = await writePrivateGenreSoulSurfaceHilDecision({
+      repositoryRoot: root,
+      requestPath: legacyRequestPath,
+      decision: "approve",
+      actorId: "owner:test",
+      decidedAt: "2026-08-30T00:00:00.000Z",
+      testOnly: true,
+      testOnlyRepositoryRoot: root,
+    });
+    const callsAtHil = counter.calls;
+    const completed = await runGenreSoulProfile(runOptions);
+    assert.equal(completed.status, "completed");
+    assert.equal(completed.surfaceHil.requestPath, legacyRequestPath);
+    assert.equal(completed.surfaceHil.decisionPath, decision.decisionPath);
+    assert.equal(counter.calls, callsAtHil);
+    assert.equal(await pathExists(currentRequestAbsolutePath), false);
+    const profilePath = "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json";
+    assert.equal((await readCompletedGenreSoulProfileRun({
+      repositoryRoot: root,
+      profilePath,
+      profileBytes: await readFile(join(root, profilePath)),
+      profile: completed.profile,
+      soulText: TEST_SOUL_TEXT,
+    })).inputDigest, completed.inputDigest);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

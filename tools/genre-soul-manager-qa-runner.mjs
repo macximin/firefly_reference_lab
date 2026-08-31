@@ -30,11 +30,16 @@ import {
   HERMES_STRUCTURED_PROVIDER,
   HERMES_STRUCTURED_REASONING,
   assertHermesAuthAdapterPlanningMatch,
+  assertHermesExactInputPluginPlanningMatch,
   buildHermesExecutionEnvironment,
   loadHermesAuthAdapterPlanningEvidence,
+  loadHermesExactInputPluginPlanningEvidence,
   loadHermesRuntimeEvidence,
+  measureHermesExactInputTranscript,
+  planHermesStructuredContextBudget,
   runHermesStructuredAttempt,
   validateHermesAuthAdapterPlanningEvidence,
+  validateHermesExactInputPluginPlanningEvidence,
   validateHermesExactInputReadCapability,
   validateHermesExactInputTrace,
   validateHermesStructuredAttemptInputAttestation,
@@ -60,6 +65,7 @@ import {
   resolveGenreSoulSurfaceHilDecision,
 } from "./genre-soul-surface-hil-lib.mjs";
 import {
+  assertGenreSoulSurfaceSemanticReviewContextBudget,
   buildGenreSoulSurfaceSemanticReviewPrompt,
   buildPrivateGenreSoulSurfaceSemanticReviewInput,
   genreSoulSurfaceSemanticReviewerRole,
@@ -77,6 +83,9 @@ const MAX_RAW_SAMPLE_BYTES = 12_000;
 const CONTEXT_LIMIT_TOKENS = 272_000;
 const OUTPUT_RESERVE_TOKENS = 48_000;
 const SURFACE_SEMANTIC_REVIEW_OUTPUT_RESERVE_TOKENS = 8_192;
+const MANAGER_PRIVATE_INPUT_SCHEMA = "private-genre-soul-manager-qa-input/v2";
+const MANAGER_CONTEXT_BUDGET_SCHEMA = "private-genre-soul-manager-qa-context-budget/v1";
+const MANAGER_SURFACE_CONTEXT_EVIDENCE_SCHEMA = "private-genre-soul-manager-surface-context-evidence/v1";
 const MANAGER_QA_RESULTS = new Set(["pass", "needs-revision"]);
 const MANAGER_QA_COMPARISON_VERDICTS = new Set(["different", "same", "insufficient"]);
 const MANAGER_QA_CORE_FAILURE_CHECKS = [
@@ -613,6 +622,8 @@ async function runManagerSurfaceSemanticReview({
   candidatePath,
   producerRuns,
   structuredRunRelativeRoot,
+  runDescriptorRelativePath,
+  runDescriptorBytes,
   repositoryRoot,
   runStructured,
   profileHome,
@@ -622,6 +633,7 @@ async function runManagerSurfaceSemanticReview({
   authAdapterPlanningEvidence,
   progress,
 }) {
+  const exactInputPluginPlanningEvidence = await loadHermesExactInputPluginPlanningEvidence();
   const builtInput = buildPrivateGenreSoulSurfaceSemanticReviewInput({ evaluation, producerRuns });
   const semanticRoot = `${structuredRunRelativeRoot}/surface-review/semantic`;
   const inputPath = `${structuredRunRelativeRoot}/surface-review/input.json`;
@@ -631,6 +643,14 @@ async function runManagerSurfaceSemanticReview({
   const absoluteInputPath = resolveInside(repositoryRoot, inputPath, "Manager surface semantic review input");
   const prompt = buildGenreSoulSurfaceSemanticReviewPrompt(builtInput.bytes);
   const role = genreSoulSurfaceSemanticReviewerRole(builtInput.bytes);
+  const contextBudget = assertGenreSoulSurfaceSemanticReviewContextBudget(builtInput.bytes, {
+    prompt,
+    outputReserveTokens: SURFACE_SEMANTIC_REVIEW_OUTPUT_RESERVE_TOKENS,
+    contextLimit: runtime.contextLimit,
+    profilePromptContextBytes: loadedRuntime.profilePromptContextBytes,
+    projectPromptContextBytes: loadedRuntime.projectPromptContextBytes,
+    pluginContextBytes: exactInputPluginPlanningEvidence.totalBytes,
+  });
   await writeImmutable(
     absoluteInputPath,
     builtInput.bytes,
@@ -650,6 +670,7 @@ async function runManagerSurfaceSemanticReview({
     prompt,
     expectedReadPaths: [absoluteInputPath],
     inputDigest: builtInput.sha256,
+    expectedPluginPlanningEvidence: exactInputPluginPlanningEvidence,
     outputReserveTokens: SURFACE_SEMANTIC_REVIEW_OUTPUT_RESERVE_TOKENS,
     projectCwd: repositoryRoot,
     expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
@@ -685,6 +706,7 @@ async function runManagerSurfaceSemanticReview({
     privateInputPath: absoluteInputPath,
     privateInputBytes: builtInput.bytes,
     loadedRuntime,
+    pluginPlanningEvidence: exactInputPluginPlanningEvidence,
     authAdapterPlanningEvidence,
     profileHome,
     role,
@@ -726,11 +748,25 @@ async function runManagerSurfaceSemanticReview({
     run,
     receipt,
     receiptBytes: evidence.hostReceiptBytes,
+    runEvidence: {
+      inputAttestation: evidence.inputAttestation,
+      readCapability: evidence.readCapability,
+    },
+    contextEvidence: {
+      schemaVersion: MANAGER_SURFACE_CONTEXT_EVIDENCE_SCHEMA,
+      runDescriptor: {
+        path: runDescriptorRelativePath,
+        sha256: sha256(runDescriptorBytes),
+        sizeBytes: runDescriptorBytes.byteLength,
+      },
+      budget: contextBudget,
+    },
     paths: {
       candidate: candidatePath,
       input: inputPath,
       result: acceptedPath,
       receipt: acceptedReceiptPath,
+      readCapability: evidence.readCapability.path,
     },
   };
 }
@@ -779,6 +815,11 @@ function buildManagerSurfaceReviewProof({ evaluation, semantic = null, ownerDeci
         sha256: sha256(semantic.receiptBytes),
         sizeBytes: semantic.receiptBytes.byteLength,
       },
+      readCapability: {
+        path: semantic.paths.readCapability,
+        sha256: sha256(semantic.runEvidence.readCapability.bytes),
+        sizeBytes: semantic.runEvidence.readCapability.bytes.byteLength,
+      },
       reviewer: {
         role: receipt.role,
         runId: receipt.runId,
@@ -787,6 +828,7 @@ function buildManagerSurfaceReviewProof({ evaluation, semantic = null, ownerDeci
         reasoningEffort: receipt.reasoningEffort,
         promptSha256: receipt.promptSha256,
       },
+      contextEvidence: structuredClone(semantic.contextEvidence),
       findingDecisions,
       verdictCounts: counts,
       outcome: ownerDecision ? "owner-approved" : "auto-passed",
@@ -795,7 +837,7 @@ function buildManagerSurfaceReviewProof({ evaluation, semantic = null, ownerDeci
     throw new Error("Manager QA deterministic-clean surface proof cannot contain an owner decision.");
   }
   return {
-    schemaVersion: "genre-soul-manager-surface-review-proof/v2",
+    schemaVersion: "genre-soul-manager-surface-review-proof/v3",
     gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
     extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
     mode,
@@ -834,10 +876,22 @@ export async function assertManagerQaSurfaceReviewReadback({ repositoryRoot, rec
   await readBoundReference(review.candidate, "Manager QA surface candidate readback");
   if (review.semantic === null) return true;
 
-  const [semanticInputFile, semanticResultFile, semanticReceiptFile] = await Promise.all([
+  const [
+    semanticInputFile,
+    semanticResultFile,
+    semanticReceiptFile,
+    managerRunDescriptorFile,
+    semanticReadCapabilityFile,
+  ] = await Promise.all([
     readBoundReference(review.semantic.input, "Manager QA semantic input readback"),
     readBoundReference(review.semantic.result, "Manager QA semantic result readback"),
     readBoundReference(review.semantic.receipt, "Manager QA semantic receipt readback"),
+    review.schemaVersion === "genre-soul-manager-surface-review-proof/v3"
+      ? readBoundReference(review.semantic.contextEvidence.runDescriptor, "Manager QA run descriptor readback")
+      : Promise.resolve(null),
+    review.schemaVersion === "genre-soul-manager-surface-review-proof/v3"
+      ? readBoundReference(review.semantic.readCapability, "Manager QA semantic read capability readback")
+      : Promise.resolve(null),
   ]);
   const semanticInput = validatePrivateGenreSoulSurfaceSemanticReviewInput(semanticInputFile.bytes);
   const expectedProducerRuns = [{
@@ -880,6 +934,70 @@ export async function assertManagerQaSurfaceReviewReadback({ repositoryRoot, rec
     result: semanticResult.bytes,
     producerRuns: expectedProducerRuns,
   });
+  if (review.schemaVersion === "genre-soul-manager-surface-review-proof/v3") {
+    const contextEvidence = review.semantic.contextEvidence;
+    let runDescriptor;
+    try {
+      runDescriptor = JSON.parse(managerRunDescriptorFile.bytes.toString("utf8"));
+    } catch (error) {
+      throw new Error(`Manager QA run descriptor readback is not JSON: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (
+      managerRunDescriptorFile.bytes.compare(jsonBytes(runDescriptor)) !== 0
+      || runDescriptor.schemaVersion !== "private-genre-soul-manager-qa-run-input-digest/v5"
+      || runDescriptor.genre !== receipt.genre
+      || runDescriptor.soulId !== receipt.soulId
+      || runDescriptor.profileId !== semanticReceipt.profileId
+      || runDescriptor.privateInput.sha256 !== receipt.privateInput.sha256
+      || contextEvidence.runDescriptor.sha256 !== receipt.manager.inputDigest
+      || runDescriptor.contextBudget.schemaVersion !== MANAGER_CONTEXT_BUDGET_SCHEMA
+    ) throw new Error("Manager QA run descriptor readback drifted from the tracked receipt.");
+    const runtime = runDescriptor.runtime;
+    const pluginPlanningEvidence = validateHermesExactInputPluginPlanningEvidence(
+      runDescriptor.exactInputPluginPlanningEvidence,
+    );
+    const budget = contextEvidence.budget;
+    const expectedContextBudget = assertGenreSoulSurfaceSemanticReviewContextBudget(
+      semanticInput.bytes,
+      {
+        prompt,
+        maxInputConservativeTokenProxy: budget.maxInputConservativeTokenProxy,
+        outputReserveTokens: budget.outputReserveTokens,
+        contextLimit: runtime.contextLimit,
+        profilePromptContextBytes: runtime.profilePromptContextBytes,
+        projectPromptContextBytes: runtime.projectPromptContextBytes,
+        pluginContextBytes: pluginPlanningEvidence.totalBytes,
+      },
+    );
+    if (!isDeepStrictEqual(budget, expectedContextBudget)) {
+      throw new Error("Manager QA semantic context budget drifted from its exact input and prompt.");
+    }
+    const expectedInputFiles = [{
+      inputId: "input-001",
+      path: semanticInputFile.absolutePath,
+      sha256: semanticInput.sha256,
+      sizeBytes: semanticInput.bytes.byteLength,
+    }];
+    const readCapability = validateHermesExactInputReadCapability({
+      bytes: semanticReadCapabilityFile.bytes,
+      expectedFiles: expectedInputFiles,
+      sourceRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    });
+    assertHermesExactInputPluginPlanningMatch(
+      readCapability.capability.pluginFiles,
+      pluginPlanningEvidence,
+      "Manager QA semantic readback plugin capability",
+    );
+    if (
+      semanticReceipt.readCapabilitySha256 !== readCapability.sha256
+      || semanticReceipt.readExecutionRuntimeIdentitySha256
+        !== readCapability.capability.executionRuntimeIdentitySha256
+      || semanticReceipt.hermesRuntimeIdentitySha256 !== runtime.hermesRuntimeIdentitySha256
+      || semanticReceipt.hermesProfileContextSha256 !== runtime.hermesProfileContextSha256
+      || semanticReceipt.hermesProjectContextSha256 !== runtime.hermesProjectContextSha256
+      || semanticReceipt.contextLimit !== runtime.contextLimit
+    ) throw new Error("Manager QA semantic runtime or plugin evidence drifted from the sealed provider attempt.");
+  }
   const reviewerProjection = {
     role: semanticReceipt.role,
     runId: semanticReceipt.runId,
@@ -930,11 +1048,26 @@ export async function assertManagerQaSurfaceReviewReadback({ repositoryRoot, rec
     readBoundReference(review.ownerDecision.request, "Manager QA owner HIL request readback"),
     readBoundReference(review.ownerDecision.decision, "Manager QA owner HIL decision readback"),
   ]);
+  let boundResolution;
   if (
-    resolution.requestSha256 !== review.ownerDecision.request.sha256
-    || !resolution.requestBytes.equals(requestFile.bytes)
-  ) throw new Error("Manager QA owner HIL request readback drifted from the semantic resolution.");
-  const ownerResolution = resolveGenreSoulSurfaceHilDecision(resolution, {
+    resolution.requestSha256 === review.ownerDecision.request.sha256
+    && resolution.requestBytes.equals(requestFile.bytes)
+  ) {
+    boundResolution = resolution;
+  } else if (
+    resolution.legacyRequestSha256 === review.ownerDecision.request.sha256
+    && resolution.legacyRequestBytes.equals(requestFile.bytes)
+  ) {
+    boundResolution = {
+      ...resolution,
+      request: resolution.legacyRequest,
+      requestBytes: resolution.legacyRequestBytes,
+      requestSha256: resolution.legacyRequestSha256,
+    };
+  } else {
+    throw new Error("Manager QA owner HIL request readback drifted from the semantic resolution.");
+  }
+  const ownerResolution = resolveGenreSoulSurfaceHilDecision(boundResolution, {
     decision: decisionFile.bytes,
     requestPath: review.ownerDecision.request.path,
   });
@@ -1226,6 +1359,10 @@ function projectRuntimeEvidence(runtime, profileId) {
     || runtime.contentNeutralContractId !== FICTION_CONTENT_CONTRACT_ID
     || runtime.contentNeutralContractSha256 !== FICTION_CONTENT_CONTRACT_SHA256
     || runtime.contextLimit !== CONTEXT_LIMIT_TOKENS
+    || !Number.isSafeInteger(runtime.profilePromptContextBytes)
+    || runtime.profilePromptContextBytes < 1
+    || !Number.isSafeInteger(runtime.projectPromptContextBytes)
+    || runtime.projectPromptContextBytes < 0
   ) throw new Error("Manager QA Hermes runtime identity drifted.");
   for (const key of [
     "profileConfigSha256", "soulSha256", "contentNeutralSoulSectionSha256", "contextLimitEntrySha256",
@@ -1248,6 +1385,8 @@ function projectRuntimeEvidence(runtime, profileId) {
     hermesProfileContextSha256: runtime.hermesProfileContextSha256,
     hermesProjectContextSha256: runtime.hermesProjectContextSha256,
     hermesRuntimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    profilePromptContextBytes: runtime.profilePromptContextBytes,
+    projectPromptContextBytes: runtime.projectPromptContextBytes,
     contextLimit: runtime.contextLimit,
     contentNeutralContractId: runtime.contentNeutralContractId,
     contentNeutralContractSha256: runtime.contentNeutralContractSha256,
@@ -1255,7 +1394,7 @@ function projectRuntimeEvidence(runtime, profileId) {
 }
 
 export function validatePrivateManagerQaInput(input) {
-  if (input?.schemaVersion !== "private-genre-soul-manager-qa-input/v1") {
+  if (input?.schemaVersion !== MANAGER_PRIVATE_INPUT_SCHEMA) {
     throw new Error("Private manager QA input schema is invalid.");
   }
   assertExactKeys(input, [
@@ -1269,7 +1408,7 @@ export function validatePrivateManagerQaInput(input) {
     "profileId", "runtimeAttestation", "profileConfigSha256", "soulSha256", "contentNeutralSoulSectionSha256", "contextLimitEntrySha256",
     "hermesExecutableSha256", "hermesDelegatedExecutableSha256", "hermesVersionSha256",
     "hermesImplementationSha256", "hermesDependencySha256", "hermesProfileContextSha256", "hermesProjectContextSha256",
-    "hermesRuntimeIdentitySha256",
+    "hermesRuntimeIdentitySha256", "profilePromptContextBytes", "projectPromptContextBytes",
     "contextLimit", "contentNeutralContractId", "contentNeutralContractSha256",
   ], "privateManagerQaInput.runtime");
   projectRuntimeEvidence(input.runtime, config.profileId);
@@ -1477,7 +1616,7 @@ export function validatePrivateManagerQaResult(result, expected) {
 
 function buildPrivateInput({ profile, profilePath, profileBytes, runtime, rawSamples }) {
   const input = {
-    schemaVersion: "private-genre-soul-manager-qa-input/v1",
+    schemaVersion: MANAGER_PRIVATE_INPUT_SCHEMA,
     genre: profile.genre,
     soulId: profile.soulId,
     version: "v1",
@@ -1523,12 +1662,27 @@ function managerPrompt(inputPath, input) {
 }`;
 }
 
-function verifyContextBudget(inputBytes, prompt) {
-  const conservativeInputTokens = Math.ceil((inputBytes.byteLength + Buffer.byteLength(prompt, "utf8")) / 2);
-  if (conservativeInputTokens + OUTPUT_RESERVE_TOKENS >= CONTEXT_LIMIT_TOKENS) {
-    throw new Error(`Manager QA context budget exceeded: ${conservativeInputTokens} + ${OUTPUT_RESERVE_TOKENS} >= ${CONTEXT_LIMIT_TOKENS}.`);
+function verifyContextBudget(inputBytes, prompt, { loadedRuntime, pluginContextBytes }) {
+  const measurement = measureHermesExactInputTranscript([inputBytes]);
+  const plan = planHermesStructuredContextBudget({
+    profilePromptContextBytes: loadedRuntime.profilePromptContextBytes,
+    projectPromptContextBytes: loadedRuntime.projectPromptContextBytes,
+    pluginContextBytes,
+    prompt,
+    readTranscriptProxyBytes: measurement.readTranscriptProxyBytes,
+    outputReserveTokens: OUTPUT_RESERVE_TOKENS,
+    contextLimit: loadedRuntime.contextLimit,
+  });
+  if (!plan.fits) {
+    throw new Error(`Manager QA context budget exceeded: ${plan.preflightBudgetTokens} >= ${plan.contextLimit}.`);
   }
-  return conservativeInputTokens;
+  return {
+    schemaVersion: MANAGER_CONTEXT_BUDGET_SCHEMA,
+    inputSha256: measurement.files[0].sha256,
+    inputSizeBytes: measurement.files[0].sizeBytes,
+    inputChunkCount: measurement.files[0].chunkCount,
+    contextPlan: plan,
+  };
 }
 
 function assertStructuredRunReceipt(run, expected) {
@@ -1607,6 +1761,7 @@ async function verifyStructuredAttemptEvidence({
   privateInputPath,
   privateInputBytes,
   loadedRuntime,
+  pluginPlanningEvidence,
   authAdapterPlanningEvidence,
   profileHome,
   role,
@@ -1658,6 +1813,11 @@ async function verifyStructuredAttemptEvidence({
     expectedFiles: expectedInputFiles,
     sourceRuntimeIdentitySha256: loadedRuntime.hermesRuntimeIdentitySha256,
   });
+  assertHermesExactInputPluginPlanningMatch(
+    readCapability.capability.pluginFiles,
+    pluginPlanningEvidence,
+    `${label} Hermes exact-input plugin`,
+  );
   if (
     readCapability.capability.authProjectionContractVersion
       !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
@@ -1781,7 +1941,19 @@ async function verifyStructuredAttemptEvidence({
   if (!isDeepStrictEqual(pointer, expectedPointer) || pointerBytes.compare(jsonBytes(pointer)) !== 0) {
     throw new Error(`${label} Hermes completed pointer drifted.`);
   }
-  return { hostReceiptBytes, traceBytes, usageBytes };
+  return {
+    hostReceiptBytes,
+    traceBytes,
+    usageBytes,
+    inputAttestation: {
+      path: relative(repositoryRoot, paths["input-attestation.json"]),
+      bytes: inputAttestationBytes,
+    },
+    readCapability: {
+      path: relative(repositoryRoot, paths["read-capability.json"]),
+      bytes: readCapabilityBytes,
+    },
+  };
 }
 
 function buildTrackedReceipt({
@@ -1867,7 +2039,7 @@ function buildTrackedReceipt({
       },
     },
     privateInput: {
-      schemaVersion: "private-genre-soul-manager-qa-input/v1",
+      schemaVersion: MANAGER_PRIVATE_INPUT_SCHEMA,
       path: privateInputPath,
       sha256: sha256(privateInputBytes),
       sizeBytes: privateInputBytes.byteLength,
@@ -1940,7 +2112,7 @@ function buildPrivateManagerQaDecision({
       synthesisRunId: profile.synthesis.run.runId,
     },
     privateInput: {
-      schemaVersion: "private-genre-soul-manager-qa-input/v1",
+      schemaVersion: MANAGER_PRIVATE_INPUT_SCHEMA,
       path: privateInputPath,
       sha256: sha256(privateInputBytes),
       sizeBytes: privateInputBytes.byteLength,
@@ -2335,7 +2507,14 @@ export async function runGenreSoulManagerQa(options) {
     assertNoSymlinkAncestors(repositoryRoot, absoluteProfilePath, "Genre profile path"),
     assertNoSymlinkAncestors(repositoryRoot, absoluteProfileLeakPath, "Genre profile leak path"),
   ]);
-  const [profileFile, profileLeakFile, evidence, loadedRuntime, authAdapterPlanningEvidence] = await Promise.all([
+  const [
+    profileFile,
+    profileLeakFile,
+    evidence,
+    loadedRuntime,
+    authAdapterPlanningEvidence,
+    exactInputPluginPlanningEvidence,
+  ] = await Promise.all([
     readJson(absoluteProfilePath, "Candidate genre profile"),
     readJson(absoluteProfileLeakPath, "Candidate genre profile leak receipt"),
     loadEvidence({ repositoryRoot, genre: options.genre }),
@@ -2344,6 +2523,7 @@ export async function runGenreSoulManagerQa(options) {
       contextCachePath: options.testOnlyContextCachePath,
     }),
     loadAuthAdapterPlanningEvidence(),
+    loadHermesExactInputPluginPlanningEvidence(),
   ]);
   validateHermesAuthAdapterPlanningEvidence(authAdapterPlanningEvidence);
   const runtime = projectRuntimeEvidence(loadedRuntime, config.profileId);
@@ -2394,8 +2574,12 @@ export async function runGenreSoulManagerQa(options) {
     ? basePrompt
     : `${basePrompt}\n${String(options.testOnlyPromptSuffix)}`;
   const promptBytes = Buffer.from(prompt);
+  const contextBudget = verifyContextBudget(privateInputBytes, prompt, {
+    loadedRuntime,
+    pluginContextBytes: exactInputPluginPlanningEvidence.totalBytes,
+  });
   const runDescriptor = {
-    schemaVersion: "private-genre-soul-manager-qa-run-input-digest/v4",
+    schemaVersion: "private-genre-soul-manager-qa-run-input-digest/v5",
     genre: options.genre,
     soulId: config.soulId,
     profileId: config.profileId,
@@ -2406,8 +2590,10 @@ export async function runGenreSoulManagerQa(options) {
       sizeBytes: privateInputBytes.byteLength,
     },
     prompt: { sha256: sha256(promptBytes), sizeBytes: promptBytes.byteLength },
+    contextBudget,
     exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
     authAdapterPlanningEvidence,
+    exactInputPluginPlanningEvidence,
     runtime,
   };
   const runDescriptorBytes = jsonBytes(runDescriptor);
@@ -2420,7 +2606,6 @@ export async function runGenreSoulManagerQa(options) {
   );
   const runDescriptorPath = join(structuredRunRoot, "run-descriptor.json");
   const promptPath = join(structuredRunRoot, "prompt.txt");
-  verifyContextBudget(privateInputBytes, prompt);
   await writeImmutable(absolutePrivateInputPath, privateInputBytes, "Manager QA private input", repositoryRoot);
   await assertNoSymlinkAncestors(repositoryRoot, absolutePrivateInputPath, "Manager QA private input");
   await writeImmutable(runDescriptorPath, runDescriptorBytes, "Manager QA run descriptor", repositoryRoot);
@@ -2433,6 +2618,7 @@ export async function runGenreSoulManagerQa(options) {
     prompt,
     expectedReadPaths: [absolutePrivateInputPath],
     inputDigest,
+    expectedPluginPlanningEvidence: exactInputPluginPlanningEvidence,
     outputReserveTokens: OUTPUT_RESERVE_TOKENS,
     projectCwd: repositoryRoot,
     expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
@@ -2465,6 +2651,7 @@ export async function runGenreSoulManagerQa(options) {
     privateInputPath: absolutePrivateInputPath,
     privateInputBytes,
     loadedRuntime,
+    pluginPlanningEvidence: exactInputPluginPlanningEvidence,
     authAdapterPlanningEvidence,
     profileHome,
     role: "manager-qa",
@@ -2574,6 +2761,8 @@ export async function runGenreSoulManagerQa(options) {
       candidatePath: surfaceCandidatePath,
       producerRuns,
       structuredRunRelativeRoot,
+      runDescriptorRelativePath: relative(repositoryRoot, runDescriptorPath),
+      runDescriptorBytes,
       repositoryRoot,
       runStructured,
       profileHome,
@@ -2589,34 +2778,122 @@ export async function runGenreSoulManagerQa(options) {
     if (semantic.resolution.status === "pass") {
       receipt.surfaceReview = buildManagerSurfaceReviewProof({ evaluation: surfaceGate, semantic });
     } else if (semantic.resolution.status === "pending_hil") {
-      const hilGate = semantic.resolution;
-      const requestPath = `${structuredRunRelativeRoot}/surface-review/owner-hil/requests/${hilGate.requestSha256}.json`;
-      await writeImmutable(
-        resolveInside(repositoryRoot, requestPath, "Manager QA surface HIL request"),
-        hilGate.requestBytes,
-        "Manager QA surface HIL request",
-        repositoryRoot,
-      );
-      const decisionPath = requestPath.replace(
-        "/surface-review/owner-hil/requests/",
-        "/surface-review/owner-hil/decisions/",
-      );
-      const decisionAbsolutePath = resolveInside(repositoryRoot, decisionPath, "Manager QA surface HIL decision");
-      const decisionInfo = await lstatOrNull(decisionAbsolutePath);
-      if (decisionInfo) {
-        await assertNoSymlinkAncestors(repositoryRoot, decisionAbsolutePath, "Manager QA surface HIL decision", {
-          requireExists: true,
-        });
-        const decisionBytes = await readFile(decisionAbsolutePath);
+      const requestCandidates = [{
+        requestPath: `${structuredRunRelativeRoot}/surface-review/owner-hil/requests/${semantic.resolution.requestSha256}.json`,
+        resolution: semantic.resolution,
+      }, {
+        requestPath: `${structuredRunRelativeRoot}/surface-review/owner-hil/requests/${semantic.resolution.legacyRequestSha256}.json`,
+        resolution: {
+          ...semantic.resolution,
+          request: semantic.resolution.legacyRequest,
+          requestBytes: semantic.resolution.legacyRequestBytes,
+          requestSha256: semantic.resolution.legacyRequestSha256,
+        },
+      }];
+      let selectedRequest = null;
+      for (const candidate of requestCandidates) {
+        const requestAbsolutePath = resolveInside(
+          repositoryRoot,
+          candidate.requestPath,
+          "Manager QA surface HIL request",
+        );
+        const requestInfo = await lstatOrNull(requestAbsolutePath);
+        if (requestInfo) {
+          await assertNoSymlinkAncestors(repositoryRoot, requestAbsolutePath, "Manager QA surface HIL request", {
+            requireExists: true,
+          });
+          const existingRequestBytes = await readFile(requestAbsolutePath);
+          if (existingRequestBytes.compare(candidate.resolution.requestBytes) !== 0) {
+            throw new Error("Manager QA surface HIL request already exists with different bytes.");
+          }
+        }
+        const decisionPath = candidate.requestPath.replace(
+          "/surface-review/owner-hil/requests/",
+          "/surface-review/owner-hil/decisions/",
+        );
+        const decisionAbsolutePath = resolveInside(
+          repositoryRoot,
+          decisionPath,
+          "Manager QA surface HIL decision",
+        );
+        const decisionInfo = await lstatOrNull(decisionAbsolutePath);
+        if (requestInfo && decisionInfo) {
+          await assertNoSymlinkAncestors(repositoryRoot, decisionAbsolutePath, "Manager QA surface HIL decision", {
+            requireExists: true,
+          });
+          selectedRequest = {
+            ...candidate,
+            decisionPath,
+            decisionBytes: await readFile(decisionAbsolutePath),
+          };
+          break;
+        }
+      }
+      if (!selectedRequest) {
+        const current = requestCandidates[0];
+        await writeImmutable(
+          resolveInside(repositoryRoot, current.requestPath, "Manager QA surface HIL request"),
+          current.resolution.requestBytes,
+          "Manager QA surface HIL request",
+          repositoryRoot,
+        );
+        const decisionPath = current.requestPath.replace(
+          "/surface-review/owner-hil/requests/",
+          "/surface-review/owner-hil/decisions/",
+        );
+        const decisionAbsolutePath = resolveInside(
+          repositoryRoot,
+          decisionPath,
+          "Manager QA surface HIL decision",
+        );
+        const decisionInfo = await lstatOrNull(decisionAbsolutePath);
+        if (decisionInfo) {
+          await assertNoSymlinkAncestors(repositoryRoot, decisionAbsolutePath, "Manager QA surface HIL decision", {
+            requireExists: true,
+          });
+          selectedRequest = {
+            ...current,
+            decisionPath,
+            decisionBytes: await readFile(decisionAbsolutePath),
+          };
+        } else {
+          await (options.progress ?? (() => {}))({
+            event: "surface-hil-pending",
+            requestPath: current.requestPath,
+            requestSha256: current.resolution.requestSha256,
+            findingCount: current.resolution.request.findings.length,
+          });
+          return {
+            status: "pending_hil",
+            genre: options.genre,
+            soulId: config.soulId,
+            profileId: config.profileId,
+            runId: structured.runId,
+            inputDigest,
+            privateInputPath,
+            run,
+            surfaceHil: {
+              candidatePath: surfaceCandidatePath,
+              requestPath: current.requestPath,
+              requestSha256: current.resolution.requestSha256,
+              findingCount: current.resolution.request.findings.length,
+              semanticReviewRunId: semantic.receipt.runId,
+            },
+          };
+        }
+      }
+      if (selectedRequest) {
+        const hilGate = selectedRequest.resolution;
+        const decisionBytes = selectedRequest.decisionBytes;
         const resolution = resolveGenreSoulSurfaceHilDecision(hilGate, {
           decision: decisionBytes,
-          requestPath,
+          requestPath: selectedRequest.requestPath,
         });
         resolvedSurfaceHil = {
           candidatePath: surfaceCandidatePath,
-          requestPath,
+          requestPath: selectedRequest.requestPath,
           requestSha256: hilGate.requestSha256,
-          decisionPath,
+          decisionPath: selectedRequest.decisionPath,
           decisionSha256: resolution.decision.sha256,
           decisionId: resolution.decision.decisionId,
           findingCount: hilGate.request.findings.length,
@@ -2625,9 +2902,9 @@ export async function runGenreSoulManagerQa(options) {
         if (resolution.status === "blocked") {
           await (options.progress ?? (() => {}))({
             event: "surface-hil-rejected",
-            requestPath,
+            requestPath: selectedRequest.requestPath,
             requestSha256: hilGate.requestSha256,
-            decisionPath,
+            decisionPath: selectedRequest.decisionPath,
             decisionId: resolution.decision.decisionId,
           });
           return {
@@ -2647,12 +2924,12 @@ export async function runGenreSoulManagerQa(options) {
           semantic,
           ownerDecision: {
             request: {
-              path: requestPath,
+              path: selectedRequest.requestPath,
               sha256: hilGate.requestSha256,
               sizeBytes: hilGate.requestBytes.byteLength,
             },
             decision: {
-              path: decisionPath,
+              path: selectedRequest.decisionPath,
               sha256: resolution.decision.sha256,
               sizeBytes: decisionBytes.byteLength,
               decisionId: resolution.decision.decisionId,
@@ -2661,31 +2938,6 @@ export async function runGenreSoulManagerQa(options) {
             },
           },
         });
-      }
-      if (!resolvedSurfaceHil) {
-        await (options.progress ?? (() => {}))({
-          event: "surface-hil-pending",
-          requestPath,
-          requestSha256: hilGate.requestSha256,
-          findingCount: hilGate.request.findings.length,
-        });
-        return {
-          status: "pending_hil",
-          genre: options.genre,
-          soulId: config.soulId,
-          profileId: config.profileId,
-          runId: structured.runId,
-          inputDigest,
-          privateInputPath,
-          run,
-          surfaceHil: {
-            candidatePath: surfaceCandidatePath,
-            requestPath,
-            requestSha256: hilGate.requestSha256,
-            findingCount: hilGate.request.findings.length,
-            semanticReviewRunId: semantic.receipt.runId,
-          },
-        };
       }
     } else {
       throw new Error(`Manager QA surface semantic resolver returned an unsupported status: ${String(semantic.resolution.status)}.`);

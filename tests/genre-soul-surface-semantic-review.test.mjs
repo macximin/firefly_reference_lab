@@ -9,11 +9,17 @@ import {
   validatePrivateGenreSoulAmbiguousSurfaceRequest,
 } from "../tools/genre-soul-surface-hil-lib.mjs";
 import {
+  assertGenreSoulSurfaceSemanticReviewContextBudget,
   buildGenreSoulSurfaceSemanticReviewPrompt,
+  buildPrivateGenreSoulSurfaceSemanticReviewAggregate,
   buildPrivateGenreSoulSurfaceSemanticReviewInput,
+  buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan,
   genreSoulSurfaceSemanticReviewerRole,
+  isGenreSoulSurfaceSemanticReviewContextBudgetError,
   resolveGenreSoulSurfaceSemanticReview,
   validateGenreSoulSurfaceSemanticReviewReceipt,
+  validatePrivateGenreSoulSurfaceSemanticReviewAggregate,
+  validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan,
   validatePrivateGenreSoulSurfaceSemanticReviewResult,
 } from "../tools/genre-soul-surface-semantic-review-lib.mjs";
 
@@ -77,7 +83,8 @@ function reviewResult(inputValidation, verdictForFinding) {
 }
 
 function reviewRun(inputValidation, resultValidation, override = {}) {
-  const inputPath = "/private/reference-lab/surface-review/input.json";
+  const { inputPath: inputPathOverride, ...receiptOverride } = override;
+  const inputPath = inputPathOverride ?? "/private/reference-lab/surface-review/input.json";
   const prompt = buildGenreSoulSurfaceSemanticReviewPrompt(inputValidation.bytes);
   const receipt = {
     role: genreSoulSurfaceSemanticReviewerRole(inputValidation.bytes),
@@ -96,9 +103,59 @@ function reviewRun(inputValidation, resultValidation, override = {}) {
     expectedReadCount: 1,
     exactReadCount: 1,
     exactReadSha256s: [inputValidation.sha256],
-    ...override,
+    ...receiptOverride,
   };
   return { receipt, receiptBytes: jsonBytes(receipt), prompt, inputPath };
+}
+
+function multiFindingEvaluation() {
+  return evaluate({
+    candidate: {
+      first: "김광 방식",
+      second: "차도윤 방식",
+      third: "박재현 방식",
+      fourth: "윤서진 방식",
+    },
+    samples: [{
+      selectorId: "selector-many-names",
+      sourceText: "김광은 움직였다. 차도윤은 계약을 보았다. 박재현은 현금을 받았다. 윤서진은 회사를 샀다.",
+    }],
+  });
+}
+
+function twoFindingBudget({ findingIds, inputBytes, inputSha256, promptBytes }) {
+  if (findingIds.length > 2) return null;
+  return {
+    schemaVersion: "test-surface-semantic-context-budget/v1",
+    inputSha256,
+    inputSizeBytes: inputBytes.byteLength,
+    promptSha256: sha256(promptBytes),
+    findingCount: findingIds.length,
+  };
+}
+
+function aggregateParts(planValidation, verdictForFinding) {
+  return planValidation.parts.map((part, index) => {
+    const result = reviewResult(part.input, (finding, findingIndex) => (
+      verdictForFinding(finding, findingIndex, index)
+    ));
+    const inputPath = `/private/reference-lab/surface-review/${part.partId}/input.json`;
+    const run = reviewRun(part.input, result, {
+      inputPath,
+      runId: `semantic-review-run-${index + 1}`,
+    });
+    return {
+      partId: part.partId,
+      input: part.input.bytes,
+      result: result.bytes,
+      paths: {
+        input: `exports/private/surface-review/${part.partId}/input.json`,
+        result: `exports/private/surface-review/${part.partId}/accepted.json`,
+        receipt: `exports/private/surface-review/${part.partId}/accepted-host-receipt.json`,
+      },
+      reviewRun: run,
+    };
+  });
 }
 
 test("v3 extractor routes Korean role, punctuation, particle, and compound false positives to bounded semantic review", () => {
@@ -190,7 +247,7 @@ test("quote, acronym, and organization morphology stay semantic and a protected 
   assert.ok(protectedResolution.blockers.some((blocker) => blocker.rule === "semantic-protected-identity/v1"));
 });
 
-test("semantic resolution blocks protected identities and filters only uncertain findings into owner HIL v3", () => {
+test("semantic resolution blocks protected identities and binds the full projection into owner HIL v4", () => {
   const evaluation = evaluate({
     candidate: { first: "김광 방식", second: "차도윤 방식" },
     samples: [{ selectorId: "selector-names", sourceText: "김광은 움직였다. 차도윤은 계약을 보았다." }],
@@ -221,11 +278,24 @@ test("semantic resolution blocks protected identities and filters only uncertain
     reviewRun: reviewRun(input, uncertainResult),
   });
   assert.equal(uncertainResolution.status, "pending_hil");
-  assert.equal(uncertainResolution.request.schemaVersion, "private-genre-soul-ambiguous-surface-request/v3");
+  assert.equal(uncertainResolution.request.schemaVersion, "private-genre-soul-ambiguous-surface-request/v4");
   assert.deepEqual(uncertainResolution.request.findings.map((finding) => finding.findingId), [uncertainId]);
+  assert.deepEqual(uncertainResolution.request.semanticProjection, {
+    findingSetSha256: evaluation.findingSetSha256,
+    genericFindingIds: evaluation.findings
+      .map((finding) => finding.findingId)
+      .filter((findingId) => findingId !== uncertainId),
+    protectedFindingIds: [],
+    uncertainFindingIds: [uncertainId],
+  });
   assert.equal(
     validatePrivateGenreSoulAmbiguousSurfaceRequest(uncertainResolution.requestBytes).sha256,
     uncertainResolution.requestSha256,
+  );
+  assert.equal(uncertainResolution.legacyRequest.schemaVersion, "private-genre-soul-ambiguous-surface-request/v3");
+  assert.equal(
+    validatePrivateGenreSoulAmbiguousSurfaceRequest(uncertainResolution.legacyRequestBytes).sha256,
+    uncertainResolution.legacyRequestSha256,
   );
 });
 
@@ -316,4 +386,241 @@ test("raw evidence windows are globally bounded per finding and incomplete cover
     /must remain uncertain/u,
   );
   assert.equal(reviewResult(input, () => "uncertain").result.findingDecisions[0].verdict, "uncertain");
+});
+
+test("legacy single v1 input and prompt bytes stay stable while shared context preflight is exact", () => {
+  const evaluation = evaluate({
+    candidate: { mechanism: "김광 방식" },
+    samples: [{ selectorId: "selector-a", sourceText: "김광은 움직였다." }],
+  });
+  const input = buildPrivateGenreSoulSurfaceSemanticReviewInput({ evaluation, producerRuns });
+  const prompt = buildGenreSoulSurfaceSemanticReviewPrompt(input.bytes);
+  assert.equal(input.input.schemaVersion, "private-genre-soul-surface-semantic-review-input/v1");
+  assert.equal(input.sha256, "a8f40c833cb2b6e68f569aae4409528e1cfd41f8d8baee0ab819642074847716");
+  assert.equal(input.bytes.byteLength, 2_735);
+  assert.equal(sha256(Buffer.from(prompt)), "946aebd1be23b6c5072518f9f5a3803e155a2cce6ce8549b3863de7aeb317507");
+  assert.equal(Buffer.byteLength(prompt), 2_334);
+
+  const receipt = assertGenreSoulSurfaceSemanticReviewContextBudget(input.bytes, {
+    prompt,
+    outputReserveTokens: 8_192,
+    contextLimit: 272_000,
+    projectPromptContextBytes: 1_024,
+  });
+  assert.equal(receipt.inputSha256, input.sha256);
+  assert.equal(receipt.inputSizeBytes, input.bytes.byteLength);
+  assert.equal(receipt.promptSha256, sha256(Buffer.from(prompt)));
+  assert.equal(receipt.projectPromptContextBytes, 1_024);
+  assert.equal(receipt.contextPlan.projectPromptContextBytes, 1_024);
+  assert.equal(receipt.contextPlan.fits, true);
+  assert.throws(
+    () => assertGenreSoulSurfaceSemanticReviewContextBudget(input.bytes, {
+      prompt,
+      maxInputConservativeTokenProxy: 1,
+      outputReserveTokens: 8_192,
+      contextLimit: 272_000,
+    }),
+    (error) => isGenreSoulSurfaceSemanticReviewContextBudgetError(error),
+  );
+});
+
+test("greedy-prefix v1 builds deterministic contiguous atomic partitions with exact budget receipts", () => {
+  const evaluation = multiFindingEvaluation();
+  assert.equal(evaluation.status, "pending_semantic_review");
+  assert.equal(evaluation.findings.length, 5);
+  const built = buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+    evaluation,
+    producerRuns,
+    contextBudgetForPart: twoFindingBudget,
+  });
+  assert.deepEqual(built.plan.parts.map((part) => part.partId), ["p0001", "p0002", "p0003"]);
+  assert.deepEqual(built.plan.parts.map((part) => part.findingIds.length), [2, 2, 1]);
+  assert.deepEqual(
+    built.plan.parts.flatMap((part) => part.findingIds),
+    evaluation.findings.map((finding) => finding.findingId),
+  );
+  assert.ok(built.parts.every((part) => (
+    part.input.input.schemaVersion === "private-genre-soul-surface-semantic-review-input/v1"
+    && part.input.input.findings.length <= 2
+    && part.contextBudgetReceipt.inputSha256 === part.input.sha256
+  )));
+  const rebuilt = validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan(built.bytes, {
+    evaluation,
+    producerRuns,
+    contextBudgetForPart: twoFindingBudget,
+  });
+  assert.equal(rebuilt.sha256, built.sha256);
+  assert.equal(buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+    evaluation,
+    producerRuns,
+    contextBudgetForPart: twoFindingBudget,
+  }).sha256, built.sha256);
+
+  const tampered = structuredClone(built.plan);
+  tampered.parts[0].findingIds.pop();
+  assert.throws(
+    () => validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan(tampered, {
+      evaluation,
+      producerRuns,
+      contextBudgetForPart: twoFindingBudget,
+    }),
+    /greedy-prefix reconstruction/u,
+  );
+  const receiptTamper = structuredClone(built.plan);
+  receiptTamper.parts[0].contextBudgetReceipt.findingCount += 1;
+  assert.throws(
+    () => validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan(receiptTamper, {
+      evaluation,
+      producerRuns,
+      contextBudgetForPart: twoFindingBudget,
+    }),
+    /greedy-prefix reconstruction/u,
+  );
+  assert.throws(
+    () => buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+      evaluation,
+      producerRuns,
+      contextBudgetForPart: () => null,
+    }),
+    (error) => isGenreSoulSurfaceSemanticReviewContextBudgetError(error),
+  );
+  assert.throws(
+    () => buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+      evaluation,
+      producerRuns,
+      contextBudgetForPart: () => {
+        throw new Error("budget configuration drift");
+      },
+    }),
+    /budget configuration drift/u,
+  );
+});
+
+test("host aggregate preserves exact decision union, protected dominance, and one uncertain union projection", () => {
+  const evaluation = multiFindingEvaluation();
+  const plan = buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+    evaluation,
+    producerRuns,
+    contextBudgetForPart: twoFindingBudget,
+  });
+  const base = {
+    evaluation,
+    producerRuns,
+    plan: plan.bytes,
+    planPath: "exports/private/surface-review/partition-plan.json",
+    aggregatePath: "exports/private/surface-review/aggregate.json",
+    contextBudgetForPart: twoFindingBudget,
+  };
+  const genericParts = aggregateParts(plan, () => "generic-overlap");
+  const passed = buildPrivateGenreSoulSurfaceSemanticReviewAggregate({ ...base, parts: genericParts });
+  assert.equal(passed.status, "pass");
+  assert.deepEqual(passed.aggregate.verdictCounts, {
+    genericOverlap: evaluation.findings.length,
+    protectedIdentity: 0,
+    uncertain: 0,
+  });
+  assert.deepEqual(
+    passed.aggregate.findingDecisions.map((decision) => decision.findingId),
+    evaluation.findings.map((finding) => finding.findingId),
+  );
+  assert.deepEqual(passed.semanticReviewBinding.verdictCounts, passed.aggregate.verdictCounts);
+  assert.equal(passed.semanticReviewBinding.outcome, "pass");
+  assert.deepEqual(
+    passed.semanticReviewBinding.parts.flatMap((part) => part.findingIds),
+    evaluation.findings.map((finding) => finding.findingId),
+  );
+  assert.equal(validatePrivateGenreSoulSurfaceSemanticReviewAggregate(passed.bytes, {
+    ...base,
+    parts: genericParts,
+  }).sha256, passed.sha256);
+
+  const uncertainId = evaluation.findings[1].findingId;
+  const pending = buildPrivateGenreSoulSurfaceSemanticReviewAggregate({
+    ...base,
+    parts: aggregateParts(plan, (finding) => (
+      finding.findingId === uncertainId ? "uncertain" : "generic-overlap"
+    )),
+  });
+  assert.equal(pending.status, "pending_hil");
+  assert.deepEqual(pending.uncertainFindings.map((finding) => finding.findingId), [uncertainId]);
+  assert.deepEqual(
+    pending.semanticReviewBinding.parts.flatMap((part) => part.uncertainFindingIds),
+    [uncertainId],
+  );
+
+  const protectedId = evaluation.findings[3].findingId;
+  const blocked = buildPrivateGenreSoulSurfaceSemanticReviewAggregate({
+    ...base,
+    parts: aggregateParts(plan, (finding) => {
+      if (finding.findingId === protectedId) return "protected-identity";
+      if (finding.findingId === uncertainId) return "uncertain";
+      return "generic-overlap";
+    }),
+  });
+  assert.equal(blocked.status, "blocked");
+  assert.deepEqual(blocked.protectedFindings.map((finding) => finding.findingId), [protectedId]);
+  assert.equal(blocked.semanticReviewBinding.verdictCounts.protectedIdentity, 1);
+  assert.equal(blocked.semanticReviewBinding.outcome, "blocked");
+});
+
+test("aggregate rejects missing evidence, host-receipt byte drift, and sibling reviewer reuse", () => {
+  const evaluation = multiFindingEvaluation();
+  const plan = buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+    evaluation,
+    producerRuns,
+    contextBudgetForPart: twoFindingBudget,
+  });
+  const base = {
+    evaluation,
+    producerRuns,
+    plan: plan.bytes,
+    planPath: "exports/private/surface-review/partition-plan.json",
+    aggregatePath: "exports/private/surface-review/aggregate.json",
+    contextBudgetForPart: twoFindingBudget,
+  };
+  const parts = aggregateParts(plan, () => "generic-overlap");
+  assert.throws(
+    () => buildPrivateGenreSoulSurfaceSemanticReviewAggregate({
+      ...base,
+      aggregatePath: base.planPath,
+      parts,
+    }),
+    /paths must differ/u,
+  );
+  assert.throws(
+    () => buildPrivateGenreSoulSurfaceSemanticReviewAggregate({ ...base, parts: parts.slice(0, -1) }),
+    /every partition exactly once/u,
+  );
+
+  const receiptDrift = aggregateParts(plan, () => "generic-overlap");
+  receiptDrift[0].reviewRun.receiptBytes = Buffer.concat([
+    receiptDrift[0].reviewRun.receiptBytes,
+    Buffer.from(" "),
+  ]);
+  assert.throws(
+    () => buildPrivateGenreSoulSurfaceSemanticReviewAggregate({ ...base, parts: receiptDrift }),
+    /receipt bytes are not canonical/u,
+  );
+
+  const reused = aggregateParts(plan, () => "generic-overlap");
+  const secondResult = validatePrivateGenreSoulSurfaceSemanticReviewResult(
+    reused[1].result,
+    { input: plan.parts[1].input.bytes },
+  );
+  reused[1].reviewRun = reviewRun(plan.parts[1].input, secondResult, {
+    inputPath: "/private/reference-lab/surface-review/p0002/input.json",
+    runId: reused[0].reviewRun.receipt.runId,
+  });
+  assert.throws(
+    () => buildPrivateGenreSoulSurfaceSemanticReviewAggregate({ ...base, parts: reused }),
+    /runId is reused across partitions/u,
+  );
+
+  const inputDrift = aggregateParts(plan, () => "generic-overlap");
+  inputDrift[0].input = Buffer.from(inputDrift[0].input);
+  inputDrift[0].input[10] ^= 1;
+  assert.throws(
+    () => buildPrivateGenreSoulSurfaceSemanticReviewAggregate({ ...base, parts: inputDrift }),
+    /not valid JSON|planned partition|canonical|keys must be exactly/u,
+  );
 });

@@ -5,8 +5,13 @@ import {
   GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
   GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
   buildPrivateGenreSoulAmbiguousSurfaceRequest,
+  buildPrivateGenreSoulAmbiguousSurfaceRequestV3,
   validateGenreSoulSurfaceSemanticEvaluation,
 } from "./genre-soul-surface-hil-lib.mjs";
+import {
+  measureHermesExactInputTranscript,
+  planHermesStructuredContextBudget,
+} from "./genre-soul-hermes-run-lib.mjs";
 
 export const PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_INPUT_SCHEMA =
   "private-genre-soul-surface-semantic-review-input/v1";
@@ -14,6 +19,14 @@ export const PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_RESULT_SCHEMA =
   "private-genre-soul-surface-semantic-review-result/v1";
 export const GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PROMPT_CONTRACT =
   "genre-soul-surface-semantic-review-prompt/v1";
+export const PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_PLAN_SCHEMA =
+  "private-genre-soul-surface-semantic-review-partition-plan/v1";
+export const GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_ALGORITHM =
+  "genre-soul-surface-semantic-review-greedy-prefix/v1";
+export const PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_AGGREGATE_SCHEMA =
+  "private-genre-soul-surface-semantic-review-aggregate/v1";
+export const GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_CONTEXT_BUDGET_SCHEMA =
+  "genre-soul-surface-semantic-review-context-budget/v2";
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const FINDING_ID = /^surface-finding-[0-9a-f]{24}$/u;
@@ -21,6 +34,8 @@ const WINDOW_ID = /^surface-window-[0-9a-f]{24}$/u;
 const SAFE_ID = /^[A-Za-z0-9._:@/-]{1,512}$/u;
 const STAGES = new Set(["profile", "manager-qa"]);
 const VERDICTS = new Set(["generic-overlap", "protected-identity", "uncertain"]);
+const AGGREGATE_OUTCOMES = new Set(["blocked", "pending_hil", "pass"]);
+const PART_ID = /^p[0-9]{4}$/u;
 const REASON_CODES = new Map([
   ["generic-overlap", new Set([
     "common-lexeme", "compound-suffix", "contextual-role-not-identity",
@@ -95,6 +110,93 @@ function assertJsonValue(value, path = "$") {
 function canonicalJsonBytes(value) {
   assertJsonValue(value);
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+const CONTEXT_OVERFLOW_CODE = "GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_CONTEXT_OVERFLOW";
+
+function contextOverflowError(message) {
+  const error = new Error(message);
+  error.code = CONTEXT_OVERFLOW_CODE;
+  return error;
+}
+
+export function isGenreSoulSurfaceSemanticReviewContextBudgetError(error) {
+  return error?.code === CONTEXT_OVERFLOW_CODE;
+}
+
+export function assertGenreSoulSurfaceSemanticReviewContextBudget(inputBytes, options = {}) {
+  const bytes = Buffer.from(inputBytes ?? []);
+  const prompt = options.prompt;
+  const maximum = options.maxInputConservativeTokenProxy ?? 190_000;
+  const outputReserveTokens = options.outputReserveTokens;
+  const contextLimit = options.contextLimit ?? 272_000;
+  const profilePromptContextBytes = options.profilePromptContextBytes ?? 0;
+  const projectPromptContextBytes = options.projectPromptContextBytes ?? 0;
+  const pluginContextBytes = options.pluginContextBytes ?? 0;
+  if (
+    typeof prompt !== "string"
+    || bytes.byteLength < 1
+    || !Number.isSafeInteger(maximum)
+    || maximum < 1
+    || maximum > 190_000
+    || !Number.isSafeInteger(outputReserveTokens)
+    || outputReserveTokens < 1
+    || !Number.isSafeInteger(contextLimit)
+    || contextLimit < 1
+    || !Number.isSafeInteger(profilePromptContextBytes)
+    || profilePromptContextBytes < 0
+    || !Number.isSafeInteger(projectPromptContextBytes)
+    || projectPromptContextBytes < 0
+    || !Number.isSafeInteger(pluginContextBytes)
+    || pluginContextBytes < 0
+  ) throw new Error("Surface semantic review context budget configuration is invalid.");
+  const measurement = measureHermesExactInputTranscript([bytes]);
+  if (measurement.files.length !== 1) throw new Error("Surface semantic review context measurement drifted.");
+  if (measurement.contextProxyTokens > maximum) {
+    throw contextOverflowError(
+      `Surface semantic review context budget exceeded: ${measurement.contextProxyTokens} > ${maximum}.`,
+    );
+  }
+  const contextPlan = planHermesStructuredContextBudget({
+    profilePromptContextBytes,
+    projectPromptContextBytes,
+    pluginContextBytes,
+    prompt,
+    readTranscriptProxyBytes: measurement.readTranscriptProxyBytes,
+    outputReserveTokens,
+    contextLimit,
+  });
+  if (!contextPlan.fits) {
+    throw contextOverflowError(
+      `Surface semantic review preflight context boundary exceeded: ${contextPlan.preflightBudgetTokens} >= ${contextPlan.contextLimit}.`,
+    );
+  }
+  return {
+    schemaVersion: GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_CONTEXT_BUDGET_SCHEMA,
+    inputSha256: measurement.files[0].sha256,
+    inputSizeBytes: measurement.files[0].sizeBytes,
+    chunkCount: measurement.files[0].chunkCount,
+    readTranscriptProxyBytes: measurement.readTranscriptProxyBytes,
+    conservativeTokenProxy: measurement.contextProxyTokens,
+    maxInputConservativeTokenProxy: maximum,
+    promptSha256: sha256(Buffer.from(prompt)),
+    promptSizeBytes: Buffer.byteLength(prompt),
+    outputReserveTokens,
+    contextLimit,
+    profilePromptContextBytes,
+    projectPromptContextBytes,
+    pluginContextBytes,
+    contextPlan,
+  };
+}
+
+function surfaceFindingSetSha256(findings) {
+  return sha256(canonicalJsonBytes({
+    schemaVersion: "private-genre-soul-surface-finding-set/v3",
+    gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
+    findings,
+  }));
 }
 
 function parseCanonical(value, label) {
@@ -310,6 +412,133 @@ export function buildGenreSoulSurfaceSemanticReviewPrompt(inputOrBytes) {
 Cover every findingId exactly once in sorted order with no extras. Use only these verdict/reason pairs: generic-overlap = common-lexeme, compound-suffix, contextual-role-not-identity, grammatical-particle, punctuation-boundary; protected-identity = same-organization-identity, same-person-identity, same-private-identity; uncertain = ambiguous-identity-use, conflicting-context, insufficient-context. evidenceWindowIds must be unique, sorted, bound to that finding, and include at least one candidate and one private-source window.`;
 }
 
+function subsetSemanticEvaluation(evaluation, findings) {
+  return {
+    status: "pending_semantic_review",
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: structuredClone(evaluation.candidate),
+    privateEvidence: structuredClone(evaluation.privateEvidence),
+    findings: structuredClone(findings),
+    findingSetSha256: surfaceFindingSetSha256(findings),
+    blockers: [],
+    request: null,
+    requestBytes: null,
+    requestSha256: null,
+  };
+}
+
+function canonicalBudgetReceipt(value, label) {
+  if (!isObject(value) || Object.keys(value).length < 1) throw new Error(`${label} must be a non-empty object.`);
+  assertJsonValue(value, label);
+  return JSON.parse(canonicalJsonBytes(value).toString("utf8"));
+}
+
+function calculateSemanticReviewPartitionPlan({ evaluation, producerRuns, contextBudgetForPart } = {}) {
+  if (!isObject(evaluation) || evaluation.status !== "pending_semantic_review") {
+    throw new Error("Semantic review partition plan requires a pending_semantic_review evaluation.");
+  }
+  validateGenreSoulSurfaceSemanticEvaluation(evaluation);
+  validateProducerRuns(producerRuns);
+  if (typeof contextBudgetForPart !== "function") {
+    throw new Error("Semantic review partition plan requires an exact contextBudgetForPart callback.");
+  }
+  const parts = [];
+  let start = 0;
+  while (start < evaluation.findings.length) {
+    const partIndex = parts.length + 1;
+    if (partIndex > 9_999) throw new Error("Semantic review partition plan exceeds 9999 parts.");
+    let accepted = null;
+    for (let end = start + 1; end <= evaluation.findings.length; end += 1) {
+      const findings = evaluation.findings.slice(start, end);
+      const partEvaluation = subsetSemanticEvaluation(evaluation, findings);
+      const input = buildPrivateGenreSoulSurfaceSemanticReviewInput({ evaluation: partEvaluation, producerRuns });
+      const prompt = buildGenreSoulSurfaceSemanticReviewPrompt(input.bytes);
+      const findingIds = findings.map((finding) => finding.findingId);
+      const rawReceipt = contextBudgetForPart({
+        partIndex,
+        findingIds: structuredClone(findingIds),
+        input: structuredClone(input.input),
+        inputBytes: Buffer.from(input.bytes),
+        inputSha256: input.sha256,
+        prompt,
+        promptBytes: Buffer.from(prompt),
+      });
+      if (rawReceipt === null) break;
+      const contextBudgetReceipt = canonicalBudgetReceipt(
+        rawReceipt,
+        `Semantic review partition p${String(partIndex).padStart(4, "0")} context budget receipt`,
+      );
+      accepted = {
+        partId: `p${String(partIndex).padStart(4, "0")}`,
+        evaluation: partEvaluation,
+        input,
+        prompt,
+        findingIds,
+        contextBudgetReceipt,
+      };
+    }
+    if (accepted === null) {
+      throw contextOverflowError(
+        `Semantic review finding ${evaluation.findings[start].findingId} cannot fit in one context-bounded partition.`,
+      );
+    }
+    parts.push(accepted);
+    start += accepted.findingIds.length;
+  }
+  const plan = {
+    schemaVersion: PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_PLAN_SCHEMA,
+    algorithmVersion: GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_ALGORITHM,
+    gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
+    promptContractVersion: GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PROMPT_CONTRACT,
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: structuredClone(evaluation.candidate),
+    privateEvidence: structuredClone(evaluation.privateEvidence),
+    findingSetSha256: evaluation.findingSetSha256,
+    producerRuns: structuredClone(producerRuns),
+    parts: parts.map((part) => ({
+      partId: part.partId,
+      findingIds: structuredClone(part.findingIds),
+      findingSetSha256: part.input.input.findingSetSha256,
+      inputSha256: part.input.sha256,
+      inputSizeBytes: part.input.bytes.byteLength,
+      promptSha256: sha256(Buffer.from(part.prompt)),
+      promptSizeBytes: Buffer.byteLength(part.prompt),
+      contextBudgetReceipt: structuredClone(part.contextBudgetReceipt),
+    })),
+    authority: {
+      scope: "reference-lab-analysis-surface-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+    },
+  };
+  const bytes = canonicalJsonBytes(plan);
+  return { plan, bytes, sha256: sha256(bytes), parts };
+}
+
+export function buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan(options = {}) {
+  return calculateSemanticReviewPartitionPlan(options);
+}
+
+export function validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan(value, options = {}) {
+  const parsed = parseCanonical(value?.bytes ?? value, "Semantic review partition plan");
+  const rebuilt = calculateSemanticReviewPartitionPlan(options);
+  const suppliedBytes = parsed.suppliedBytes ?? canonicalJsonBytes(parsed.value);
+  if (!suppliedBytes.equals(rebuilt.bytes)) {
+    throw new Error("Semantic review partition plan drifted from the exact greedy-prefix reconstruction.");
+  }
+  if (parsed.suppliedBytes && !parsed.suppliedBytes.equals(canonicalJsonBytes(parsed.value))) {
+    throw new Error("Semantic review partition plan bytes are not canonical.");
+  }
+  return rebuilt;
+}
+
 function validateResultObject(result, inputValidation) {
   const input = inputValidation.input;
   assertExactKeys(result, [
@@ -419,6 +648,209 @@ export function validateGenreSoulSurfaceSemanticReviewReceipt(receipt, {
   return true;
 }
 
+function assertSafeArtifactPath(value, label) {
+  if (
+    typeof value !== "string"
+    || !SAFE_ID.test(value)
+    || value.startsWith("/")
+    || value.includes("..")
+  ) throw new Error(`${label} is invalid.`);
+}
+
+function artifactReference(path, bytes) {
+  return { path, sha256: sha256(bytes), sizeBytes: bytes.byteLength };
+}
+
+function semanticVerdictProjection(findingDecisions) {
+  const idsFor = (verdict) => findingDecisions
+    .filter((decision) => decision.verdict === verdict)
+    .map((decision) => decision.findingId);
+  return {
+    genericFindingIds: idsFor("generic-overlap"),
+    protectedFindingIds: idsFor("protected-identity"),
+    uncertainFindingIds: idsFor("uncertain"),
+  };
+}
+
+function aggregateOutcome(verdictCounts) {
+  if (verdictCounts.protectedIdentity > 0) return "blocked";
+  if (verdictCounts.uncertain > 0) return "pending_hil";
+  return "pass";
+}
+
+function calculateSemanticReviewAggregate({
+  evaluation,
+  producerRuns,
+  plan,
+  planPath,
+  aggregatePath,
+  parts,
+  contextBudgetForPart,
+} = {}) {
+  if (!isObject(evaluation) || evaluation.status !== "pending_semantic_review") {
+    throw new Error("Semantic review aggregate requires a pending_semantic_review evaluation.");
+  }
+  validateGenreSoulSurfaceSemanticEvaluation(evaluation);
+  validateProducerRuns(producerRuns);
+  assertSafeArtifactPath(planPath, "Semantic review aggregate planPath");
+  assertSafeArtifactPath(aggregatePath, "Semantic review aggregate aggregatePath");
+  if (planPath === aggregatePath) throw new Error("Semantic review aggregate plan and aggregate paths must differ.");
+  const planValidation = validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan(plan, {
+    evaluation,
+    producerRuns,
+    contextBudgetForPart,
+  });
+  if (!Array.isArray(parts) || parts.length !== planValidation.parts.length) {
+    throw new Error("Semantic review aggregate must provide every partition exactly once.");
+  }
+  const reviewerRoles = [];
+  const reviewerRunIds = [];
+  const findingDecisions = [];
+  const partProjections = [];
+  const artifactPaths = new Set([planPath, aggregatePath]);
+  for (const [index, part] of parts.entries()) {
+    if (!isObject(part)) throw new Error(`Semantic review aggregate part ${index} must be an object.`);
+    assertExactKeys(part, ["partId", "input", "result", "paths", "reviewRun"], `Semantic review aggregate part ${index}`);
+    const expected = planValidation.parts[index];
+    if (part.partId !== expected.partId || !PART_ID.test(part.partId ?? "")) {
+      throw new Error(`Semantic review aggregate part ${index} identity drifted from the plan.`);
+    }
+    assertExactKeys(part.paths, ["input", "result", "receipt"], `Semantic review aggregate ${part.partId} paths`);
+    for (const key of ["input", "result", "receipt"]) {
+      assertSafeArtifactPath(part.paths[key], `Semantic review aggregate ${part.partId} ${key} path`);
+      if (artifactPaths.has(part.paths[key])) throw new Error("Semantic review aggregate artifact path is duplicated.");
+      artifactPaths.add(part.paths[key]);
+    }
+    const inputValidation = resolveInput(part.input?.bytes ?? part.input);
+    if (!inputValidation.bytes.equals(expected.input.bytes)) {
+      throw new Error(`Semantic review aggregate ${part.partId} input drifted from its exact planned partition.`);
+    }
+    const resultValidation = validatePrivateGenreSoulSurfaceSemanticReviewResult(
+      part.result?.bytes ?? part.result,
+      { input: inputValidation.bytes },
+    );
+    assertExactKeys(
+      part.reviewRun,
+      ["receipt", "receiptBytes", "prompt", "inputPath"],
+      `Semantic review aggregate ${part.partId} reviewRun`,
+    );
+    if (!Buffer.isBuffer(part.reviewRun.receiptBytes)) {
+      throw new Error(`Semantic review aggregate ${part.partId} requires canonical host receipt bytes.`);
+    }
+    const canonicalReceiptBytes = canonicalJsonBytes(part.reviewRun.receipt);
+    if (!part.reviewRun.receiptBytes.equals(canonicalReceiptBytes)) {
+      throw new Error(`Semantic review aggregate ${part.partId} host receipt bytes are not canonical.`);
+    }
+    validateGenreSoulSurfaceSemanticReviewReceipt(part.reviewRun.receipt, {
+      input: inputValidation.bytes,
+      inputPath: part.reviewRun.inputPath,
+      prompt: part.reviewRun.prompt,
+      result: resultValidation.bytes,
+      producerRuns,
+    });
+    reviewerRoles.push(part.reviewRun.receipt.role);
+    reviewerRunIds.push(part.reviewRun.receipt.runId);
+    findingDecisions.push(...structuredClone(resultValidation.result.findingDecisions));
+    const verdictProjection = semanticVerdictProjection(resultValidation.result.findingDecisions);
+    partProjections.push({
+      partId: part.partId,
+      findingIds: structuredClone(expected.findingIds),
+      ...verdictProjection,
+      input: artifactReference(part.paths.input, inputValidation.bytes),
+      result: artifactReference(part.paths.result, resultValidation.bytes),
+      receipt: artifactReference(part.paths.receipt, part.reviewRun.receiptBytes),
+      reviewer: {
+        role: part.reviewRun.receipt.role,
+        runId: part.reviewRun.receipt.runId,
+        model: part.reviewRun.receipt.model,
+        provider: part.reviewRun.receipt.provider,
+        reasoningEffort: part.reviewRun.receipt.reasoningEffort,
+        promptSha256: part.reviewRun.receipt.promptSha256,
+      },
+    });
+  }
+  if (new Set(reviewerRoles).size !== reviewerRoles.length) {
+    throw new Error("Semantic review aggregate reviewer role is reused across partitions.");
+  }
+  if (new Set(reviewerRunIds).size !== reviewerRunIds.length) {
+    throw new Error("Semantic review aggregate reviewer runId is reused across partitions.");
+  }
+  const expectedFindingIds = evaluation.findings.map((finding) => finding.findingId);
+  const actualFindingIds = findingDecisions.map((decision) => decision.findingId);
+  if (JSON.stringify(actualFindingIds) !== JSON.stringify(expectedFindingIds)) {
+    throw new Error("Semantic review aggregate decision union does not cover the exact global finding set.");
+  }
+  const verdictCounts = {
+    genericOverlap: findingDecisions.filter((decision) => decision.verdict === "generic-overlap").length,
+    protectedIdentity: findingDecisions.filter((decision) => decision.verdict === "protected-identity").length,
+    uncertain: findingDecisions.filter((decision) => decision.verdict === "uncertain").length,
+  };
+  const outcome = aggregateOutcome(verdictCounts);
+  if (!AGGREGATE_OUTCOMES.has(outcome)) throw new Error("Semantic review aggregate outcome is invalid.");
+  const aggregate = {
+    schemaVersion: PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_AGGREGATE_SCHEMA,
+    algorithmVersion: GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_ALGORITHM,
+    gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
+    promptContractVersion: GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PROMPT_CONTRACT,
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: structuredClone(evaluation.candidate),
+    privateEvidence: structuredClone(evaluation.privateEvidence),
+    findingSetSha256: evaluation.findingSetSha256,
+    plan: artifactReference(planPath, planValidation.bytes),
+    parts: partProjections,
+    findingDecisions,
+    verdictCounts,
+    outcome,
+    authority: {
+      scope: "reference-lab-analysis-surface-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+    },
+  };
+  const bytes = canonicalJsonBytes(aggregate);
+  const aggregateRef = artifactReference(aggregatePath, bytes);
+  const semanticReviewBinding = {
+    plan: structuredClone(aggregate.plan),
+    aggregate: aggregateRef,
+    parts: structuredClone(partProjections),
+    verdictCounts: structuredClone(verdictCounts),
+    outcome,
+  };
+  const uncertainIds = new Set(partProjections.flatMap((part) => part.uncertainFindingIds));
+  const protectedIds = new Set(partProjections.flatMap((part) => part.protectedFindingIds));
+  return {
+    aggregate,
+    bytes,
+    sha256: aggregateRef.sha256,
+    status: outcome,
+    uncertainFindings: evaluation.findings.filter((finding) => uncertainIds.has(finding.findingId)),
+    protectedFindings: evaluation.findings.filter((finding) => protectedIds.has(finding.findingId)),
+    semanticReviewBinding,
+    plan: planValidation,
+  };
+}
+
+export function buildPrivateGenreSoulSurfaceSemanticReviewAggregate(options = {}) {
+  return calculateSemanticReviewAggregate(options);
+}
+
+export function validatePrivateGenreSoulSurfaceSemanticReviewAggregate(value, options = {}) {
+  const parsed = parseCanonical(value?.bytes ?? value, "Semantic review aggregate");
+  const rebuilt = calculateSemanticReviewAggregate(options);
+  const suppliedBytes = parsed.suppliedBytes ?? canonicalJsonBytes(parsed.value);
+  if (!suppliedBytes.equals(rebuilt.bytes)) {
+    throw new Error("Semantic review aggregate drifted from its exact partition evidence.");
+  }
+  if (parsed.suppliedBytes && !parsed.suppliedBytes.equals(canonicalJsonBytes(parsed.value))) {
+    throw new Error("Semantic review aggregate bytes are not canonical.");
+  }
+  return rebuilt;
+}
+
 export function resolveGenreSoulSurfaceSemanticReview({ evaluation, input, result, reviewRun } = {}) {
   if (!isObject(evaluation) || evaluation.status !== "pending_semantic_review") {
     throw new Error("Semantic review resolution requires pending_semantic_review evaluation.");
@@ -463,6 +895,18 @@ export function resolveGenreSoulSurfaceSemanticReview({ evaluation, input, resul
     },
   };
   const decisions = new Map(resultValidation.result.findingDecisions.map((decision) => [decision.findingId, decision]));
+  const semanticProjection = {
+    findingSetSha256: evaluation.findingSetSha256,
+    genericFindingIds: evaluation.findings
+      .filter((finding) => decisions.get(finding.findingId)?.verdict === "generic-overlap")
+      .map((finding) => finding.findingId),
+    protectedFindingIds: evaluation.findings
+      .filter((finding) => decisions.get(finding.findingId)?.verdict === "protected-identity")
+      .map((finding) => finding.findingId),
+    uncertainFindingIds: evaluation.findings
+      .filter((finding) => decisions.get(finding.findingId)?.verdict === "uncertain")
+      .map((finding) => finding.findingId),
+  };
   const protectedFindings = evaluation.findings.filter((finding) => decisions.get(finding.findingId)?.verdict === "protected-identity");
   if (protectedFindings.length > 0) {
     return {
@@ -495,6 +939,17 @@ export function resolveGenreSoulSurfaceSemanticReview({ evaluation, input, resul
       candidate: evaluation.candidate,
       privateEvidence: evaluation.privateEvidence,
       semanticReview,
+      semanticProjection,
+      findings: uncertainFindings,
+    });
+    const legacyV3 = buildPrivateGenreSoulAmbiguousSurfaceRequestV3({
+      stage: evaluation.stage,
+      genre: evaluation.genre,
+      soulId: evaluation.soulId,
+      inputDigest: evaluation.inputDigest,
+      candidate: evaluation.candidate,
+      privateEvidence: evaluation.privateEvidence,
+      semanticReview,
       findings: uncertainFindings,
     });
     return {
@@ -509,9 +964,13 @@ export function resolveGenreSoulSurfaceSemanticReview({ evaluation, input, resul
       findingSetSha256: evaluation.findingSetSha256,
       blockers: [],
       semanticReview,
+      semanticProjection,
       request: built.request,
       requestBytes: built.bytes,
       requestSha256: built.sha256,
+      legacyRequest: legacyV3.request,
+      legacyRequestBytes: legacyV3.bytes,
+      legacyRequestSha256: legacyV3.sha256,
     };
   }
   return {

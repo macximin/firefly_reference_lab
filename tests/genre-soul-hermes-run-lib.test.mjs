@@ -715,6 +715,7 @@ test("structured context planning uses the generic preflight formula and rejects
   ]);
   const options = {
     profilePromptContextBytes: 1_237,
+    projectPromptContextBytes: 3_456,
     pluginContextBytes: 2_345,
     prompt: "Unicode prompt: 분석 😀",
     readTranscriptProxyBytes: transcript.readTranscriptProxyBytes,
@@ -724,15 +725,17 @@ test("structured context planning uses the generic preflight formula and rejects
   const plan = planHermesStructuredContextBudget(options);
   const expectedInputTokens = 16_384 + Math.ceil((
     options.profilePromptContextBytes
+    + options.projectPromptContextBytes
     + options.pluginContextBytes
     + Buffer.byteLength(options.prompt, "utf8")
     + options.readTranscriptProxyBytes
   ) / 2);
   assert.deepEqual(plan, {
-    schemaVersion: "hermes-structured-context-budget/v1",
+    schemaVersion: "hermes-structured-context-budget/v2",
     contextProxyBytesPerToken: 2,
     staticPromptReserveTokens: 16_384,
     profilePromptContextBytes: options.profilePromptContextBytes,
+    projectPromptContextBytes: options.projectPromptContextBytes,
     pluginContextBytes: options.pluginContextBytes,
     promptSizeBytes: Buffer.byteLength(options.prompt, "utf8"),
     readTranscriptProxyBytes: options.readTranscriptProxyBytes,

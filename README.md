@@ -88,6 +88,15 @@ preflight와 같은 공식으로 합산하고 `budget < contextLimit`일 때만 
 각 work partition은 provider 호출 전에 이 영수증을 run-input digest v4에 봉인하고
 실행 직전에 다시 계산한다. 이전 공식으로 만들어진 미완료 run은 수정하거나
 재사용하지 않고 audit trail로 남기며, 새 budget 계약은 새 digest/run root를 쓴다.
+최종 profile 표면 semantic 입력도 같은 exact preflight를 통과해야 한다. 전체 입력이
+예산 안에 들면 single v1 input/result/prompt, HIL gate v3, 전체 semantic finding
+partition을 결속한 single owner request v4를 쓰고, 넘치면
+`partition-plan/v1`의 `greedy-prefix/v1`이 정렬된 finding을 쪼개지 않은 채 연속
+part로 나눈다. 각 part는 별도 reviewer run으로 exact 검토하고 host가
+`aggregate/v1`을 결정론적으로 합친다. plan·모든 part input/result/host receipt·
+aggregate 실제 bytes를 completion에 봉인하며, protected finding 하나라도 있으면
+전역 차단한다. uncertain 전체는 part별 요청이 아니라 HIL v4 request/decision 한
+쌍으로만 보낸다.
 
 capability v3는 원문·세션·state DB·plugin을 system-temp capsule에 유지하면서,
 provider 인증 상태만 source profile tree의 canonical global `auth.json`으로 라우팅한다. 인증 파일은
@@ -120,11 +129,15 @@ live private source의 selector와 byte SHA에 다시 결속한다. 연속 5-tok
 구두점·조사·일반 어휘·조직 접미사·맨몸
 2~4음절 인명형처럼 문맥 판단이 필요한 항목은 코드가 차단 여부를 추측하지 않고
 bounded raw window 후보만 추출한다. 작품별 consolidation과 장르 합성의 중간
-결과에서는 구조·근거 검증만 수행하고, 프로필의 최종 tracked 후보와 Manager의
-최종 receipt 후보에서 각각 한 번만 별도 role/run의 `gpt-5.6-sol/high` semantic
-reviewer를 실행한다. reviewer가 `generic-overlap`으로 판정하면 자동 통과하고,
+결과에서는 구조·근거 검증만 수행한다. Manager의 최종 receipt 후보는 별도
+role/run의 `gpt-5.6-sol/high` semantic reviewer 한 번으로 검토하고, profile 최종
+후보는 위 context preflight 결과에 따라 legacy single 또는 partitioned reviewer
+집합으로 검토한다. reviewer가 `generic-overlap`으로 판정하면 자동 통과하고,
 `protected-identity`면 차단하며, `uncertain`만 `surface-review/owner-hil/` 아래
-v3 `pending_hil` 요청으로 보낸다. reviewer input·result·host receipt·trace는
+single과 partition aggregate 모두 v4 `pending_hil` 요청으로 보낸다. single v4는
+전체 finding-set SHA와 generic/protected/uncertain ID partition을 결속하며 과거
+single request v3는 readback 호환으로만 받는다. reviewer
+input·result·host receipt·trace는
 producer run/receipt와 함께 immutable private evidence로 봉인하고, 성공한
 completion의 재사용 때 prompt와 exact-read chain을 다시 만든다. pending 상태에서는 tracked 후보·누출
 영수증·visibility marker·top-level completion seal을 쓰지 않는다. 현재 Manager
@@ -136,8 +149,11 @@ receipt에는 legacy v1 proof를 넣을 수 없다. 기존 Storyyard
 재라벨해 쓰지 않는다. 반면 `대기업` 같은 짧은 일반 상업 메커니즘 문구는 길이만으로
 자동 거절하지 않는다. 문장부호 너머 인접 토큰은 조직 구조에서 제외하고, 불완전한
 window coverage는 semantic reviewer가 반드시 `uncertain`으로 남긴다. v1/v2
-pending 요청·결정은 v3 판단으로 재사용하지 않는다. 실행
-digest는 exact prompt bytes와 현재 attested Hermes
+pending 요청·결정은 v3 판단으로 재사용하지 않는다.
+Manager current v2 semantic 경로는 partition하지 않는다. 대신 single v1 입력과
+prompt를 semantic evidence write·provider 호출보다 먼저 exact context preflight하고,
+초과하면 HIL·누출 검사·tracked publication 없이 fail-closed한다.
+Manager 실행 digest는 exact prompt bytes와 현재 attested Hermes
 binary·implementation·dependency·profile/project context 전체를 포함하며, 실제
 attempt의 trace·usage·result·host receipt·completion pointer가 모두 일치해야 한다.
 테스트 executor도 명시적 test-only 경계와 같은 immutable evidence 검사를 우회할
@@ -157,8 +173,12 @@ proof를 함께 남긴다. `reject`는 tracked 게시 없이 종료한다. 실�
 node tools/genre-soul-surface-hil-decision.mjs \
   --request "$REQUEST_PATH" \
   --decision approve \
-  --actor-id "$OWNER_ACTOR_ID"
+  --actor-id "$OWNER_ACTOR_ID" \
+  --decided-at "$DECIDED_AT"
 ```
+
+`--decided-at`은 owner가 고정한 ISO-8601 시각이며 필수다. 같은 request를 재시도할
+때 동일한 값을 다시 전달해야 decision bytes가 달라지지 않는다.
 
 분산 survey, 전수 deep-read, 장르 프로필, manager QA, tracked 누출 검사와
 promotion eligibility의 완료선은

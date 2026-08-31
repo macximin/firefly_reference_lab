@@ -4,14 +4,23 @@ import test from "node:test";
 
 import {
   PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_DECISION_SCHEMA,
+  PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA,
+  PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA,
+  PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_DECISION_SCHEMA,
+  PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA,
   buildPrivateGenreSoulAmbiguousSurfaceDecision,
   buildPrivateGenreSoulAmbiguousSurfaceRequest,
+  buildPrivateGenreSoulAmbiguousSurfaceRequestV3,
+  buildPrivateGenreSoulBatchAmbiguousSurfaceDecision,
+  buildPrivateGenreSoulBatchAmbiguousSurfaceRequest,
   computeGenreSoulSurfaceSampleSetSha256,
   computeGenreSoulSurfaceSourceSetSha256,
   evaluateGenreSoulSurfaceHil,
   resolveGenreSoulSurfaceHilDecision,
   validatePrivateGenreSoulAmbiguousSurfaceDecision,
   validatePrivateGenreSoulAmbiguousSurfaceRequest,
+  validatePrivateGenreSoulBatchAmbiguousSurfaceDecision,
+  validatePrivateGenreSoulBatchAmbiguousSurfaceRequest,
 } from "../tools/genre-soul-surface-hil-lib.mjs";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
@@ -54,9 +63,51 @@ function evaluate(candidate, privateSamples = [], overrides = {}) {
   });
 }
 
-function ownerPending(evaluation, findings = evaluation.findings) {
+function semanticProjectionFor(evaluation, findings = evaluation.findings) {
+  const uncertainFindingIds = findings.map((finding) => finding.findingId).sort();
+  const uncertain = new Set(uncertainFindingIds);
+  return {
+    findingSetSha256: evaluation.findingSetSha256,
+    genericFindingIds: evaluation.findings
+      .map((finding) => finding.findingId)
+      .filter((findingId) => !uncertain.has(findingId))
+      .sort(),
+    protectedFindingIds: [],
+    uncertainFindingIds,
+  };
+}
+
+function ownerPending(
+  evaluation,
+  findings = evaluation.findings,
+  semanticProjection = semanticProjectionFor(evaluation, findings),
+) {
   assert.equal(evaluation.status, "pending_semantic_review");
   const built = buildPrivateGenreSoulAmbiguousSurfaceRequest({
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: evaluation.candidate,
+    privateEvidence: evaluation.privateEvidence,
+    semanticReview,
+    semanticProjection,
+    findings,
+  });
+  return {
+    ...evaluation,
+    status: "pending_hil",
+    semanticReview,
+    semanticProjection,
+    request: built.request,
+    requestBytes: built.bytes,
+    requestSha256: built.sha256,
+  };
+}
+
+function legacyOwnerPending(evaluation, findings = evaluation.findings) {
+  assert.equal(evaluation.status, "pending_semantic_review");
+  const built = buildPrivateGenreSoulAmbiguousSurfaceRequestV3({
     stage: evaluation.stage,
     genre: evaluation.genre,
     soulId: evaluation.soulId,
@@ -70,6 +121,86 @@ function ownerPending(evaluation, findings = evaluation.findings) {
     ...evaluation,
     status: "pending_hil",
     semanticReview,
+    request: built.request,
+    requestBytes: built.bytes,
+    requestSha256: built.sha256,
+  };
+}
+
+function batchSemanticReview(evaluation, uncertainFindingIds) {
+  const uncertain = new Set(uncertainFindingIds);
+  const parts = evaluation.findings.map((finding, index) => {
+    const partId = `p${String(index + 1).padStart(4, "0")}`;
+    const isUncertain = uncertain.has(finding.findingId);
+    return {
+      partId,
+      findingIds: [finding.findingId],
+      genericFindingIds: isUncertain ? [] : [finding.findingId],
+      uncertainFindingIds: isUncertain ? [finding.findingId] : [],
+      protectedFindingIds: [],
+      input: {
+        path: `surface-review/parts/${partId}/input.json`,
+        sha256: digest(`${partId}-input`),
+        sizeBytes: 100 + index,
+      },
+      result: {
+        path: `surface-review/parts/${partId}/result.json`,
+        sha256: digest(`${partId}-result`),
+        sizeBytes: 200 + index,
+      },
+      receipt: {
+        path: `surface-review/parts/${partId}/accepted-host-receipt.json`,
+        sha256: digest(`${partId}-receipt`),
+        sizeBytes: 300 + index,
+      },
+      reviewer: {
+        role: `genre-soul-surface-semantic-review:profile:${partId}`,
+        runId: `semantic-review-run-${partId}`,
+        model: "gpt-5.6-sol",
+        provider: "openai-codex",
+        reasoningEffort: "high",
+        promptSha256: digest(`${partId}-prompt`),
+      },
+    };
+  });
+  return {
+    plan: {
+      path: "surface-review/partition-plan.json",
+      sha256: digest("surface-partition-plan"),
+      sizeBytes: 400,
+    },
+    aggregate: {
+      path: "surface-review/aggregate.json",
+      sha256: digest("surface-aggregate"),
+      sizeBytes: 500,
+    },
+    verdictCounts: {
+      genericOverlap: evaluation.findings.length - uncertain.size,
+      protectedIdentity: 0,
+      uncertain: uncertain.size,
+    },
+    outcome: uncertain.size > 0 ? "pending_hil" : "pass",
+    parts,
+  };
+}
+
+function batchOwnerPending(evaluation, uncertainFindings) {
+  const uncertainFindingIds = uncertainFindings.map((finding) => finding.findingId).sort();
+  const binding = batchSemanticReview(evaluation, uncertainFindingIds);
+  const built = buildPrivateGenreSoulBatchAmbiguousSurfaceRequest({
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: evaluation.candidate,
+    privateEvidence: evaluation.privateEvidence,
+    batchSemanticReview: binding,
+    findings: uncertainFindings,
+  });
+  return {
+    ...evaluation,
+    status: "pending_hil",
+    batchSemanticReview: binding,
     request: built.request,
     requestBytes: built.bytes,
     requestSha256: built.sha256,
@@ -315,7 +446,7 @@ test("bare surname-shaped overlaps stay pending semantic review without becoming
   }
 });
 
-test("surname and organization-stem findings deduplicate by rule before one v3 owner request", () => {
+test("surname and organization-stem findings deduplicate by rule before one owner request", () => {
   const evaluation = evaluate(
     { mechanism: "김광 결과는 보상 회수 순서를 바꾼다" },
     [
@@ -465,6 +596,7 @@ test("request construction is deterministic, sorted, deduplicated, and content-b
     candidate: first.request.candidate,
     privateEvidence: first.request.privateEvidence,
     semanticReview: first.request.semanticReview,
+    semanticProjection: first.request.semanticProjection,
     findings: [...first.request.findings].reverse(),
   });
   assert.equal(rebuilt.bytes.equals(first.requestBytes), true);
@@ -500,6 +632,11 @@ test("malformed and non-canonical requests are rejected", () => {
     (request) => { request.soulId = "male-fantasy-ko"; },
     (request) => { request.candidate.sha256 = "0".repeat(64); },
     (request) => { request.privateEvidence.sampleSetSha256 = "bad"; },
+    (request) => { request.semanticProjection.findingSetSha256 = "bad"; },
+    (request) => {
+      request.semanticProjection.genericFindingIds = [...request.semanticProjection.uncertainFindingIds];
+    },
+    (request) => { request.semanticProjection.uncertainFindingIds = []; },
     (request) => { request.findings[0].findingId = `surface-finding-${"0".repeat(24)}`; },
     (request) => { request.findings[0].rule = "unknown-overlap/v1"; },
     (request) => { request.findings[0].normalizedTerm = "차도윤"; },
@@ -529,6 +666,12 @@ test("owner decisions bind the exact request and completely resolve approve or r
     [{ selectorId: "selector-a", sourceText: "김광은 움직였다. 공개는 늦었다." }],
   ));
   assert.equal(pending.status, "pending_hil");
+  assert.equal(pending.request.schemaVersion, PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA);
+  assert.equal(pending.request.schemaVersion, "private-genre-soul-ambiguous-surface-request/v4");
+  assert.deepEqual(
+    pending.request.semanticProjection.uncertainFindingIds,
+    pending.request.findings.map((finding) => finding.findingId),
+  );
   const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest("run")}/genre/surface-review/owner-hil/requests/${pending.requestSha256}.json`;
   const build = (action) => buildPrivateGenreSoulAmbiguousSurfaceDecision({
     request: pending.requestBytes,
@@ -569,6 +712,84 @@ test("owner decisions bind the exact request and completely resolve approve or r
   assert.equal(rejectedResolution.blockers.length, pending.request.findings.length);
 
   assert.throws(() => build("polish-retry"), /finding decision is invalid/u);
+});
+
+test("historical single v3 requests remain readable and resolvable", () => {
+  const pending = legacyOwnerPending(evaluate(
+    { mechanism: "김광 방식" },
+    [{ selectorId: "selector-legacy-v3", sourceText: "김광은 움직였다." }],
+  ));
+  assert.equal(pending.request.schemaVersion, PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA);
+  assert.equal(
+    validatePrivateGenreSoulAmbiguousSurfaceRequest(pending.requestBytes).sha256,
+    pending.requestSha256,
+  );
+  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest("legacy-v3-run")}/genre/surface-review/owner-hil/requests/${pending.requestSha256}.json`;
+  const approved = buildPrivateGenreSoulAmbiguousSurfaceDecision({
+    request: pending.requestBytes,
+    requestPath,
+    findingDecisions: pending.request.findings.map((finding) => ({
+      findingId: finding.findingId,
+      decision: "generic-overlap-approved",
+    })),
+    decidedByActorId: "owner:local",
+    decidedByRole: "owner",
+    decidedAt: "2026-08-30T04:00:00.000Z",
+  });
+  assert.equal(resolveGenreSoulSurfaceHilDecision(pending, {
+    decision: approved.bytes,
+    requestPath,
+  }).status, "pass");
+});
+
+test("single and batch decision builders and validators require canonical UTC milliseconds", () => {
+  const evaluation = evaluate(
+    { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
+    [{ selectorId: "selector-decision-time", sourceText: "김광은 움직였다. 공개는 늦었다." }],
+  );
+  const cases = [{
+    pending: ownerPending(evaluation),
+    builder: buildPrivateGenreSoulAmbiguousSurfaceDecision,
+    validator: validatePrivateGenreSoulAmbiguousSurfaceDecision,
+    label: "single",
+  }, {
+    pending: batchOwnerPending(evaluation, evaluation.findings),
+    builder: buildPrivateGenreSoulBatchAmbiguousSurfaceDecision,
+    validator: validatePrivateGenreSoulBatchAmbiguousSurfaceDecision,
+    label: "batch",
+  }];
+  const nonCanonicalTimestamps = [
+    "2026-08-30T04:00:00Z",
+    "2026-08-30T13:00:00.000+09:00",
+    "August 30, 2026 04:00:00 UTC",
+  ];
+  for (const { pending, builder, validator, label } of cases) {
+    const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest(`canonical-time-${label}`)}/genre/surface-review/owner-hil/requests/${pending.requestSha256}.json`;
+    const base = {
+      request: pending.requestBytes,
+      requestPath,
+      findingDecisions: pending.request.findings.map((finding) => ({
+        findingId: finding.findingId,
+        decision: "generic-overlap-approved",
+      })),
+      decidedByActorId: "owner:local",
+      decidedByRole: "owner",
+      decidedAt: "2026-08-30T04:00:00.000Z",
+    };
+    const valid = builder(base);
+    for (const decidedAt of nonCanonicalTimestamps) {
+      assert.throws(
+        () => builder({ ...base, decidedAt }),
+        /canonical ISO-8601 UTC timestamp with milliseconds/u,
+      );
+      const decision = structuredClone(valid.decision);
+      decision.decidedAt = decidedAt;
+      assert.throws(
+        () => validator(decision, { request: pending.requestBytes, requestPath }),
+        /canonical ISO-8601 UTC timestamp with milliseconds/u,
+      );
+    }
+  }
 });
 
 test("surface owner decisions reject stale, partial, non-owner, non-canonical, and self-reidentified bytes", () => {
@@ -632,6 +853,296 @@ test("surface owner decisions reject stale, partial, non-owner, non-canonical, a
       requestPath: `${requestPath}.stale`,
     }),
     /exact request/u,
+  );
+});
+
+test("one batch v4 owner request binds the exact aggregate, part receipts, and uncertain union", () => {
+  const evaluation = evaluate(
+    { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
+    [{ selectorId: "selector-batch", sourceText: "김광은 움직였다. 공개는 늦었다." }],
+  );
+  assert.equal(evaluation.status, "pending_semantic_review");
+  assert.equal(evaluation.findings.length, 2);
+  const singleEvaluation = evaluate(
+    { mechanism: "김광 방식은 서로 다르다" },
+    [{ selectorId: "selector-single-batch", sourceText: "김광은 움직였다." }],
+  );
+  assert.equal(singleEvaluation.findings.length, 1);
+  assert.throws(
+    () => batchOwnerPending(singleEvaluation, singleEvaluation.findings),
+    /between two and 9,999 parts/u,
+  );
+  const mixedPending = batchOwnerPending(evaluation, [evaluation.findings[1]]);
+  assert.deepEqual(
+    mixedPending.request.findings.map((finding) => finding.findingId),
+    [evaluation.findings[1].findingId],
+  );
+  assert.deepEqual(
+    mixedPending.request.batchSemanticReview.verdictCounts,
+    { genericOverlap: 1, protectedIdentity: 0, uncertain: 1 },
+  );
+  assert.equal(
+    validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(mixedPending.requestBytes).sha256,
+    mixedPending.requestSha256,
+  );
+  const pending = batchOwnerPending(evaluation, [...evaluation.findings].reverse());
+  assert.equal(pending.request.schemaVersion, PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA);
+  assert.equal(pending.request.schemaVersion, "private-genre-soul-batch-ambiguous-surface-request/v4");
+  assert.deepEqual(
+    pending.request.findings.map((finding) => finding.findingId),
+    evaluation.findings.map((finding) => finding.findingId),
+  );
+  assert.equal(
+    validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(pending.requestBytes).sha256,
+    pending.requestSha256,
+  );
+  const rebuilt = buildPrivateGenreSoulBatchAmbiguousSurfaceRequest({
+    stage: pending.request.stage,
+    genre: pending.request.genre,
+    soulId: pending.request.soulId,
+    inputDigest: pending.request.inputDigest,
+    candidate: pending.request.candidate,
+    privateEvidence: pending.request.privateEvidence,
+    batchSemanticReview: pending.request.batchSemanticReview,
+    findings: [...pending.request.findings].reverse(),
+  });
+  assert.equal(rebuilt.bytes.equals(pending.requestBytes), true);
+  assert.equal(rebuilt.sha256, pending.requestSha256);
+
+  const malformed = [
+    (request) => { request.extra = true; },
+    (request) => { request.batchSemanticReview.aggregate.sha256 = "bad"; },
+    (request) => {
+      request.batchSemanticReview.parts[1].receipt.path = request.batchSemanticReview.parts[0].receipt.path;
+    },
+    (request) => {
+      request.batchSemanticReview.parts[1].reviewer.runId = request.batchSemanticReview.parts[0].reviewer.runId;
+    },
+    (request) => {
+      request.batchSemanticReview.parts[0].genericFindingIds = [request.batchSemanticReview.parts[0].findingIds[0]];
+    },
+    (request) => { request.findings.splice(0, 1); },
+    (request) => { request.batchSemanticReview.parts.reverse(); },
+    (request) => {
+      const first = request.batchSemanticReview.parts[0];
+      first.uncertainFindingIds = [];
+      first.protectedFindingIds = [...first.findingIds];
+      request.batchSemanticReview.verdictCounts.uncertain -= 1;
+      request.batchSemanticReview.verdictCounts.protectedIdentity += 1;
+      request.batchSemanticReview.outcome = "blocked";
+    },
+  ];
+  for (const mutate of malformed) {
+    const request = structuredClone(pending.request);
+    mutate(request);
+    assert.throws(() => validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(request));
+  }
+  assert.throws(
+    () => validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(JSON.stringify(pending.request)),
+    /not canonical/u,
+  );
+});
+
+test("batch v4 owner decisions cover every uncertain finding and resolve without crossing v3", () => {
+  const evaluation = evaluate(
+    { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
+    [{ selectorId: "selector-batch-decision", sourceText: "김광은 움직였다. 공개는 늦었다." }],
+  );
+  const pending = batchOwnerPending(evaluation, evaluation.findings);
+  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest("batch-run")}/genre/surface-review/owner-hil/requests/${pending.requestSha256}.json`;
+  const build = (action) => buildPrivateGenreSoulBatchAmbiguousSurfaceDecision({
+    request: pending.requestBytes,
+    requestPath,
+    findingDecisions: pending.request.findings.map((finding) => ({
+      findingId: finding.findingId,
+      decision: action,
+    })),
+    decidedByActorId: "owner:local",
+    decidedByRole: "owner",
+    decidedAt: "2026-08-30T04:00:00.000Z",
+  });
+
+  const approved = build("generic-overlap-approved");
+  assert.equal(approved.decision.schemaVersion, PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_DECISION_SCHEMA);
+  assert.equal(approved.decision.schemaVersion, "private-genre-soul-batch-ambiguous-surface-decision/v4");
+  assert.equal(
+    validatePrivateGenreSoulBatchAmbiguousSurfaceDecision(approved.bytes, {
+      request: pending.requestBytes,
+      requestPath,
+    }).sha256,
+    approved.sha256,
+  );
+  assert.equal(resolveGenreSoulSurfaceHilDecision(pending, {
+    decision: approved.bytes,
+    requestPath,
+  }).status, "pass");
+
+  const rejected = build("protected-reject");
+  const rejectedResolution = resolveGenreSoulSurfaceHilDecision(pending, {
+    decision: rejected.bytes,
+    requestPath,
+  });
+  assert.equal(rejectedResolution.status, "blocked");
+  assert.equal(rejectedResolution.blockers.length, pending.request.findings.length);
+  assert.throws(
+    () => buildPrivateGenreSoulBatchAmbiguousSurfaceDecision({
+      request: pending.requestBytes,
+      requestPath,
+      findingDecisions: approved.decision.findingDecisions.slice(1),
+      decidedByActorId: "owner:local",
+      decidedByRole: "owner",
+      decidedAt: "2026-08-30T04:00:00.000Z",
+    }),
+    /exact request finding set/u,
+  );
+
+  const legacy = ownerPending(evaluation);
+  const legacyPath = `${requestPath}.legacy`;
+  const legacyDecision = buildPrivateGenreSoulAmbiguousSurfaceDecision({
+    request: legacy.requestBytes,
+    requestPath: legacyPath,
+    findingDecisions: legacy.request.findings.map((finding) => ({
+      findingId: finding.findingId,
+      decision: "generic-overlap-approved",
+    })),
+    decidedByActorId: "owner:local",
+    decidedByRole: "owner",
+    decidedAt: "2026-08-30T04:00:00.000Z",
+  });
+  assert.throws(() => validatePrivateGenreSoulBatchAmbiguousSurfaceDecision(legacyDecision.bytes, {
+    request: pending.requestBytes,
+    requestPath,
+  }));
+  assert.throws(() => validatePrivateGenreSoulAmbiguousSurfaceDecision(approved.bytes, {
+    request: legacy.requestBytes,
+    requestPath: legacyPath,
+  }));
+  assert.throws(() => resolveGenreSoulSurfaceHilDecision({
+    ...pending,
+    requestSha256: digest("stale-batch-request"),
+  }, {
+    decision: approved.bytes,
+    requestPath,
+  }), /digest drifted/u);
+  const driftedRequest = structuredClone(pending.request);
+  driftedRequest.batchSemanticReview.aggregate.sizeBytes += 1;
+  assert.throws(() => resolveGenreSoulSurfaceHilDecision({
+    ...pending,
+    request: driftedRequest,
+  }, {
+    decision: approved.bytes,
+    requestPath,
+  }), /object or digest drifted/u);
+});
+
+test("single and batch v4 owner decisions reject stale or misbound pending evaluation state", () => {
+  const evaluation = evaluate(
+    { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
+    [{ selectorId: "selector-evaluation-binding", sourceText: "김광은 움직였다. 공개는 늦었다." }],
+  );
+  const pendingCases = [
+    ownerPending(evaluation),
+    batchOwnerPending(evaluation, evaluation.findings),
+  ];
+  const staleEvaluation = evaluate(
+    { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
+    [{ selectorId: "selector-evaluation-binding", sourceText: "김광은 움직였다. 공개는 늦었다." }],
+    { inputDigest: digest("different-valid-evaluation") },
+  );
+  const stalePendingCases = [
+    ownerPending(staleEvaluation),
+    batchOwnerPending(staleEvaluation, staleEvaluation.findings),
+  ];
+  for (const [index, pending] of pendingCases.entries()) {
+    const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest(`binding-run-${index}`)}/genre/surface-review/owner-hil/requests/${pending.requestSha256}.json`;
+    const builder = pending.request.schemaVersion === PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA
+      ? buildPrivateGenreSoulBatchAmbiguousSurfaceDecision
+      : buildPrivateGenreSoulAmbiguousSurfaceDecision;
+    const approved = builder({
+      request: pending.requestBytes,
+      requestPath,
+      findingDecisions: pending.request.findings.map((finding) => ({
+        findingId: finding.findingId,
+        decision: "generic-overlap-approved",
+      })),
+      decidedByActorId: "owner:local",
+      decidedByRole: "owner",
+      decidedAt: "2026-08-30T04:00:00.000Z",
+    });
+    const validButMisbound = {
+      ...stalePendingCases[index],
+      request: pending.request,
+      requestBytes: pending.requestBytes,
+      requestSha256: pending.requestSha256,
+    };
+    assert.throws(
+      () => resolveGenreSoulSurfaceHilDecision(validButMisbound, {
+        decision: approved.bytes,
+        requestPath,
+      }),
+      /exact evaluation/u,
+    );
+    const mutations = [
+      (value) => { value.inputDigest = digest(`stale-input-${index}`); },
+      (value) => { value.candidate.sha256 = digest(`stale-candidate-${index}`); },
+      (value) => { value.privateEvidence.sampleSetSha256 = digest(`stale-private-evidence-${index}`); },
+      (value) => {
+        value.findings = value.findings.slice(1);
+      },
+      pending.request.schemaVersion === PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA
+        ? (value) => {
+            value.batchSemanticReview.aggregate.sha256 = digest(`stale-batch-aggregate-${index}`);
+          }
+        : (value) => {
+            value.semanticReview.result.sha256 = digest(`stale-semantic-result-${index}`);
+          },
+    ];
+    for (const mutate of mutations) {
+      const stale = structuredClone(pending);
+      mutate(stale);
+      assert.throws(
+        () => resolveGenreSoulSurfaceHilDecision(stale, {
+          decision: approved.bytes,
+          requestPath,
+        }),
+        /exact evaluation|evaluation finding set drifted|semantic review drifted|evaluation aggregate/u,
+      );
+    }
+  }
+});
+
+test("single v4 rejects a stale request graft across mixed generic and uncertain projections", () => {
+  const evaluation = evaluate(
+    { mechanism: "김광 방식과 공개 방식은 서로 다르다" },
+    [{ selectorId: "selector-projection-binding", sourceText: "김광은 움직였다. 공개는 늦었다." }],
+  );
+  assert.equal(evaluation.findings.length, 2);
+  const firstPending = ownerPending(evaluation, [evaluation.findings[0]]);
+  const secondPending = ownerPending(evaluation, [evaluation.findings[1]]);
+  assert.notDeepEqual(firstPending.semanticProjection, secondPending.semanticProjection);
+  const requestPath = `exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/${digest("projection-binding-run")}/genre/surface-review/owner-hil/requests/${firstPending.requestSha256}.json`;
+  const approved = buildPrivateGenreSoulAmbiguousSurfaceDecision({
+    request: firstPending.requestBytes,
+    requestPath,
+    findingDecisions: firstPending.request.findings.map((finding) => ({
+      findingId: finding.findingId,
+      decision: "generic-overlap-approved",
+    })),
+    decidedByActorId: "owner:local",
+    decidedByRole: "owner",
+    decidedAt: "2026-08-30T04:00:00.000Z",
+  });
+  assert.throws(
+    () => resolveGenreSoulSurfaceHilDecision({
+      ...secondPending,
+      request: firstPending.request,
+      requestBytes: firstPending.requestBytes,
+      requestSha256: firstPending.requestSha256,
+    }, {
+      decision: approved.bytes,
+      requestPath,
+    }),
+    /semantic projection drifted from its exact evaluation/u,
   );
 });
 

@@ -1238,6 +1238,7 @@ export function measureHermesExactInputTranscript(inputBuffers) {
 
 export function planHermesStructuredContextBudget({
   profilePromptContextBytes,
+  projectPromptContextBytes = 0,
   pluginContextBytes,
   prompt,
   readTranscriptProxyBytes: transcriptBytes,
@@ -1245,6 +1246,7 @@ export function planHermesStructuredContextBudget({
   contextLimit,
 } = {}) {
   assertNonNegativeInteger(profilePromptContextBytes, "Hermes profile prompt context bytes");
+  assertNonNegativeInteger(projectPromptContextBytes, "Hermes project prompt context bytes");
   assertNonNegativeInteger(pluginContextBytes, "Hermes plugin context bytes");
   if (typeof prompt !== "string") throw new Error("Hermes structured context budget prompt must be text.");
   assertNonNegativeInteger(transcriptBytes, "Hermes exact-input transcript proxy bytes");
@@ -1254,6 +1256,7 @@ export function planHermesStructuredContextBudget({
   if (contextLimit < 1) throw new Error("Hermes structured context limit must be positive.");
   const promptSizeBytes = Buffer.byteLength(prompt, "utf8");
   const measuredContextBytes = profilePromptContextBytes
+    + projectPromptContextBytes
     + pluginContextBytes
     + promptSizeBytes
     + transcriptBytes;
@@ -1267,10 +1270,11 @@ export function planHermesStructuredContextBudget({
     throw new Error("Hermes structured context budget tokens exceeded the safe integer boundary.");
   }
   return {
-    schemaVersion: "hermes-structured-context-budget/v1",
+    schemaVersion: "hermes-structured-context-budget/v2",
     contextProxyBytesPerToken: CONTEXT_PROXY_BYTES_PER_TOKEN,
     staticPromptReserveTokens: CONTEXT_STATIC_PROMPT_RESERVE_TOKENS,
     profilePromptContextBytes,
+    projectPromptContextBytes,
     pluginContextBytes,
     promptSizeBytes,
     readTranscriptProxyBytes: transcriptBytes,
@@ -3919,6 +3923,7 @@ export async function runHermesStructuredAttempt({
     });
     const preflight = planHermesStructuredContextBudget({
       profilePromptContextBytes: input.runtime.profilePromptContextBytes,
+      projectPromptContextBytes: input.runtime.projectPromptContextBytes,
       pluginContextBytes: input.readCapability.pluginFiles.reduce((total, file) => total + file.sizeBytes, 0),
       prompt,
       readTranscriptProxyBytes: input.inputEvidence.readTranscriptProxyBytes,

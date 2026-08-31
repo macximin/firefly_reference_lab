@@ -22,6 +22,7 @@ import {
   buildHermesStructuredAttemptInputAttestation,
 } from "../tools/genre-soul-hermes-run-lib.mjs";
 import { writePrivateGenreSoulSurfaceHilDecision } from "../tools/genre-soul-surface-hil-decision.mjs";
+import { buildPrivateGenreSoulAmbiguousSurfaceRequestV3 } from "../tools/genre-soul-surface-hil-lib.mjs";
 import {
   PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_INPUT_SCHEMA,
   PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_RESULT_SCHEMA,
@@ -641,6 +642,8 @@ function fakeRuntime(overrides = {}) {
     hermesProfileContextSha256: "d".repeat(64),
     hermesProjectContextSha256: "e".repeat(64),
     contextLimit: 272000,
+    profilePromptContextBytes: 4_096,
+    projectPromptContextBytes: 1_024,
     contentNeutralContractId: "fiction-content-neutral-ko/v1",
     contentNeutralContractSha256: "c5b531577cbfbfb1dfc4cd2b5cb82d7ce796c6958e0bc00c3e180b0e5440e199",
     soulText: FAKE_SOUL_TEXT,
@@ -673,11 +676,12 @@ function buildFixtureReadCapability(options, runtime, inputBytes) {
     schemaVersion: "firefly-hermes-read-manifest/v1",
     inputs: expectedInputs,
   });
-  const pluginFiles = ["__init__.py", "plugin.yaml", "reader.py"].map((name, index) => ({
-    name,
-    sha256: sha256(`fixture-plugin-${index}`),
-    sizeBytes: index + 1,
-  }));
+  const pluginFiles = options.expectedPluginPlanningEvidence?.files
+    ?? ["__init__.py", "plugin.yaml", "reader.py"].map((name, index) => ({
+      name,
+      sha256: sha256(`fixture-plugin-${index}`),
+      sizeBytes: index + 1,
+    }));
   const authAdapterFiles = options.expectedAuthAdapterPlanningEvidence?.files
     ?? (() => {
       const authAdapterBytes = Buffer.from("fixture-hermes-auth-adapter");
@@ -1379,6 +1383,18 @@ test("strict private validators reject missing samples, spans, and unbound verdi
     const missingSpan = structuredClone(capturedInput);
     missingSpan.rawSamples.find((sample) => sample.span === "early").span = "middle";
     assert.throws(() => validatePrivateManagerQaInput(missingSpan), /opening, middle, and ending/u);
+    const missingProjectContextBytes = structuredClone(capturedInput);
+    delete missingProjectContextBytes.runtime.projectPromptContextBytes;
+    assert.throws(
+      () => validatePrivateManagerQaInput(missingProjectContextBytes),
+      /runtime identity drifted|keys (?:must be exactly|drifted)/u,
+    );
+    const negativeProfileContextBytes = structuredClone(capturedInput);
+    negativeProfileContextBytes.runtime.profilePromptContextBytes = -1;
+    assert.throws(
+      () => validatePrivateManagerQaInput(negativeProfileContextBytes),
+      /runtime identity drifted/u,
+    );
     const unboundVerdict = structuredClone(capturedResult);
     unboundVerdict.sampleVerdicts[0].sliceSha256 = "0".repeat(64);
     assert.throws(
@@ -1476,9 +1492,15 @@ test("Manager QA consumes an exact owner surface decision before publishing a pe
     assert.equal(published.surfaceHil.decisionPath, decision.decisionPath);
     const tracked = JSON.parse(await readFile(join(fixture.root, published.qaPath), "utf8"));
     assert.equal(tracked.result, "pass");
-    assert.equal(tracked.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v2");
+    assert.equal(tracked.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v3");
     assert.equal(tracked.surfaceReview.candidate.path, published.surfaceHil.candidatePath);
     assert.equal(tracked.surfaceReview.semantic.outcome, "owner-approved");
+    assert.equal(tracked.privateInput.schemaVersion, "private-genre-soul-manager-qa-input/v2");
+    assert.equal(
+      tracked.surfaceReview.semantic.contextEvidence.schemaVersion,
+      "private-genre-soul-manager-surface-context-evidence/v1",
+    );
+    assert.match(tracked.surfaceReview.semantic.readCapability.path, /\/read-capability\.json$/u);
     assert.equal(tracked.surfaceReview.semantic.verdictCounts.uncertain > 0, true);
     assert.equal(tracked.surfaceReview.ownerDecision.request.path, published.surfaceHil.requestPath);
     assert.equal(tracked.surfaceReview.ownerDecision.decision.path, decision.decisionPath);
@@ -1533,9 +1555,66 @@ test("Manager QA consumes an exact owner surface decision before publishing a pe
   }
 });
 
+test("Manager QA resumes an approved historical single v3 owner HIL without generating v4", async () => {
+  const fixture = await setupFixture();
+  const options = runnerOptions(fixture, {
+    testOnlyRunStructured: fakeRun({
+      semanticVerdict: "uncertain",
+      mutateResult: (result) => {
+        result.engineComparisons[0].semanticDifference = "차도윤 방식은 반복 행동과 저항 해소 순서가 다르다";
+      },
+    }),
+  });
+  try {
+    const pending = await runGenreSoulManagerQa(options);
+    assert.equal(pending.status, "pending_hil");
+    const currentRequestAbsolutePath = join(fixture.root, pending.surfaceHil.requestPath);
+    const currentRequest = JSON.parse(await readFile(currentRequestAbsolutePath, "utf8"));
+    const legacy = buildPrivateGenreSoulAmbiguousSurfaceRequestV3({
+      stage: currentRequest.stage,
+      genre: currentRequest.genre,
+      soulId: currentRequest.soulId,
+      inputDigest: currentRequest.inputDigest,
+      candidate: currentRequest.candidate,
+      privateEvidence: currentRequest.privateEvidence,
+      semanticReview: currentRequest.semanticReview,
+      findings: currentRequest.findings,
+    });
+    const legacyRequestPath = pending.surfaceHil.requestPath.replace(
+      pending.surfaceHil.requestSha256,
+      legacy.sha256,
+    );
+    await rm(currentRequestAbsolutePath);
+    await writeFile(join(fixture.root, legacyRequestPath), legacy.bytes);
+    const decision = await writePrivateGenreSoulSurfaceHilDecision({
+      repositoryRoot: fixture.root,
+      requestPath: legacyRequestPath,
+      decision: "approve",
+      actorId: "owner:test",
+      decidedAt: "2026-08-30T00:00:00.000Z",
+      testOnly: true,
+      testOnlyRepositoryRoot: fixture.root,
+    });
+    const published = await runGenreSoulManagerQa(options);
+    assert.equal(published.status, "written");
+    assert.equal(published.surfaceHil.requestPath, legacyRequestPath);
+    assert.equal(published.surfaceHil.decisionPath, decision.decisionPath);
+    await assert.rejects(readFile(currentRequestAbsolutePath), /ENOENT/u);
+    const tracked = JSON.parse(await readFile(join(fixture.root, published.qaPath), "utf8"));
+    assert.equal(tracked.surfaceReview.ownerDecision.request.path, legacyRequestPath);
+    assert.equal(await assertManagerQaSurfaceReviewReadback({
+      repositoryRoot: fixture.root,
+      receipt: tracked,
+    }), true);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 compound false positive", async () => {
   const fixture = await setupFixture({ sourcePrefix: "정부군(軍)은 이동." });
   const calls = [];
+  let semanticPluginPlanningEvidence = null;
   const run = fakeRun({
     mutateResult: (result) => {
       result.engineComparisons[0].semanticDifference = "정부 방식은 반복 행동과 저항 해소 순서가 다르다";
@@ -1545,6 +1624,9 @@ test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 com
     const result = await runGenreSoulManagerQa(runnerOptions(fixture, {
       testOnlyRunStructured: async (options) => {
         calls.push(options.role);
+        if (options.role.startsWith("genre-soul-surface-semantic-review:")) {
+          semanticPluginPlanningEvidence = options.expectedPluginPlanningEvidence;
+        }
         return run(options);
       },
     }));
@@ -1552,9 +1634,15 @@ test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 com
     assert.equal(calls.length, 2);
     assert.equal(calls[0], "manager-qa");
     assert.match(calls[1], /^genre-soul-surface-semantic-review:manager-qa:/u);
+    assert.equal(semanticPluginPlanningEvidence?.totalBytes > 0, true);
     assert.equal(result.surfaceHil, undefined);
-    assert.equal(result.receipt.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v2");
+    assert.equal(result.receipt.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v3");
     assert.equal(result.receipt.surfaceReview.semantic.outcome, "auto-passed");
+    assert.equal(result.receipt.privateInput.schemaVersion, "private-genre-soul-manager-qa-input/v2");
+    assert.equal(
+      result.receipt.surfaceReview.semantic.contextEvidence.budget.projectPromptContextBytes,
+      1_024,
+    );
     assert.equal(result.receipt.surfaceReview.semantic.verdictCounts.genericOverlap > 0, true);
     assert.equal(result.receipt.surfaceReview.semantic.verdictCounts.protectedIdentity, 0);
     assert.equal(result.receipt.surfaceReview.semantic.verdictCounts.uncertain, 0);
@@ -1572,6 +1660,8 @@ test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 com
       (value) => { value.surfaceReview.candidate.sha256 = "0".repeat(64); },
       (value) => { value.surfaceReview.semantic.input.sha256 = "1".repeat(64); },
       (value) => { value.surfaceReview.semantic.result.sha256 = "2".repeat(64); },
+      (value) => { value.surfaceReview.semantic.contextEvidence.budget.inputSha256 = "4".repeat(64); },
+      (value) => { value.surfaceReview.semantic.contextEvidence.runDescriptor.sha256 = "5".repeat(64); },
       (value) => { value.surfaceReview.semantic.verdictCounts.genericOverlap += 1; },
       (value) => { value.surfaceReview.semantic.outcome = "owner-approved"; },
       (value) => { value.manager.inputDigest = "3".repeat(64); },
@@ -1581,6 +1671,18 @@ test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 com
       assert.throws(() => validateManagerQaReceipt(tampered));
     }
 
+    const consistentlyTamperedBudget = structuredClone(result.receipt);
+    consistentlyTamperedBudget.surfaceReview.semantic.contextEvidence.budget.projectPromptContextBytes += 1;
+    consistentlyTamperedBudget.surfaceReview.semantic.contextEvidence.budget.contextPlan.projectPromptContextBytes += 1;
+    assert.equal(validateManagerQaReceipt(consistentlyTamperedBudget), true);
+    await assert.rejects(
+      assertManagerQaSurfaceReviewReadback({
+        repositoryRoot: fixture.root,
+        receipt: consistentlyTamperedBudget,
+      }),
+      /semantic context budget drifted/u,
+    );
+
     const acceptedPath = join(fixture.root, result.receipt.surfaceReview.semantic.result.path);
     const parkedPath = `${acceptedPath}.fixture-missing`;
     await rename(acceptedPath, parkedPath);
@@ -1589,6 +1691,51 @@ test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 com
       /ENOENT/u,
     );
     await rename(parkedPath, acceptedPath);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("Manager project context overflow fails before any provider, evidence, HIL, scan, or tracked publication", async () => {
+  const fixture = await setupFixture({ sourcePrefix: "정부군(軍)은 이동." });
+  const roles = [];
+  const events = [];
+  let managerRunRoot = null;
+  let scanCalls = 0;
+  const run = fakeRun({
+    mutateResult: (result) => {
+      result.engineComparisons[0].semanticDifference = "정부 방식은 반복 행동과 저항 해소 순서가 다르다";
+    },
+  });
+  try {
+    await assert.rejects(
+      runGenreSoulManagerQa(runnerOptions(fixture, {
+        testOnlyRuntimeLoader: async () => fakeRuntime({ projectPromptContextBytes: 600_000 }),
+        testOnlyRunStructured: async (options) => {
+          roles.push(options.role);
+          if (options.role === "manager-qa") managerRunRoot = options.runRoot;
+          return run(options);
+        },
+        testOnlyScanProjection: async (...args) => {
+          scanCalls += 1;
+          return fakeScan()(...args);
+        },
+        progress: async (event) => events.push(event),
+      })),
+      /Manager QA context budget exceeded/u,
+    );
+    assert.deepEqual(roles, []);
+    assert.equal(scanCalls, 0);
+    assert.equal(managerRunRoot, null);
+    assert.equal(
+      events.some((event) => event.event === "surface-semantic-review-start" || event.event === "surface-hil-pending"),
+      false,
+    );
+    for (const path of [
+      join(fixture.root, `exports/genre-souls/${SOUL_ID}/v1/manager-qa-runs`),
+      join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`),
+      join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/leak-scan-receipts/manager-qa.json`),
+    ]) await assert.rejects(readFile(path), /ENOENT|EISDIR/u);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }
@@ -1657,6 +1804,11 @@ test("Manager QA current v2 live readback requires every deterministic, semantic
         { label: "semantic input", reference: result.receipt.surfaceReview.semantic.input },
         { label: "semantic result", reference: result.receipt.surfaceReview.semantic.result },
         { label: "semantic receipt", reference: result.receipt.surfaceReview.semantic.receipt },
+        { label: "semantic capability", reference: result.receipt.surfaceReview.semantic.readCapability },
+        {
+          label: "manager run descriptor",
+          reference: result.receipt.surfaceReview.semantic.contextEvidence.runDescriptor,
+        },
       ],
     });
   } finally {
@@ -2339,6 +2491,7 @@ test("full runtime and exact prompt bytes change the structured manager run dige
   const firstFixture = await setupFixture();
   const secondFixture = await setupFixture();
   const promptFixture = await setupFixture();
+  const projectContextFixture = await setupFixture();
   try {
     const first = await runGenreSoulManagerQa(runnerOptions(firstFixture));
     const second = await runGenreSoulManagerQa(runnerOptions(secondFixture, {
@@ -2355,10 +2508,17 @@ test("full runtime and exact prompt bytes change the structured manager run dige
     }));
     assert.equal(first.privateInputPath, promptChanged.privateInputPath);
     assert.notEqual(first.inputDigest, promptChanged.inputDigest);
+
+    const projectContextChanged = await runGenreSoulManagerQa(runnerOptions(projectContextFixture, {
+      testOnlyRuntimeLoader: async () => fakeRuntime({ projectPromptContextBytes: 2_048 }),
+    }));
+    assert.notEqual(first.privateInputPath, projectContextChanged.privateInputPath);
+    assert.notEqual(first.inputDigest, projectContextChanged.inputDigest);
   } finally {
     await rm(firstFixture.root, { recursive: true, force: true });
     await rm(secondFixture.root, { recursive: true, force: true });
     await rm(promptFixture.root, { recursive: true, force: true });
+    await rm(projectContextFixture.root, { recursive: true, force: true });
   }
 });
 
@@ -2391,12 +2551,20 @@ test("manager run digest and immutable capability bind the exact auth adapter pl
       "run-descriptor.json",
     );
     const descriptor = JSON.parse(await readFile(descriptorPath, "utf8"));
-    assert.equal(descriptor.schemaVersion, "private-genre-soul-manager-qa-run-input-digest/v4");
+    assert.equal(descriptor.schemaVersion, "private-genre-soul-manager-qa-run-input-digest/v5");
     assert.equal(
       descriptor.exactInputAuthProjectionContractVersion,
       "hermes-global-auth-store-adapter/v1",
     );
     assert.deepEqual(descriptor.authAdapterPlanningEvidence, firstEvidence);
+    assert.equal(descriptor.contextBudget.schemaVersion, "private-genre-soul-manager-qa-context-budget/v1");
+    assert.equal(descriptor.contextBudget.contextPlan.schemaVersion, "hermes-structured-context-budget/v2");
+    assert.equal(descriptor.contextBudget.contextPlan.projectPromptContextBytes, 1_024);
+    assert.equal(descriptor.contextBudget.contextPlan.fits, true);
+    assert.equal(
+      descriptor.exactInputPluginPlanningEvidence.totalBytes,
+      descriptor.contextBudget.contextPlan.pluginContextBytes,
+    );
   } finally {
     await rm(firstFixture.root, { recursive: true, force: true });
     await rm(secondFixture.root, { recursive: true, force: true });
@@ -2417,6 +2585,30 @@ test("manager rejects a self-consistent Hermes auth adapter capability that diff
         }),
       })),
       /Manager QA Hermes auth-store adapter drifted from the sealed planning evidence/u,
+    );
+    await assert.rejects(
+      readFile(join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`)),
+      /ENOENT/u,
+    );
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("manager rejects a self-consistent Hermes plugin capability that differs from its run plan", async () => {
+  const fixture = await setupFixture();
+  try {
+    await assert.rejects(
+      runGenreSoulManagerQa(runnerOptions(fixture, {
+        testOnlyRunStructured: async (options) => {
+          const drifted = structuredClone(options.expectedPluginPlanningEvidence);
+          drifted.files[0].sha256 = "0".repeat(64);
+          const { sha256: _digest, ...descriptor } = drifted;
+          drifted.sha256 = sha256(jsonBytes(descriptor));
+          return fakeRun()({ ...options, expectedPluginPlanningEvidence: drifted });
+        },
+      })),
+      /exact-input plugin drifted from the sealed planning evidence/u,
     );
     await assert.rejects(
       readFile(join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`)),

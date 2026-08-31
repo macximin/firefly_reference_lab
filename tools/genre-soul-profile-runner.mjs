@@ -59,6 +59,7 @@ import {
 import { validateSourceRegistryFiles } from "./genre-soul-source-registry.mjs";
 import {
   GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+  buildPrivateGenreSoulBatchAmbiguousSurfaceRequest,
   computeGenreSoulSurfaceSampleSetSha256,
   computeGenreSoulSurfaceSourceSetSha256,
   evaluateGenreSoulSurfaceHil,
@@ -66,11 +67,20 @@ import {
 } from "./genre-soul-surface-hil-lib.mjs";
 import {
   GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PROMPT_CONTRACT,
+  GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_ALGORITHM,
+  PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_AGGREGATE_SCHEMA,
+  PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_PLAN_SCHEMA,
+  assertGenreSoulSurfaceSemanticReviewContextBudget,
   buildGenreSoulSurfaceSemanticReviewPrompt,
+  buildPrivateGenreSoulSurfaceSemanticReviewAggregate,
   buildPrivateGenreSoulSurfaceSemanticReviewInput,
+  buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan,
   genreSoulSurfaceSemanticReviewerRole,
+  isGenreSoulSurfaceSemanticReviewContextBudgetError,
   resolveGenreSoulSurfaceSemanticReview,
   validateGenreSoulSurfaceSemanticReviewReceipt,
+  validatePrivateGenreSoulSurfaceSemanticReviewAggregate,
+  validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan,
   validatePrivateGenreSoulSurfaceSemanticReviewResult,
 } from "./genre-soul-surface-semantic-review-lib.mjs";
 
@@ -86,11 +96,11 @@ const RUN_MANIFEST_SCHEMA = "private-genre-soul-profile-run-manifest/v1";
 const RUN_COMPLETION_SCHEMA = "private-genre-soul-profile-run-completed/v1";
 const PROFILE_SCHEMA = "genre-soul-analysis-profile/v1";
 const ROUTING_SCHEMA = "genre-soul-reference-routing-catalog/v1";
-const RUNTIME_EVIDENCE_SCHEMA = "genre-soul-hermes-runtime-evidence/v2";
-const PROFILE_RUN_INPUT_SCHEMA = "private-genre-soul-profile-run-input-digest/v4";
+const RUNTIME_EVIDENCE_SCHEMA = "genre-soul-hermes-runtime-evidence/v3";
+const PROFILE_RUN_INPUT_SCHEMA = "private-genre-soul-profile-run-input-digest/v6";
 const PROFILE_PROMPT_CONTRACT_VERSION = "genre-soul-profile-partitioned-synthesis-prompts/v3";
-const PROFILE_CONTEXT_BUDGET_CONTRACT_VERSION = "genre-soul-profile-context-budget/v1";
-const PROFILE_PRIVATE_INPUT_CONTEXT_BUDGET_SCHEMA = "genre-soul-private-input-context-budget/v1";
+const PROFILE_CONTEXT_BUDGET_CONTRACT_VERSION = "genre-soul-profile-context-budget/v2";
+const PROFILE_PRIVATE_INPUT_CONTEXT_BUDGET_SCHEMA = "genre-soul-private-input-context-budget/v2";
 const PROFILE_MAX_INPUT_CONTEXT_PROXY_TOKENS = 190_000;
 const PROMPT_CONTRACT_EVIDENCE_SCHEMA = "genre-soul-profile-prompt-contract-evidence/v1";
 const SHA256 = /^[0-9a-f]{64}$/u;
@@ -631,6 +641,7 @@ function validateRuntimeEvidence(evidence, expectedProfileId) {
     "profileId",
     "contextLimit",
     "profilePromptContextBytes",
+    "projectPromptContextBytes",
     "profileConfigSha256",
     "soulSha256",
     "contentNeutralContractId",
@@ -657,6 +668,8 @@ function validateRuntimeEvidence(evidence, expectedProfileId) {
     || evidence.contextLimit < 238_000
     || !Number.isSafeInteger(evidence.profilePromptContextBytes)
     || evidence.profilePromptContextBytes < 1
+    || !Number.isSafeInteger(evidence.projectPromptContextBytes)
+    || evidence.projectPromptContextBytes < 0
   ) throw new Error("Hermes runtime evidence identity or context capacity drifted.");
   for (const key of [
     "profileConfigSha256",
@@ -683,6 +696,7 @@ export async function loadGenreSoulHermesRuntimeEvidence({ profileHome, profileI
     profileId,
     contextLimit: validated.contextLimit,
     profilePromptContextBytes: validated.profilePromptContextBytes,
+    projectPromptContextBytes: validated.projectPromptContextBytes,
     profileConfigSha256: validated.profileConfigSha256,
     soulSha256: validated.soulSha256,
     contentNeutralContractId: validated.contentNeutralContractId,
@@ -893,6 +907,7 @@ export function assertPrivateInputContextBudget(bytes, options = {}) {
   const prompt = options.prompt ?? "";
   const contextPlan = planHermesStructuredContextBudget({
     profilePromptContextBytes: options.profilePromptContextBytes ?? 0,
+    projectPromptContextBytes: options.projectPromptContextBytes ?? 0,
     pluginContextBytes: options.pluginContextBytes ?? 0,
     prompt,
     readTranscriptProxyBytes: measurement.readTranscriptProxyBytes,
@@ -1329,7 +1344,41 @@ function profileSurfaceReviewPaths(runRoot) {
     acceptedPath: `${root}/accepted.json`,
     acceptedReceiptPath: `${root}/accepted-host-receipt.json`,
     hermesRoot: `${root}/hermes`,
+    partitionPlanPath: `${root}/partition-plan.json`,
+    partitionAggregatePath: `${root}/aggregate.json`,
+    partitionPartsRoot: `${root}/parts`,
     ownerHilRoot: `${root}/owner-hil`,
+  };
+}
+
+function profileSurfaceReviewPartPaths(surfaceReviewPaths, partId) {
+  if (!/^p[0-9]{4}$/u.test(partId ?? "")) throw new Error("Profile surface semantic review partId is invalid.");
+  const root = `${surfaceReviewPaths.partitionPartsRoot}/${partId}`;
+  return {
+    root,
+    inputPath: `${root}/input.json`,
+    acceptedPath: `${root}/accepted.json`,
+    acceptedReceiptPath: `${root}/accepted-host-receipt.json`,
+    hermesRoot: `${root}/hermes`,
+  };
+}
+
+function profileSurfaceSemanticReviewContextBudget(options) {
+  return ({ inputBytes, prompt }) => {
+    try {
+      return assertGenreSoulSurfaceSemanticReviewContextBudget(inputBytes, {
+        prompt,
+        maxInputConservativeTokenProxy: options.maxInputConservativeTokenProxy,
+        outputReserveTokens: options.outputReserveTokens,
+        contextLimit: options.contextLimit,
+        profilePromptContextBytes: options.profilePromptContextBytes,
+        projectPromptContextBytes: options.projectPromptContextBytes,
+        pluginContextBytes: options.pluginContextBytes,
+      });
+    } catch (error) {
+      if (isGenreSoulSurfaceSemanticReviewContextBudgetError(error)) return null;
+      throw error;
+    }
   };
 }
 
@@ -2501,6 +2550,8 @@ function expectedProfileRunManifestKeys() {
   return [
     "schemaVersion", "genre", "soulId", "version", "promptContractVersion",
     "semanticReviewPromptContractVersion",
+    "semanticReviewPartitionAlgorithmVersion", "semanticReviewPartitionPlanSchemaVersion",
+    "semanticReviewAggregateSchemaVersion",
     "contextBudgetContractVersion", "outputReserveTokens", "exactInputPluginPlanningEvidence",
     "exactInputAuthProjectionContractVersion", "authAdapterPlanningEvidence",
     "semanticSurfaceLintVersion", "runtime", "promptContracts", "workInputs", "evidence", "inputDigest",
@@ -2858,6 +2909,9 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
     || manifest.soulId !== profile.soulId
     || manifest.version !== PROFILE_VERSION
     || manifest.semanticReviewPromptContractVersion !== GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PROMPT_CONTRACT
+    || manifest.semanticReviewPartitionAlgorithmVersion !== GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_ALGORITHM
+    || manifest.semanticReviewPartitionPlanSchemaVersion !== PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_PLAN_SCHEMA
+    || manifest.semanticReviewAggregateSchemaVersion !== PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_AGGREGATE_SCHEMA
     || manifest.contextBudgetContractVersion !== PROFILE_CONTEXT_BUDGET_CONTRACT_VERSION
     || manifest.exactInputAuthProjectionContractVersion !== HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT
     || !Number.isSafeInteger(manifest.outputReserveTokens)
@@ -2913,6 +2967,18 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
   if (!Array.isArray(manifest.workInputs) || manifest.workInputs.length !== 3) {
     throw new Error("Profile run manifest must contain exactly three work inputs.");
   }
+  const sealedContextMaximums = new Set(manifest.workInputs.flatMap((work) => (
+    Array.isArray(work?.parts)
+      ? work.parts.map((part) => part?.contextBudget?.maximum)
+      : []
+  )));
+  if (
+    sealedContextMaximums.size !== 1
+    || !Number.isSafeInteger([...sealedContextMaximums][0])
+    || [...sealedContextMaximums][0] < 1
+    || [...sealedContextMaximums][0] > PROFILE_MAX_INPUT_CONTEXT_PROXY_TOKENS
+  ) throw new Error("Profile run manifest context-budget maximum is missing or inconsistent.");
+  const sealedMaxInputConservativeTokenProxy = [...sealedContextMaximums][0];
   const manifestSourceIds = manifest.workInputs.map((work) => work?.sourceId).sort(compareStrings);
   if (!isDeepStrictEqual(manifestSourceIds, sourceIds)) throw new Error("Profile run manifest source set drifted from the candidate profile.");
   for (const [workIndex, work] of manifest.workInputs.entries()) {
@@ -3040,6 +3106,7 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
         outputReserveTokens: manifest.outputReserveTokens,
         contextLimit: manifest.runtime.contextLimit,
         profilePromptContextBytes: manifest.runtime.profilePromptContextBytes,
+        projectPromptContextBytes: manifest.runtime.projectPromptContextBytes,
         pluginContextBytes: manifest.exactInputPluginPlanningEvidence.totalBytes,
         prompt,
       }, `Profile work part ${work.sourceId}/${part.partId}`);
@@ -3377,6 +3444,172 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
       })),
       { receipt: genreReceipt, receiptBytes: genreReceiptBytes },
     );
+    const semanticContextBudgetForPart = profileSurfaceSemanticReviewContextBudget({
+      maxInputConservativeTokenProxy: sealedMaxInputConservativeTokenProxy,
+      outputReserveTokens: manifest.outputReserveTokens,
+      contextLimit: manifest.runtime.contextLimit,
+      profilePromptContextBytes: manifest.runtime.profilePromptContextBytes,
+      projectPromptContextBytes: manifest.runtime.projectPromptContextBytes,
+      pluginContextBytes: manifest.exactInputPluginPlanningEvidence.totalBytes,
+    });
+    const semanticPartitionPlan = buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+      evaluation: surfaceGate,
+      producerRuns,
+      contextBudgetForPart: semanticContextBudgetForPart,
+    });
+    if (semanticPartitionPlan.parts.length > 1) {
+      expectedPaths.add(surfaceCandidatePath);
+      expectedPaths.add(surfaceReviewPaths.partitionPlanPath);
+      expectedPaths.add(surfaceReviewPaths.partitionAggregatePath);
+      const storedPlanBytes = artifactBytes.get(surfaceReviewPaths.partitionPlanPath);
+      if (!storedPlanBytes) {
+        throw new Error("Profile completion lacks its surface semantic partition plan.");
+      }
+      validatePrivateGenreSoulSurfaceSemanticReviewPartitionPlan(storedPlanBytes, {
+        evaluation: surfaceGate,
+        producerRuns,
+        contextBudgetForPart: semanticContextBudgetForPart,
+      });
+      const completedSemanticParts = [];
+      for (const part of semanticPartitionPlan.parts) {
+        const partPaths = profileSurfaceReviewPartPaths(surfaceReviewPaths, part.partId);
+        expectedPaths.add(partPaths.inputPath);
+        expectedPaths.add(partPaths.acceptedPath);
+        expectedPaths.add(partPaths.acceptedReceiptPath);
+        const storedPartInput = artifactBytes.get(partPaths.inputPath);
+        if (!storedPartInput || storedPartInput.compare(part.input.bytes) !== 0) {
+          throw new Error(`Profile completion surface semantic input ${part.partId} drifted from its exact partition plan.`);
+        }
+        const semanticRole = genreSoulSurfaceSemanticReviewerRole(part.input.bytes);
+        const completedPart = await validateSealedHermesGroup({
+          repositoryRoot: root,
+          artifactBytes,
+          expectedPaths,
+          runRoot,
+          inputPath: partPaths.inputPath,
+          acceptedPath: partPaths.acceptedPath,
+          acceptedReceiptPath: partPaths.acceptedReceiptPath,
+          role: semanticRole,
+          runtime: manifest.runtime,
+          exactInputPluginPlanningEvidence: manifest.exactInputPluginPlanningEvidence,
+          exactInputAuthProjectionContractVersion: manifest.exactInputAuthProjectionContractVersion,
+          authAdapterPlanningEvidence: manifest.authAdapterPlanningEvidence,
+          profileId: config.profileId,
+          profileHome: resolvedProfileHome,
+          prompt: part.prompt,
+          soulText: attestedSoulText,
+          validateResult: (result) => {
+            validatePrivateGenreSoulSurfaceSemanticReviewResult(result, { input: part.input.bytes });
+            return true;
+          },
+          label: `Profile surface semantic review ${part.partId}`,
+        });
+        const semanticReceiptBytes = artifactBytes.get(partPaths.acceptedReceiptPath);
+        const semanticResultBytes = artifactBytes.get(partPaths.acceptedPath);
+        if (!semanticReceiptBytes || !semanticResultBytes) {
+          throw new Error(`Profile completion lacks accepted surface semantic evidence for ${part.partId}.`);
+        }
+        const semanticResult = validatePrivateGenreSoulSurfaceSemanticReviewResult(
+          semanticResultBytes,
+          { input: part.input.bytes },
+        );
+        const semanticInputAbsolutePath = safeRelativePath(
+          root,
+          partPaths.inputPath,
+          `Profile surface semantic input ${part.partId}`,
+        ).absolute;
+        validateGenreSoulSurfaceSemanticReviewReceipt(completedPart.receipt, {
+          input: part.input.bytes,
+          inputPath: semanticInputAbsolutePath,
+          prompt: part.prompt,
+          result: semanticResult.bytes,
+          producerRuns,
+        });
+        completedSemanticParts.push({
+          partId: part.partId,
+          input: part.input,
+          result: semanticResult,
+          paths: {
+            input: partPaths.inputPath,
+            result: partPaths.acceptedPath,
+            receipt: partPaths.acceptedReceiptPath,
+          },
+          reviewRun: {
+            receipt: completedPart.receipt,
+            receiptBytes: semanticReceiptBytes,
+            prompt: part.prompt,
+            inputPath: semanticInputAbsolutePath,
+          },
+        });
+      }
+      const storedAggregateBytes = artifactBytes.get(surfaceReviewPaths.partitionAggregatePath);
+      if (!storedAggregateBytes) {
+        throw new Error("Profile completion lacks its surface semantic aggregate.");
+      }
+      const semanticAggregate = validatePrivateGenreSoulSurfaceSemanticReviewAggregate(
+        storedAggregateBytes,
+        {
+          evaluation: surfaceGate,
+          producerRuns,
+          plan: storedPlanBytes,
+          planPath: surfaceReviewPaths.partitionPlanPath,
+          aggregatePath: surfaceReviewPaths.partitionAggregatePath,
+          parts: completedSemanticParts,
+          contextBudgetForPart: semanticContextBudgetForPart,
+        },
+      );
+      if (semanticAggregate.status === "blocked") {
+        throw new Error("Profile completion semantic aggregate reconstructs a protected private identity.");
+      }
+      if (semanticAggregate.status === "pending_hil") {
+        const builtRequest = buildPrivateGenreSoulBatchAmbiguousSurfaceRequest({
+          stage: surfaceGate.stage,
+          genre: surfaceGate.genre,
+          soulId: surfaceGate.soulId,
+          inputDigest: surfaceGate.inputDigest,
+          candidate: surfaceGate.candidate,
+          privateEvidence: surfaceGate.privateEvidence,
+          batchSemanticReview: semanticAggregate.semanticReviewBinding,
+          findings: semanticAggregate.uncertainFindings,
+        });
+        const requestPath = `${surfaceReviewPaths.ownerHilRoot}/requests/${builtRequest.sha256}.json`;
+        const decisionPath = requestPath.replace("/requests/", "/decisions/");
+        expectedPaths.add(requestPath);
+        expectedPaths.add(decisionPath);
+        const requestBytes = artifactBytes.get(requestPath);
+        const decisionBytes = artifactBytes.get(decisionPath);
+        if (
+          !requestBytes
+          || requestBytes.compare(builtRequest.bytes) !== 0
+          || !decisionBytes
+        ) throw new Error("Profile completion lacks its exact approved batch surface owner HIL request or decision.");
+        const batchHilGate = {
+          status: "pending_hil",
+          stage: surfaceGate.stage,
+          genre: surfaceGate.genre,
+          soulId: surfaceGate.soulId,
+          inputDigest: surfaceGate.inputDigest,
+          candidate: surfaceGate.candidate,
+          privateEvidence: surfaceGate.privateEvidence,
+          findings: surfaceGate.findings,
+          findingSetSha256: surfaceGate.findingSetSha256,
+          blockers: [],
+          batchSemanticReview: semanticAggregate.semanticReviewBinding,
+          request: builtRequest.request,
+          requestBytes: builtRequest.bytes,
+          requestSha256: builtRequest.sha256,
+        };
+        const resolution = resolveGenreSoulSurfaceHilDecision(batchHilGate, {
+          decision: decisionBytes,
+          requestPath,
+        });
+        if (resolution.status !== "pass") {
+          throw new Error("Profile completion batch surface owner HIL decision is not an approval.");
+        }
+      } else if (semanticAggregate.status !== "pass") {
+        throw new Error(`Profile completion surface semantic aggregate status is unsupported: ${String(semanticAggregate.status)}.`);
+      }
+    } else {
     const semanticInput = buildPrivateGenreSoulSurfaceSemanticReviewInput({
       evaluation: surfaceGate,
       producerRuns,
@@ -3441,18 +3674,32 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
       throw new Error("Profile completion semantic reviewer reconstructs a protected private identity.");
     }
     if (semanticResolution.status === "pending_hil") {
-      const requestPath = `${surfaceReviewPaths.ownerHilRoot}/requests/${semanticResolution.requestSha256}.json`;
+      const requestCandidates = [{
+        requestPath: `${surfaceReviewPaths.ownerHilRoot}/requests/${semanticResolution.requestSha256}.json`,
+        resolution: semanticResolution,
+      }, {
+        requestPath: `${surfaceReviewPaths.ownerHilRoot}/requests/${semanticResolution.legacyRequestSha256}.json`,
+        resolution: {
+          ...semanticResolution,
+          request: semanticResolution.legacyRequest,
+          requestBytes: semanticResolution.legacyRequestBytes,
+          requestSha256: semanticResolution.legacyRequestSha256,
+        },
+      }];
+      const selectedRequest = requestCandidates.find(({ requestPath, resolution }) => {
+        const requestBytes = artifactBytes.get(requestPath);
+        const decisionPath = requestPath.replace("/requests/", "/decisions/");
+        return requestBytes?.compare(resolution.requestBytes) === 0 && artifactBytes.has(decisionPath);
+      });
+      if (!selectedRequest) {
+        throw new Error("Profile completion lacks its exact approved surface owner HIL request or decision.");
+      }
+      const { requestPath } = selectedRequest;
       const decisionPath = requestPath.replace("/requests/", "/decisions/");
       expectedPaths.add(requestPath);
       expectedPaths.add(decisionPath);
-      const requestBytes = artifactBytes.get(requestPath);
       const decisionBytes = artifactBytes.get(decisionPath);
-      if (
-        !requestBytes
-        || requestBytes.compare(semanticResolution.requestBytes) !== 0
-        || !decisionBytes
-      ) throw new Error("Profile completion lacks its exact approved surface owner HIL request or decision.");
-      const resolution = resolveGenreSoulSurfaceHilDecision(semanticResolution, {
+      const resolution = resolveGenreSoulSurfaceHilDecision(selectedRequest.resolution, {
         decision: decisionBytes,
         requestPath,
       });
@@ -3461,6 +3708,7 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
       }
     } else if (semanticResolution.status !== "pass") {
       throw new Error(`Profile completion semantic review status is unsupported: ${String(semanticResolution.status)}.`);
+    }
     }
   } else if (surfaceGate.status !== "pass") {
     throw new Error(`Profile completion surface gate status is unsupported: ${String(surfaceGate.status)}.`);
@@ -3634,6 +3882,7 @@ export async function runGenreSoulProfile(options) {
     outputReserveTokens,
     contextLimit: runtimeEvidence.contextLimit,
     profilePromptContextBytes: runtimeEvidence.profilePromptContextBytes,
+    projectPromptContextBytes: runtimeEvidence.projectPromptContextBytes,
     pluginContextBytes: exactInputPluginPlanningEvidence.totalBytes,
   };
   const workPartitions = bindings.map((binding) => buildBoundedWorkPartitions(binding, {
@@ -3656,6 +3905,9 @@ export async function runGenreSoulProfile(options) {
     version: PROFILE_VERSION,
     promptContractVersion: PROFILE_PROMPT_CONTRACT_VERSION,
     semanticReviewPromptContractVersion: GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PROMPT_CONTRACT,
+    semanticReviewPartitionAlgorithmVersion: GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_ALGORITHM,
+    semanticReviewPartitionPlanSchemaVersion: PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_PARTITION_PLAN_SCHEMA,
+    semanticReviewAggregateSchemaVersion: PRIVATE_GENRE_SOUL_SURFACE_SEMANTIC_REVIEW_AGGREGATE_SCHEMA,
     contextBudgetContractVersion: PROFILE_CONTEXT_BUDGET_CONTRACT_VERSION,
     outputReserveTokens,
     exactInputPluginPlanningEvidence,
@@ -3939,12 +4191,293 @@ export async function runGenreSoulProfile(options) {
       || surfaceCandidateBytes.byteLength !== surfaceGate.candidate.sizeBytes
     ) throw new Error("Profile surface semantic candidate bytes drifted from the evaluated candidate.");
     const producerRuns = profileSurfaceProducerRuns(workRuns, genreRun);
+    const semanticPartitionPlan = buildPrivateGenreSoulSurfaceSemanticReviewPartitionPlan({
+      evaluation: surfaceGate,
+      producerRuns,
+      contextBudgetForPart: profileSurfaceSemanticReviewContextBudget(contextBudgetOptions),
+    });
+    if (semanticPartitionPlan.parts.length > 1) {
+      await writeImmutable(
+        resolve(repositoryRoot, surfaceCandidateRelativePath),
+        surfaceCandidateBytes,
+        "Profile surface semantic candidate",
+        repositoryRoot,
+      );
+      await writeImmutable(
+        resolve(repositoryRoot, surfaceReviewPaths.partitionPlanPath),
+        semanticPartitionPlan.bytes,
+        "Profile surface semantic review partition plan",
+        repositoryRoot,
+      );
+      surfaceReviewFiles.push(
+        { path: surfaceCandidateRelativePath, bytes: surfaceCandidateBytes },
+        { path: surfaceReviewPaths.partitionPlanPath, bytes: semanticPartitionPlan.bytes },
+      );
+      const completedSemanticParts = [];
+      for (const part of semanticPartitionPlan.parts) {
+        const partPaths = profileSurfaceReviewPartPaths(surfaceReviewPaths, part.partId);
+        const semanticInputAbsolutePath = resolve(repositoryRoot, partPaths.inputPath);
+        await writeImmutable(
+          semanticInputAbsolutePath,
+          part.input.bytes,
+          `Profile surface semantic review input ${part.partId}`,
+          repositoryRoot,
+        );
+        await progress({
+          event: "surface-semantic-review-part-start",
+          partId: part.partId,
+          partCount: semanticPartitionPlan.parts.length,
+          findingCount: part.findingIds.length,
+          reviewInputSha256: part.input.sha256,
+        });
+        const semanticRole = genreSoulSurfaceSemanticReviewerRole(part.input.bytes);
+        const semanticRunRoot = resolve(repositoryRoot, partPaths.hermesRoot);
+        const semanticRun = await executor({
+          role: semanticRole,
+          runRoot: semanticRunRoot,
+          profileHome,
+          profileId: config.profileId,
+          projectCwd: repositoryRoot,
+          prompt: part.prompt,
+          expectedReadPaths: [semanticInputAbsolutePath],
+          inputDigest: part.input.sha256,
+          expectedPluginPlanningEvidence: exactInputPluginPlanningEvidence,
+          expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
+          outputReserveTokens,
+          validateResult: (result) => {
+            validatePrivateGenreSoulSurfaceSemanticReviewResult(result, { input: part.input.bytes });
+            return true;
+          },
+          progress,
+        });
+        const semanticResult = validatePrivateGenreSoulSurfaceSemanticReviewResult(
+          semanticRun.result,
+          { input: part.input.bytes },
+        );
+        structuredRuns.push(semanticRun);
+        const semanticRunExpected = {
+          role: semanticRole,
+          profileHome,
+          projectCwd: repositoryRoot,
+          profileId: config.profileId,
+          inputDigest: part.input.sha256,
+          inputPath: semanticInputAbsolutePath,
+          inputBytes: part.input.bytes,
+          prompt: part.prompt,
+          outputReserveTokens,
+          soulText,
+          runtime: runtimeEvidence,
+          exactInputPluginPlanningEvidence,
+          exactInputAuthProjectionContractVersion: HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT,
+          authAdapterPlanningEvidence,
+        };
+        validateRun(semanticRun, semanticRunExpected);
+        const semanticHermesEvidenceFiles = await collectHermesEvidenceArtifacts(
+          repositoryRoot,
+          semanticRunRoot,
+          semanticRun,
+          `Profile surface semantic review ${part.partId}`,
+          semanticRunExpected,
+        );
+        const semanticReceiptBytes = jsonBytes(semanticRun.receipt);
+        validateGenreSoulSurfaceSemanticReviewReceipt(semanticRun.receipt, {
+          input: part.input.bytes,
+          inputPath: semanticInputAbsolutePath,
+          prompt: part.prompt,
+          result: semanticResult.bytes,
+          producerRuns,
+        });
+        await writeImmutable(
+          resolve(repositoryRoot, partPaths.acceptedPath),
+          semanticResult.bytes,
+          `Accepted profile surface semantic review ${part.partId}`,
+          repositoryRoot,
+        );
+        await writeImmutable(
+          resolve(repositoryRoot, partPaths.acceptedReceiptPath),
+          semanticReceiptBytes,
+          `Accepted profile surface semantic review receipt ${part.partId}`,
+          repositoryRoot,
+        );
+        surfaceReviewFiles.push(
+          { path: partPaths.inputPath, bytes: part.input.bytes },
+          { path: partPaths.acceptedPath, bytes: semanticResult.bytes },
+          { path: partPaths.acceptedReceiptPath, bytes: semanticReceiptBytes },
+          ...semanticHermesEvidenceFiles,
+        );
+        completedSemanticParts.push({
+          partId: part.partId,
+          input: part.input,
+          result: semanticResult,
+          paths: {
+            input: partPaths.inputPath,
+            result: partPaths.acceptedPath,
+            receipt: partPaths.acceptedReceiptPath,
+          },
+          reviewRun: {
+            receipt: semanticRun.receipt,
+            receiptBytes: semanticReceiptBytes,
+            prompt: part.prompt,
+            inputPath: semanticInputAbsolutePath,
+          },
+        });
+        await progress({
+          event: "surface-semantic-review-part-complete",
+          partId: part.partId,
+          partCount: semanticPartitionPlan.parts.length,
+          findingCount: part.findingIds.length,
+          reviewInputSha256: part.input.sha256,
+        });
+      }
+      const semanticAggregate = buildPrivateGenreSoulSurfaceSemanticReviewAggregate({
+        evaluation: surfaceGate,
+        producerRuns,
+        plan: semanticPartitionPlan.bytes,
+        planPath: surfaceReviewPaths.partitionPlanPath,
+        aggregatePath: surfaceReviewPaths.partitionAggregatePath,
+        parts: completedSemanticParts,
+        contextBudgetForPart: profileSurfaceSemanticReviewContextBudget(contextBudgetOptions),
+      });
+      await writeImmutable(
+        resolve(repositoryRoot, surfaceReviewPaths.partitionAggregatePath),
+        semanticAggregate.bytes,
+        "Profile surface semantic review aggregate",
+        repositoryRoot,
+      );
+      surfaceReviewFiles.push({
+        path: surfaceReviewPaths.partitionAggregatePath,
+        bytes: semanticAggregate.bytes,
+      });
+      resolvedSurfaceReview = {
+        status: semanticAggregate.status,
+        mode: "partitioned",
+        candidatePath: surfaceCandidateRelativePath,
+        partitionPlanPath: surfaceReviewPaths.partitionPlanPath,
+        aggregatePath: surfaceReviewPaths.partitionAggregatePath,
+        partCount: semanticPartitionPlan.parts.length,
+        batchSemanticReview: semanticAggregate.semanticReviewBinding,
+      };
+      if (semanticAggregate.status === "blocked") {
+        throw new Error(`Tracked profile semantic reviewer found a protected private identity (${semanticAggregate.protectedFindings[0]?.findingId ?? "unknown"}).`);
+      }
+      if (semanticAggregate.status === "pending_hil") {
+        const builtRequest = buildPrivateGenreSoulBatchAmbiguousSurfaceRequest({
+          stage: surfaceGate.stage,
+          genre: surfaceGate.genre,
+          soulId: surfaceGate.soulId,
+          inputDigest: surfaceGate.inputDigest,
+          candidate: surfaceGate.candidate,
+          privateEvidence: surfaceGate.privateEvidence,
+          batchSemanticReview: semanticAggregate.semanticReviewBinding,
+          findings: semanticAggregate.uncertainFindings,
+        });
+        const batchHilGate = {
+          status: "pending_hil",
+          stage: surfaceGate.stage,
+          genre: surfaceGate.genre,
+          soulId: surfaceGate.soulId,
+          inputDigest: surfaceGate.inputDigest,
+          candidate: surfaceGate.candidate,
+          privateEvidence: surfaceGate.privateEvidence,
+          findings: surfaceGate.findings,
+          findingSetSha256: surfaceGate.findingSetSha256,
+          blockers: [],
+          batchSemanticReview: semanticAggregate.semanticReviewBinding,
+          request: builtRequest.request,
+          requestBytes: builtRequest.bytes,
+          requestSha256: builtRequest.sha256,
+        };
+        const requestRelativePath = `${surfaceReviewPaths.ownerHilRoot}/requests/${builtRequest.sha256}.json`;
+        await writeImmutable(
+          resolve(repositoryRoot, requestRelativePath),
+          builtRequest.bytes,
+          "Profile batch surface owner HIL request",
+          repositoryRoot,
+        );
+        surfaceReviewFiles.push({ path: requestRelativePath, bytes: builtRequest.bytes });
+        const decisionRelativePath = requestRelativePath.replace("/requests/", "/decisions/");
+        const decisionAbsolutePath = resolve(repositoryRoot, decisionRelativePath);
+        const decisionInfo = await assertRealRepositoryPath(
+          repositoryRoot,
+          decisionAbsolutePath,
+          "Profile batch surface owner HIL decision",
+          { requireRegularFile: true },
+        );
+        if (decisionInfo) {
+          const decisionBytes = await readFile(decisionAbsolutePath);
+          const resolution = resolveGenreSoulSurfaceHilDecision(batchHilGate, {
+            decision: decisionBytes,
+            requestPath: requestRelativePath,
+          });
+          resolvedSurfaceHil = {
+            candidatePath: surfaceCandidateRelativePath,
+            requestPath: requestRelativePath,
+            requestSha256: builtRequest.sha256,
+            decisionPath: decisionRelativePath,
+            decisionSha256: resolution.decision.sha256,
+            decisionId: resolution.decision.decisionId,
+            findingCount: builtRequest.request.findings.length,
+            outcome: resolution.status,
+          };
+          surfaceReviewFiles.push({ path: decisionRelativePath, bytes: decisionBytes });
+          if (resolution.status === "blocked") {
+            await progress({
+              event: "surface-hil-rejected",
+              requestPath: requestRelativePath,
+              requestSha256: builtRequest.sha256,
+              decisionPath: decisionRelativePath,
+              decisionId: resolution.decision.decisionId,
+            });
+            return {
+              status: "surface_rejected",
+              reused: structuredRuns.every((run) => run.status === "reused"),
+              inputDigest,
+              workRuns,
+              genreRun,
+              surfaceReview: resolvedSurfaceReview,
+              surfaceHil: resolvedSurfaceHil,
+            };
+          }
+        }
+        if (!resolvedSurfaceHil) {
+          await progress({
+            event: "surface-hil-pending",
+            requestPath: requestRelativePath,
+            requestSha256: builtRequest.sha256,
+            findingCount: builtRequest.request.findings.length,
+          });
+          return {
+            status: "pending_hil",
+            reused: structuredRuns.every((run) => run.status === "reused"),
+            inputDigest,
+            workRuns,
+            genreRun,
+            surfaceReview: resolvedSurfaceReview,
+            surfaceHil: {
+              candidatePath: surfaceCandidateRelativePath,
+              requestPath: requestRelativePath,
+              requestSha256: builtRequest.sha256,
+              findingCount: builtRequest.request.findings.length,
+            },
+          };
+        }
+      } else if (semanticAggregate.status !== "pass") {
+        throw new Error(`Profile surface semantic aggregate returned unsupported status: ${String(semanticAggregate.status)}.`);
+      }
+    } else {
     const semanticInput = buildPrivateGenreSoulSurfaceSemanticReviewInput({
       evaluation: surfaceGate,
       producerRuns,
     });
     const semanticPrompt = buildGenreSoulSurfaceSemanticReviewPrompt(semanticInput.bytes);
-    assertPrivateInputContextBudget(semanticInput.bytes, { ...contextBudgetOptions, prompt: semanticPrompt });
+    const semanticContextBudgetReceipt = assertGenreSoulSurfaceSemanticReviewContextBudget(
+      semanticInput.bytes,
+      { ...contextBudgetOptions, prompt: semanticPrompt },
+    );
+    if (!isDeepStrictEqual(
+      semanticContextBudgetReceipt,
+      semanticPartitionPlan.parts[0].contextBudgetReceipt,
+    )) throw new Error("Profile single surface semantic context budget drifted from its exact plan.");
     const semanticInputAbsolutePath = resolve(repositoryRoot, surfaceReviewPaths.inputPath);
     await writeImmutable(
       resolve(repositoryRoot, surfaceCandidateRelativePath),
@@ -4057,45 +4590,121 @@ export async function runGenreSoulProfile(options) {
       throw new Error(`Tracked profile semantic reviewer found a protected private identity (${semanticResolution.blockers[0]?.rule ?? "unknown"}).`);
     }
     if (semanticResolution.status === "pending_hil") {
-      const requestRelativePath = `${surfaceReviewPaths.ownerHilRoot}/requests/${semanticResolution.requestSha256}.json`;
-      await writeImmutable(
-        resolve(repositoryRoot, requestRelativePath),
-        semanticResolution.requestBytes,
-        "Profile surface owner HIL request",
-        repositoryRoot,
-      );
-      surfaceReviewFiles.push({ path: requestRelativePath, bytes: semanticResolution.requestBytes });
-      const decisionRelativePath = requestRelativePath.replace("/requests/", "/decisions/");
-      const decisionAbsolutePath = resolve(repositoryRoot, decisionRelativePath);
-      const decisionInfo = await assertRealRepositoryPath(
-        repositoryRoot,
-        decisionAbsolutePath,
-        "Profile surface owner HIL decision",
-        { requireRegularFile: true },
-      );
-      if (decisionInfo) {
-        const decisionBytes = await readFile(decisionAbsolutePath);
-        const resolution = resolveGenreSoulSurfaceHilDecision(semanticResolution, {
-          decision: decisionBytes,
-          requestPath: requestRelativePath,
+      const requestCandidates = [{
+        requestPath: `${surfaceReviewPaths.ownerHilRoot}/requests/${semanticResolution.requestSha256}.json`,
+        resolution: semanticResolution,
+      }, {
+        requestPath: `${surfaceReviewPaths.ownerHilRoot}/requests/${semanticResolution.legacyRequestSha256}.json`,
+        resolution: {
+          ...semanticResolution,
+          request: semanticResolution.legacyRequest,
+          requestBytes: semanticResolution.legacyRequestBytes,
+          requestSha256: semanticResolution.legacyRequestSha256,
+        },
+      }];
+      let selectedRequest = null;
+      for (const candidate of requestCandidates) {
+        const requestAbsolutePath = resolve(repositoryRoot, candidate.requestPath);
+        const requestInfo = await assertRealRepositoryPath(
+          repositoryRoot,
+          requestAbsolutePath,
+          "Profile surface owner HIL request",
+          { requireRegularFile: true },
+        );
+        if (requestInfo) {
+          const existingRequestBytes = await readFile(requestAbsolutePath);
+          if (existingRequestBytes.compare(candidate.resolution.requestBytes) !== 0) {
+            throw new Error("Profile surface owner HIL request already exists with different bytes.");
+          }
+        }
+        const decisionPath = candidate.requestPath.replace("/requests/", "/decisions/");
+        const decisionAbsolutePath = resolve(repositoryRoot, decisionPath);
+        const decisionInfo = await assertRealRepositoryPath(
+          repositoryRoot,
+          decisionAbsolutePath,
+          "Profile surface owner HIL decision",
+          { requireRegularFile: true },
+        );
+        if (requestInfo && decisionInfo) {
+          selectedRequest = {
+            ...candidate,
+            decisionPath,
+            decisionBytes: await readFile(decisionAbsolutePath),
+          };
+          break;
+        }
+      }
+      if (!selectedRequest) {
+        const current = requestCandidates[0];
+        await writeImmutable(
+          resolve(repositoryRoot, current.requestPath),
+          current.resolution.requestBytes,
+          "Profile surface owner HIL request",
+          repositoryRoot,
+        );
+        const decisionPath = current.requestPath.replace("/requests/", "/decisions/");
+        const decisionAbsolutePath = resolve(repositoryRoot, decisionPath);
+        const decisionInfo = await assertRealRepositoryPath(
+          repositoryRoot,
+          decisionAbsolutePath,
+          "Profile surface owner HIL decision",
+          { requireRegularFile: true },
+        );
+        if (decisionInfo) {
+          selectedRequest = {
+            ...current,
+            decisionPath,
+            decisionBytes: await readFile(decisionAbsolutePath),
+          };
+        } else {
+          surfaceReviewFiles.push({ path: current.requestPath, bytes: current.resolution.requestBytes });
+          await progress({
+            event: "surface-hil-pending",
+            requestPath: current.requestPath,
+            requestSha256: current.resolution.requestSha256,
+            findingCount: current.resolution.request.findings.length,
+          });
+          return {
+            status: "pending_hil",
+            reused: structuredRuns.every((run) => run.status === "reused"),
+            inputDigest,
+            workRuns,
+            genreRun,
+            surfaceReview: resolvedSurfaceReview,
+            surfaceHil: {
+              candidatePath: surfaceCandidateRelativePath,
+              requestPath: current.requestPath,
+              requestSha256: current.resolution.requestSha256,
+              findingCount: current.resolution.request.findings.length,
+            },
+          };
+        }
+      }
+      if (selectedRequest) {
+        const resolution = resolveGenreSoulSurfaceHilDecision(selectedRequest.resolution, {
+          decision: selectedRequest.decisionBytes,
+          requestPath: selectedRequest.requestPath,
         });
         resolvedSurfaceHil = {
           candidatePath: surfaceCandidateRelativePath,
-          requestPath: requestRelativePath,
-          requestSha256: semanticResolution.requestSha256,
-          decisionPath: decisionRelativePath,
+          requestPath: selectedRequest.requestPath,
+          requestSha256: selectedRequest.resolution.requestSha256,
+          decisionPath: selectedRequest.decisionPath,
           decisionSha256: resolution.decision.sha256,
           decisionId: resolution.decision.decisionId,
-          findingCount: semanticResolution.request.findings.length,
+          findingCount: selectedRequest.resolution.request.findings.length,
           outcome: resolution.status,
         };
-        surfaceReviewFiles.push({ path: decisionRelativePath, bytes: decisionBytes });
+        surfaceReviewFiles.push(
+          { path: selectedRequest.requestPath, bytes: selectedRequest.resolution.requestBytes },
+          { path: selectedRequest.decisionPath, bytes: selectedRequest.decisionBytes },
+        );
         if (resolution.status === "blocked") {
           await progress({
             event: "surface-hil-rejected",
-            requestPath: requestRelativePath,
-            requestSha256: semanticResolution.requestSha256,
-            decisionPath: decisionRelativePath,
+            requestPath: selectedRequest.requestPath,
+            requestSha256: selectedRequest.resolution.requestSha256,
+            decisionPath: selectedRequest.decisionPath,
             decisionId: resolution.decision.decisionId,
           });
           return {
@@ -4109,28 +4718,7 @@ export async function runGenreSoulProfile(options) {
           };
         }
       }
-      if (!resolvedSurfaceHil) {
-        await progress({
-          event: "surface-hil-pending",
-          requestPath: requestRelativePath,
-          requestSha256: semanticResolution.requestSha256,
-          findingCount: semanticResolution.request.findings.length,
-        });
-        return {
-          status: "pending_hil",
-          reused: structuredRuns.every((run) => run.status === "reused"),
-          inputDigest,
-          workRuns,
-          genreRun,
-          surfaceReview: resolvedSurfaceReview,
-          surfaceHil: {
-            candidatePath: surfaceCandidateRelativePath,
-            requestPath: requestRelativePath,
-            requestSha256: semanticResolution.requestSha256,
-            findingCount: semanticResolution.request.findings.length,
-          },
-        };
-      }
+    }
     }
   } else if (surfaceGate.status !== "pass") {
     throw new Error(`Profile surface gate returned unsupported status: ${String(surfaceGate.status)}.`);

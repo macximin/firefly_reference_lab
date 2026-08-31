@@ -11,7 +11,7 @@ source ID, UTF-8 byte 범위, SHA-256, 파생 관찰과 판정 영수증만 둔�
 3. `genre-soul-deep-read/v1`: 앵커별 `0..sourceSizeBytes` gap-free 전수 범위와 실제 `gpt-5.6-sol/high` readback을 남긴다.
 4. `genre-soul-analysis-profile/v1`: 정확히 세 앵커의 검증된 전수 관찰을 bounded private partition → 작품별 consolidation → 장르 synthesis 순서로 합성한다. 세계 제약, 주인공 반복 동사, 압박·적대, 보상·지위 통화, 다음 행동, 상업 엔진, 감정적 정합성, Arc·성장, 실패 패턴의 아홉 차원을 모두 포함한다.
 5. `tracked-projection-leak-scan/v1`: 전체 available corpus에 대해 exact 12-token과 120 UTF-8 byte 공통 표면을 검사한다.
-6. `genre-soul-manager-qa/v1`: 프로필 synthesis와 다른 실제 `gpt-5.6-sol/high` run이 세 작품에서 early·middle·late 원문 sub-slice를 하나씩, 총 9개 새로 읽는다. 각 표본은 live private source selector·byte SHA에 재결속한다. profile/input/raw readback/leak 결속은 host가 먼저 증명하고 모델이 false로 뒤집으면 유효한 실패 판정이 아니라 invalid output으로 거절한다. 표본 미지지·동일/불충분 pair는 `needs-revision`, 나머지는 `pass`로 결정론적으로 계산하며 모델 선언과 다르면 거절한다. 유효 음성 판정은 immutable private decision으로 보존하며 tracked PASS marker를 만들지 않는다. 세 상업 엔진의 3개 pairwise 비교, distinct mechanism signature, exact profile/input/prompt SHA, current-attested Hermes binary·implementation·dependency·profile/project context, immutable trace·usage·result·host receipt·completion pointer와 zero-match receipt가 모두 통과했을 때만 candidate QA를 pass할 수 있다. tracked leak receipt는 target lock/no-clobber CAS 아래 먼저 게시하고 `manager-qa.json` visibility marker는 마지막에 게시·readback한다.
+6. `genre-soul-manager-qa/v2`: 프로필 synthesis와 다른 실제 `gpt-5.6-sol/high` run이 세 작품에서 early·middle·late 원문 sub-slice를 하나씩, 총 9개 새로 읽는다. 각 표본은 live private source selector·byte SHA에 재결속한다. profile/input/raw readback/leak 결속은 host가 먼저 증명하고 모델이 false로 뒤집으면 유효한 실패 판정이 아니라 invalid output으로 거절한다. 표본 미지지·동일/불충분 pair는 `needs-revision`, 나머지는 `pass`로 결정론적으로 계산하며 모델 선언과 다르면 거절한다. 유효 음성 판정은 immutable private decision으로 보존하며 tracked PASS marker를 만들지 않는다. 세 상업 엔진의 3개 pairwise 비교, distinct mechanism signature, exact profile/input/prompt SHA, current-attested Hermes binary·implementation·dependency·profile/project context, immutable trace·usage·result·host receipt·completion pointer와 zero-match receipt가 모두 통과했을 때만 candidate QA를 pass할 수 있다. tracked leak receipt는 target lock/no-clobber CAS 아래 먼저 게시하고 `manager-qa.json` visibility marker는 마지막에 게시·readback한다. `genre-soul-manager-qa/v1`은 역사 영수증으로만 검증하며 current v2 proof로 대체하지 않는다.
 7. `genre-soul-promotion-eligibility/v1`: 장르당 전수 독해 3편, Review Packet v2, 독립 blind pair 3개와 상업 기준을 집계한다. 이 파일은 owner 승급 결정을 소유하지 않는다.
 
 신규 Hermes 실행은 경로·glob·offset을 모델에 주지 않는다. host가 exact input bytes를
@@ -40,9 +40,20 @@ Profile partition budget은 raw source byte 수가 아니라 위 cursor chain의
 assistant/tool transcript byte 수를 사용한다. profile context, bundled plugin,
 stage prompt, static reserve와 output reserve를 공용 Hermes preflight와 동일하게
 합산하며 총합이 context limit과 같아도 거절한다. 모든 work partition은 provider
-호출 전에 계획되고 run-input digest v3에 영수증으로 봉인되며 실행 직전에 exact
+호출 전에 계획되고 run-input digest v4에 영수증으로 봉인되며 실행 직전에 exact
 재검증한다. 이전 budget 계약의 미완료 run root는 audit trail로 보존하고 새 실행에
 복사·수정·재사용하지 않는다.
+
+Profile 최종 표면 semantic 입력도 같은 exact budget을 사용한다. 전체 single v1
+input/result/prompt가 예산 안에 들면 HIL gate v3와 owner request v4 경로를 쓴다. 넘치면
+`private-genre-soul-surface-semantic-review-partition-plan/v1`의
+`genre-soul-surface-semantic-review-greedy-prefix/v1`이 findingId 정렬 순서의 최대
+연속 prefix를 선택한다. finding과 그 candidate/private windows는 쪼개지 않으며,
+단일 finding도 맞지 않으면 실패한다. 각 part의 v1 input/result와 별도 reviewer
+host receipt를 검증한 뒤 host만
+`private-genre-soul-surface-semantic-review-aggregate/v1`을 만든다. LLM 재합성은
+없다. plan·모든 part·aggregate 실제 bytes는 completion seal과 재사용 readback의
+필수 증거다.
 
 Hermes v0.19의 일반 profile process는 global singleton을 읽은 뒤에도 profile-local
 lock/write 경로로 refresh할 수 있다. upstream source-aware Codex transaction이
@@ -66,33 +77,43 @@ Manager QA는 top-level profile `completed` seal을 필수 입력으로 삼는�
 작품 consolidation, 장르 결과, 누출 영수증 같은 하위 support가 모두 존재해도 이
 seal이 없으면 profile을 완료 후보로 보거나 QA를 시작·재사용하지 않는다.
 
-표면 검사는 identity와 일반 메커니즘을 구분한다. 선정 작품 제목·저자, 직함에
-결속된 인명, 식별 가능한 조직 표면은 길이가 짧아도 차단한다. 원문과 후보에
-함께 나타난 맨몸 2~4음절 성씨형 표현은 코드가 의미를 추측하지 않고 private
-`pending_hil` 요청으로 보낸다. 이 상태에서는 tracked 후보·누출 영수증·support·
-visibility marker·top-level completion seal을 쓰지 않는다. InkOS chapter 전용
-Storyyard Review Packet v2를 Reference Lab 분석 판정으로 재라벨하지 않는다.
-`대기업` 같은 4-token 이하 일반 상업 메커니즘 문구는 commercial-first 원칙에
-따라 짧다는 이유만으로 자동 거절하지 않는다. 조직 접미사 문맥에서 파생된 bare
-stem은 반대쪽에서도 조직 전체형, 소유격, 또는 방식·전략·문화 같은 identity
-귀속 문맥이 확인될 때만 조직 identity로 즉시 차단한다. 문장부호를 건넌 인접
-토큰은 조직 구조로 보지 않는다. 반대쪽에 귀속 문맥이 없는 stem 단독 교차는
-일반어 목록으로 의미를 추측하지 않고 `bare-organization-stem-overlap/v1`
-`pending_hil` finding으로 보낸다. 성씨형 finding과 조직 stem finding은 rule별로
-dedupe되어 같은 v2 request와 owner decision에 결속된다. 동일 조직
-전체형, 선정 identity, 인용 표면, identifier형 Latin, 직함 결속 인명, 5-token
-복사는 이 경계와 무관하게 기존 차단을 유지한다. 이 의미 변경은
-`genre-soul-protected-surface-hil/v2`와 새 실행 digest를 사용한다. 완료된 v1 검토
-영수증은 역사 증거로 읽을 수 있지만 v1 pending 요청·결정은 v2 판단으로 재사용하지
-않는다. v2 request/decision schema는 각각
-`private-genre-soul-ambiguous-surface-request/v2`와
-`private-genre-soul-ambiguous-surface-decision/v2`다.
+표면 검사는 identity와 일반 메커니즘을 구분한다. 선정 작품 제목·저자와 exact
+5-token private copy처럼 구조적으로 확정된 표면은 결정론적으로 차단한다. 반면
+구두점·조사·일반 어휘·조직 접미사·인용·Latin identifier·조직 전체형·직함 인접·
+맨몸 2~4음절 인명형처럼 문맥 판단이 필요한 교차는 코드가 사람·조직으로
+과승격하지 않고 bounded candidate/private window finding으로 만든다. 별도
+producer가 아닌 `gpt-5.6-sol/high` semantic reviewer가 모든 finding을 정확히 한
+번씩 `generic-overlap`, `protected-identity`, `uncertain`으로 판정한다. window
+coverage가 불완전하면 반드시 `uncertain`이다. protected 하나라도 있으면 owner가
+우회할 수 없는 전역 차단이고, uncertain만 owner HIL로 간다. `대기업` 같은 짧은
+일반 상업 메커니즘은 길이만으로 자동 거절하지 않는다. InkOS chapter 전용
+Storyyard Review Packet v2를 이 분석 판정으로 재라벨하지 않는다.
+
+Single semantic 경로는 legacy v1 input/result/prompt와
+`genre-soul-protected-surface-hil/v3`,
+`private-genre-soul-ambiguous-surface-request/v4`,
+`private-genre-soul-ambiguous-surface-decision/v3`를 사용한다. request v4는 전체
+finding-set SHA와 generic/protected/uncertain ID partition을 semantic result
+reference와 함께 결속한다. 과거 request v3는 읽기·결정 재생 호환만 유지하며 새로
+쓰지 않는다. Profile overflow
+경로는 모든 part의 exact finding union과 reviewer role/run 분리를 host aggregate가
+재구성한다. protected가 없고 uncertain이 있을 때에만 part별 요청 대신 정확히 한
+개의 `private-genre-soul-batch-ambiguous-surface-request/v4`와
+`private-genre-soul-batch-ambiguous-surface-decision/v4`를 만든다. 이 v4 한 쌍은
+plan·aggregate·모든 part input/result/receipt hash와 uncertain 전체 finding을
+결속한다. v1/v2/v3/v4 증거는 각 schema validator로만 읽고 서로 대체하지 않는다.
+
+Manager current v2는 single v1 semantic proof만 사용하고 자동 partition하지 않는다.
+대신 semantic input/prompt를 private semantic evidence write와 provider 호출 전에
+공용 exact context preflight한다. 초과하면 semantic reviewer·HIL·누출 검사·tracked
+publication 없이 fail-closed한다.
 
 owner 결정은 request의 exact path·SHA·candidate·private source/sample digest와 모든
-finding ID를 결속한다. 같은 run 재실행은 `approve`일 때만 계속 진행하며 profile은
-candidate·request·decision을 top-level completion에 함께 봉인하고 Manager QA PASS는
-candidate·request·approved owner decision의 bodyless exact proof를 tracked receipt에
-남긴다. `reject`는
+finding ID를 결속한다. batch v4는 여기에 plan·aggregate·각 reviewer evidence
+reference도 결속한다. 같은 run 재실행은 `approve`일 때만 계속 진행하며 profile은
+candidate·semantic evidence·request·decision을 top-level completion에 함께 봉인하고
+Manager QA PASS는 candidate·request·approved owner decision의 bodyless exact proof를
+tracked receipt에 남긴다. `reject`는
 tracked 게시 없이 종료한다. 실제 재작성 전이가 없는 `polish-retry`는 선택지로
 노출하지 않는다. 결정 권한은 Reference Lab 분석 표면에
 한정되고 InkOS canon 작성이나 Soul 승급 권한을 포함하지 않는다.

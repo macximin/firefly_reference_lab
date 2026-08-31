@@ -3,9 +3,15 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 
 export const PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA =
+  "private-genre-soul-ambiguous-surface-request/v4";
+export const PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA =
   "private-genre-soul-ambiguous-surface-request/v3";
 export const PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_DECISION_SCHEMA =
   "private-genre-soul-ambiguous-surface-decision/v3";
+export const PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA =
+  "private-genre-soul-batch-ambiguous-surface-request/v4";
+export const PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_DECISION_SCHEMA =
+  "private-genre-soul-batch-ambiguous-surface-decision/v4";
 export const GENRE_SOUL_SURFACE_HIL_GATE_VERSION =
   "genre-soul-protected-surface-hil/v3";
 export const GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION =
@@ -118,6 +124,21 @@ function assertPositiveSafeInteger(value, label) {
   }
 }
 
+function assertNonNegativeSafeInteger(value, label) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative safe integer.`);
+  }
+}
+
+function assertCanonicalIsoTimestamp(value, label) {
+  const parsed = typeof value === "string" ? new Date(value) : null;
+  if (
+    !parsed
+    || !Number.isFinite(parsed.getTime())
+    || parsed.toISOString() !== value
+  ) throw new Error(`${label} must be a canonical ISO-8601 UTC timestamp with milliseconds.`);
+}
+
 function assertSafeRelativePath(value, label) {
   if (
     typeof value !== "string"
@@ -149,6 +170,20 @@ function assertUniqueSortedStrings(values, label, validator) {
   if (!Array.isArray(values) || values.length < 1) {
     throw new Error(`${label} must be a non-empty array.`);
   }
+  for (const [index, value] of values.entries()) {
+    if (typeof value !== "string" || value.length < 1 || !validator(value)) {
+      throw new Error(`${label}[${index}] is invalid.`);
+    }
+  }
+  if (new Set(values).size !== values.length) throw new Error(`${label} must be unique.`);
+  const sorted = [...values].sort(compareStrings);
+  if (sorted.some((value, index) => value !== values[index])) {
+    throw new Error(`${label} must be sorted.`);
+  }
+}
+
+function assertUniqueSortedOptionalStrings(values, label, validator) {
+  if (!Array.isArray(values)) throw new Error(`${label} must be an array.`);
   for (const [index, value] of values.entries()) {
     if (typeof value !== "string" || value.length < 1 || !validator(value)) {
       throw new Error(`${label}[${index}] is invalid.`);
@@ -875,11 +910,36 @@ function validateSemanticReviewBinding(value, label = "semanticReview") {
   return true;
 }
 
-export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
+function validateSingleSemanticProjection(value, label = "semanticProjection") {
+  assertExactKeys(value, [
+    "findingSetSha256", "genericFindingIds", "protectedFindingIds", "uncertainFindingIds",
+  ], label);
+  assertSha(value.findingSetSha256, `${label}.findingSetSha256`);
+  for (const key of ["genericFindingIds", "protectedFindingIds", "uncertainFindingIds"]) {
+    assertUniqueSortedOptionalStrings(
+      value[key],
+      `${label}.${key}`,
+      (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+    );
+  }
+  const findingIds = [
+    ...value.genericFindingIds,
+    ...value.protectedFindingIds,
+    ...value.uncertainFindingIds,
+  ].sort(compareStrings);
+  if (new Set(findingIds).size !== findingIds.length) {
+    throw new Error(`${label} verdict projections must be disjoint.`);
+  }
+  return { findingIds };
+}
+
+function buildAmbiguousSurfaceRequest(input, { legacyV3 = false } = {}) {
   if (!isObject(input)) throw new Error("Ambiguous surface request input must be an object.");
-  assertExactKeys(input, [
+  const expectedKeys = [
     "stage", "genre", "soulId", "inputDigest", "candidate", "privateEvidence", "semanticReview", "findings",
-  ], "ambiguous surface request input");
+  ];
+  if (!legacyV3) expectedKeys.splice(7, 0, "semanticProjection");
+  assertExactKeys(input, expectedKeys, "ambiguous surface request input");
   assertStageGenreSoul(input.stage, input.genre, input.soulId);
   assertSha(input.inputDigest, "inputDigest");
   assertExactKeys(input.candidate, ["path", "sha256", "sizeBytes"], "candidate");
@@ -894,6 +954,7 @@ export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
   assertSha(input.privateEvidence.sourceSetSha256, "privateEvidence.sourceSetSha256");
   assertSha(input.privateEvidence.sampleSetSha256, "privateEvidence.sampleSetSha256");
   validateSemanticReviewBinding(input.semanticReview);
+  if (!legacyV3) validateSingleSemanticProjection(input.semanticProjection);
 
   const context = {
     stage: input.stage,
@@ -921,8 +982,18 @@ export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
     "ambiguous surface request finding IDs",
     (value) => /^surface-finding-[0-9a-f]{24}$/u.test(value),
   );
+  if (!legacyV3) {
+    if (
+      input.semanticProjection.protectedFindingIds.length !== 0
+      || input.semanticProjection.uncertainFindingIds.length < 1
+      || JSON.stringify(findings.map((finding) => finding.findingId))
+        !== JSON.stringify(input.semanticProjection.uncertainFindingIds)
+    ) throw new Error("Ambiguous surface request requires the exact unblocked uncertain semantic projection.");
+  }
   const request = {
-    schemaVersion: PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA,
+    schemaVersion: legacyV3
+      ? PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA
+      : PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA,
     gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
     extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
     stage: context.stage,
@@ -932,20 +1003,32 @@ export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
     candidate: context.candidate,
     privateEvidence: context.privateEvidence,
     semanticReview: structuredClone(input.semanticReview),
+    ...(legacyV3 ? {} : { semanticProjection: structuredClone(input.semanticProjection) }),
     findings,
   };
+  validateRequestObject(request);
   const bytes = canonicalJsonBytes(request);
   return { request, bytes, sha256: sha256(bytes) };
 }
 
+export function buildPrivateGenreSoulAmbiguousSurfaceRequest(input) {
+  return buildAmbiguousSurfaceRequest(input);
+}
+
+export function buildPrivateGenreSoulAmbiguousSurfaceRequestV3(input) {
+  return buildAmbiguousSurfaceRequest(input, { legacyV3: true });
+}
+
 function validateRequestObject(request) {
-  assertExactKeys(request, [
+  const current = request?.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA;
+  const legacyV3 = request?.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA;
+  if (!current && !legacyV3) throw new Error("Ambiguous surface request schema version drifted.");
+  const expectedKeys = [
     "schemaVersion", "gateVersion", "extractorVersion", "stage", "genre", "soulId", "inputDigest", "candidate",
     "privateEvidence", "semanticReview", "findings",
-  ], "ambiguous surface request");
-  if (request.schemaVersion !== PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA) {
-    throw new Error("Ambiguous surface request schema version drifted.");
-  }
+  ];
+  if (current) expectedKeys.splice(10, 0, "semanticProjection");
+  assertExactKeys(request, expectedKeys, "ambiguous surface request");
   if (request.gateVersion !== GENRE_SOUL_SURFACE_HIL_GATE_VERSION) {
     throw new Error("Ambiguous surface request gate version drifted.");
   }
@@ -966,6 +1049,9 @@ function validateRequestObject(request) {
   assertSha(request.privateEvidence.sourceSetSha256, "request.privateEvidence.sourceSetSha256");
   assertSha(request.privateEvidence.sampleSetSha256, "request.privateEvidence.sampleSetSha256");
   validateSemanticReviewBinding(request.semanticReview, "request.semanticReview");
+  const semanticProjection = current
+    ? validateSingleSemanticProjection(request.semanticProjection, "request.semanticProjection")
+    : null;
   if (!Array.isArray(request.findings) || request.findings.length < 1) {
     throw new Error("Ambiguous surface request findings must be non-empty.");
   }
@@ -983,6 +1069,12 @@ function validateRequestObject(request) {
     ids.push(finding.findingId);
   }
   assertUniqueSortedStrings(ids, "request finding IDs", (value) => /^surface-finding-[0-9a-f]{24}$/u.test(value));
+  if (current && (
+    request.semanticProjection.protectedFindingIds.length !== 0
+    || request.semanticProjection.uncertainFindingIds.length < 1
+    || JSON.stringify(ids) !== JSON.stringify(request.semanticProjection.uncertainFindingIds)
+    || semanticProjection.findingIds.length < ids.length
+  )) throw new Error("Ambiguous surface request semantic projection drifted from its uncertain findings.");
   return true;
 }
 
@@ -1004,6 +1096,257 @@ export function validatePrivateGenreSoulAmbiguousSurfaceRequest(value) {
   const bytes = canonicalJsonBytes(request);
   if (suppliedBytes && !suppliedBytes.equals(bytes)) {
     throw new Error("Ambiguous surface request bytes are not canonical.");
+  }
+  return { request, bytes, sha256: sha256(bytes) };
+}
+
+function validateBatchArtifactReference(value, label) {
+  assertExactKeys(value, ["path", "sha256", "sizeBytes"], label);
+  assertSafeRelativePath(value.path, `${label}.path`);
+  assertSha(value.sha256, `${label}.sha256`);
+  assertPositiveSafeInteger(value.sizeBytes, `${label}.sizeBytes`);
+}
+
+function validateBatchSemanticReviewBinding(value, label = "batchSemanticReview") {
+  assertExactKeys(value, ["plan", "aggregate", "verdictCounts", "outcome", "parts"], label);
+  validateBatchArtifactReference(value.plan, `${label}.plan`);
+  validateBatchArtifactReference(value.aggregate, `${label}.aggregate`);
+  assertExactKeys(
+    value.verdictCounts,
+    ["genericOverlap", "protectedIdentity", "uncertain"],
+    `${label}.verdictCounts`,
+  );
+  for (const key of ["genericOverlap", "protectedIdentity", "uncertain"]) {
+    assertNonNegativeSafeInteger(value.verdictCounts[key], `${label}.verdictCounts.${key}`);
+  }
+  if (!new Set(["blocked", "pending_hil", "pass"]).has(value.outcome)) {
+    throw new Error(`${label}.outcome is invalid.`);
+  }
+  if (!Array.isArray(value.parts) || value.parts.length < 2 || value.parts.length > 9_999) {
+    throw new Error(`${label}.parts must contain between two and 9,999 parts.`);
+  }
+
+  const artifactPaths = [value.plan.path, value.aggregate.path];
+  const partIds = [];
+  const findingIds = [];
+  const genericFindingIds = [];
+  const uncertainFindingIds = [];
+  const protectedFindingIds = [];
+  const reviewerRoles = [];
+  const reviewerRunIds = [];
+  for (const [index, part] of value.parts.entries()) {
+    const partLabel = `${label}.parts[${index}]`;
+    assertExactKeys(part, [
+      "partId", "findingIds", "genericFindingIds", "uncertainFindingIds", "protectedFindingIds",
+      "input", "result", "receipt", "reviewer",
+    ], partLabel);
+    if (!/^p[0-9]{4}$/u.test(part.partId ?? "") || part.partId === "p0000") {
+      throw new Error(`${partLabel}.partId is invalid.`);
+    }
+    partIds.push(part.partId);
+    assertUniqueSortedStrings(
+      part.findingIds,
+      `${partLabel}.findingIds`,
+      (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+    );
+    for (const key of ["genericFindingIds", "uncertainFindingIds", "protectedFindingIds"]) {
+      assertUniqueSortedOptionalStrings(
+        part[key],
+        `${partLabel}.${key}`,
+        (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+      );
+    }
+    const projectedFindingIds = [
+      ...part.genericFindingIds,
+      ...part.uncertainFindingIds,
+      ...part.protectedFindingIds,
+    ].sort(compareStrings);
+    if (
+      new Set(projectedFindingIds).size !== projectedFindingIds.length
+      || JSON.stringify(projectedFindingIds) !== JSON.stringify(part.findingIds)
+    ) throw new Error(`${partLabel} verdict projections must exactly partition findingIds.`);
+
+    for (const key of ["input", "result", "receipt"]) {
+      validateBatchArtifactReference(part[key], `${partLabel}.${key}`);
+      artifactPaths.push(part[key].path);
+    }
+    assertExactKeys(part.reviewer, [
+      "role", "runId", "model", "provider", "reasoningEffort", "promptSha256",
+    ], `${partLabel}.reviewer`);
+    assertActorId(part.reviewer.role, `${partLabel}.reviewer.role`);
+    assertActorId(part.reviewer.runId, `${partLabel}.reviewer.runId`);
+    if (
+      !part.reviewer.role.startsWith("genre-soul-surface-semantic-review:")
+      || part.reviewer.model !== "gpt-5.6-sol"
+      || part.reviewer.provider !== "openai-codex"
+      || part.reviewer.reasoningEffort !== "high"
+    ) throw new Error(`${partLabel}.reviewer runtime identity drifted.`);
+    assertSha(part.reviewer.promptSha256, `${partLabel}.reviewer.promptSha256`);
+
+    findingIds.push(...part.findingIds);
+    genericFindingIds.push(...part.genericFindingIds);
+    uncertainFindingIds.push(...part.uncertainFindingIds);
+    protectedFindingIds.push(...part.protectedFindingIds);
+    reviewerRoles.push(part.reviewer.role);
+    reviewerRunIds.push(part.reviewer.runId);
+  }
+  assertUniqueSortedStrings(partIds, `${label} part IDs`, (partId) => /^p[0-9]{4}$/u.test(partId));
+  assertUniqueSortedStrings(
+    findingIds,
+    `${label} finding IDs`,
+    (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+  );
+  for (const [ids, key] of [
+    [genericFindingIds, "genericFindingIds"],
+    [uncertainFindingIds, "uncertainFindingIds"],
+    [protectedFindingIds, "protectedFindingIds"],
+  ]) {
+    assertUniqueSortedOptionalStrings(
+      [...ids].sort(compareStrings),
+      `${label} ${key}`,
+      (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+    );
+  }
+  if (new Set(artifactPaths).size !== artifactPaths.length) {
+    throw new Error(`${label} artifact paths must be unique.`);
+  }
+  if (new Set(reviewerRoles).size !== reviewerRoles.length) {
+    throw new Error(`${label} reviewer roles must be unique across parts.`);
+  }
+  if (new Set(reviewerRunIds).size !== reviewerRunIds.length) {
+    throw new Error(`${label} reviewer runIds must be unique across parts.`);
+  }
+  if (
+    value.verdictCounts.genericOverlap !== genericFindingIds.length
+    || value.verdictCounts.uncertain !== uncertainFindingIds.length
+    || value.verdictCounts.protectedIdentity !== protectedFindingIds.length
+    || findingIds.length !== genericFindingIds.length + uncertainFindingIds.length + protectedFindingIds.length
+  ) throw new Error(`${label}.verdictCounts drifted from the exact reviewer projections.`);
+  const expectedOutcome = protectedFindingIds.length > 0
+    ? "blocked"
+    : uncertainFindingIds.length > 0
+      ? "pending_hil"
+      : "pass";
+  if (value.outcome !== expectedOutcome) {
+    throw new Error(`${label}.outcome drifted from the exact reviewer projections.`);
+  }
+  return {
+    findingIds,
+    genericFindingIds: [...genericFindingIds].sort(compareStrings),
+    uncertainFindingIds: [...uncertainFindingIds].sort(compareStrings),
+    protectedFindingIds: [...protectedFindingIds].sort(compareStrings),
+  };
+}
+
+function validateBatchRequestObject(request) {
+  assertExactKeys(request, [
+    "schemaVersion", "gateVersion", "extractorVersion", "stage", "genre", "soulId", "inputDigest", "candidate",
+    "privateEvidence", "batchSemanticReview", "findings",
+  ], "batch ambiguous surface request");
+  if (request.schemaVersion !== PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA) {
+    throw new Error("Batch ambiguous surface request schema version drifted.");
+  }
+  if (request.gateVersion !== GENRE_SOUL_SURFACE_HIL_GATE_VERSION) {
+    throw new Error("Batch ambiguous surface request gate version drifted.");
+  }
+  if (request.extractorVersion !== GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION) {
+    throw new Error("Batch ambiguous surface request extractor version drifted.");
+  }
+  assertStageGenreSoul(request.stage, request.genre, request.soulId);
+  assertSha(request.inputDigest, "batch request.inputDigest");
+  assertExactKeys(request.candidate, ["path", "sha256", "sizeBytes"], "batch request.candidate");
+  assertSafeRelativePath(request.candidate.path, "batch request.candidate.path");
+  assertSha(request.candidate.sha256, "batch request.candidate.sha256");
+  assertPositiveSafeInteger(request.candidate.sizeBytes, "batch request.candidate.sizeBytes");
+  assertExactKeys(
+    request.privateEvidence,
+    ["sourceSetSha256", "sampleSetSha256"],
+    "batch request.privateEvidence",
+  );
+  assertSha(request.privateEvidence.sourceSetSha256, "batch request.privateEvidence.sourceSetSha256");
+  assertSha(request.privateEvidence.sampleSetSha256, "batch request.privateEvidence.sampleSetSha256");
+  const projection = validateBatchSemanticReviewBinding(
+    request.batchSemanticReview,
+    "batch request.batchSemanticReview",
+  );
+  if (
+    request.batchSemanticReview.outcome !== "pending_hil"
+    || request.batchSemanticReview.verdictCounts.protectedIdentity !== 0
+    || projection.protectedFindingIds.length !== 0
+    || projection.uncertainFindingIds.length < 1
+  ) throw new Error("Batch ambiguous surface request requires an unblocked pending_hil aggregate.");
+  if (!Array.isArray(request.findings) || request.findings.length < 1) {
+    throw new Error("Batch ambiguous surface request findings must be non-empty.");
+  }
+  const context = {
+    stage: request.stage,
+    genre: request.genre,
+    soulId: request.soulId,
+    inputDigest: request.inputDigest,
+    candidate: request.candidate,
+    privateEvidence: request.privateEvidence,
+  };
+  const findingIds = [];
+  for (const [index, finding] of request.findings.entries()) {
+    validateFindingObject(finding, context, index);
+    findingIds.push(finding.findingId);
+  }
+  assertUniqueSortedStrings(
+    findingIds,
+    "batch request finding IDs",
+    (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+  );
+  if (JSON.stringify(findingIds) !== JSON.stringify(projection.uncertainFindingIds)) {
+    throw new Error("Batch ambiguous surface request findings must equal the exact uncertain projection union.");
+  }
+  return true;
+}
+
+export function buildPrivateGenreSoulBatchAmbiguousSurfaceRequest(input) {
+  if (!isObject(input)) throw new Error("Batch ambiguous surface request input must be an object.");
+  assertExactKeys(input, [
+    "stage", "genre", "soulId", "inputDigest", "candidate", "privateEvidence", "batchSemanticReview", "findings",
+  ], "batch ambiguous surface request input");
+  const findings = Array.isArray(input.findings)
+    ? input.findings.map((finding) => structuredClone(finding))
+      .sort((left, right) => compareStrings(left.findingId, right.findingId))
+    : input.findings;
+  const request = {
+    schemaVersion: PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA,
+    gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    extractorVersion: GENRE_SOUL_SURFACE_CANDIDATE_EXTRACTOR_VERSION,
+    stage: input.stage,
+    genre: input.genre,
+    soulId: input.soulId,
+    inputDigest: input.inputDigest,
+    candidate: structuredClone(input.candidate),
+    privateEvidence: structuredClone(input.privateEvidence),
+    batchSemanticReview: structuredClone(input.batchSemanticReview),
+    findings,
+  };
+  validateBatchRequestObject(request);
+  const bytes = canonicalJsonBytes(request);
+  return { request, bytes, sha256: sha256(bytes) };
+}
+
+export function validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(value) {
+  let request;
+  let suppliedBytes = null;
+  if (typeof value === "string" || Buffer.isBuffer(value) || value instanceof Uint8Array) {
+    suppliedBytes = Buffer.from(value);
+    if (!isUtf8(suppliedBytes)) throw new Error("Batch ambiguous surface request bytes must be UTF-8.");
+    try {
+      request = JSON.parse(suppliedBytes.toString("utf8"));
+    } catch (error) {
+      throw new Error(`Batch ambiguous surface request is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  } else {
+    request = value;
+  }
+  validateBatchRequestObject(request);
+  const bytes = canonicalJsonBytes(request);
+  if (suppliedBytes && !suppliedBytes.equals(bytes)) {
+    throw new Error("Batch ambiguous surface request bytes are not canonical.");
   }
   return { request, bytes, sha256: sha256(bytes) };
 }
@@ -1082,9 +1425,7 @@ function validateDecisionObject(decision, expected = {}) {
   assertExactKeys(decision.decidedBy, ["actorId", "role"], "decision.decidedBy");
   assertActorId(decision.decidedBy.actorId, "decision.decidedBy.actorId");
   if (decision.decidedBy.role !== "owner") throw new Error("Ambiguous surface decision requires owner role.");
-  if (typeof decision.decidedAt !== "string" || !Number.isFinite(Date.parse(decision.decidedAt))) {
-    throw new Error("Ambiguous surface decision decidedAt is invalid.");
-  }
+  assertCanonicalIsoTimestamp(decision.decidedAt, "Ambiguous surface decision decidedAt");
   assertExactKeys(decision.authority, [
     "scope", "mayWriteInkOSCanon", "mayPromoteSoul",
   ], "decision.authority");
@@ -1129,9 +1470,7 @@ export function buildPrivateGenreSoulAmbiguousSurfaceDecision(input) {
   assertSafeRelativePath(input.requestPath, "requestPath");
   assertActorId(input.decidedByActorId, "decidedByActorId");
   if (input.decidedByRole !== "owner") throw new Error("Ambiguous surface decision requires owner role.");
-  if (typeof input.decidedAt !== "string" || !Number.isFinite(Date.parse(input.decidedAt))) {
-    throw new Error("Ambiguous surface decision decidedAt is invalid.");
-  }
+  assertCanonicalIsoTimestamp(input.decidedAt, "Ambiguous surface decision decidedAt");
   if (!Array.isArray(input.findingDecisions)) {
     throw new Error("Ambiguous surface findingDecisions must be an array.");
   }
@@ -1205,6 +1544,336 @@ export function validatePrivateGenreSoulAmbiguousSurfaceDecision(value, expected
   return { decision, bytes, sha256: sha256(bytes) };
 }
 
+function validateBatchDecisionObject(decision, expected = {}) {
+  assertExactKeys(decision, [
+    "schemaVersion", "gateVersion", "stage", "genre", "soulId", "inputDigest",
+    "request", "candidate", "privateEvidence", "batchSemanticReview", "findingDecisions", "outcome",
+    "decisionId", "decidedBy", "decidedAt", "authority",
+  ], "batch ambiguous surface decision");
+  if (decision.schemaVersion !== PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_DECISION_SCHEMA) {
+    throw new Error("Batch ambiguous surface decision schema version drifted.");
+  }
+  if (decision.gateVersion !== GENRE_SOUL_SURFACE_HIL_GATE_VERSION) {
+    throw new Error("Batch ambiguous surface decision gate version drifted.");
+  }
+  assertStageGenreSoul(decision.stage, decision.genre, decision.soulId);
+  assertSha(decision.inputDigest, "batch decision.inputDigest");
+  assertExactKeys(decision.request, ["path", "sha256", "sizeBytes"], "batch decision.request");
+  assertSafeRelativePath(decision.request.path, "batch decision.request.path");
+  assertSha(decision.request.sha256, "batch decision.request.sha256");
+  assertPositiveSafeInteger(decision.request.sizeBytes, "batch decision.request.sizeBytes");
+  assertExactKeys(decision.candidate, ["path", "sha256", "sizeBytes"], "batch decision.candidate");
+  assertSafeRelativePath(decision.candidate.path, "batch decision.candidate.path");
+  assertSha(decision.candidate.sha256, "batch decision.candidate.sha256");
+  assertPositiveSafeInteger(decision.candidate.sizeBytes, "batch decision.candidate.sizeBytes");
+  assertExactKeys(
+    decision.privateEvidence,
+    ["sourceSetSha256", "sampleSetSha256"],
+    "batch decision.privateEvidence",
+  );
+  assertSha(decision.privateEvidence.sourceSetSha256, "batch decision.privateEvidence.sourceSetSha256");
+  assertSha(decision.privateEvidence.sampleSetSha256, "batch decision.privateEvidence.sampleSetSha256");
+  const projection = validateBatchSemanticReviewBinding(
+    decision.batchSemanticReview,
+    "batch decision.batchSemanticReview",
+  );
+  if (
+    decision.batchSemanticReview.outcome !== "pending_hil"
+    || decision.batchSemanticReview.verdictCounts.protectedIdentity !== 0
+    || projection.protectedFindingIds.length !== 0
+    || projection.uncertainFindingIds.length < 1
+  ) throw new Error("Batch ambiguous surface decision requires an unblocked pending_hil aggregate.");
+  if (!Array.isArray(decision.findingDecisions) || decision.findingDecisions.length < 1) {
+    throw new Error("Batch ambiguous surface decision findingDecisions must be non-empty.");
+  }
+  const findingIds = [];
+  for (const [index, findingDecision] of decision.findingDecisions.entries()) {
+    assertExactKeys(findingDecision, ["findingId", "decision"], `batch decision.findingDecisions[${index}]`);
+    if (!/^surface-finding-[0-9a-f]{24}$/u.test(findingDecision.findingId ?? "")) {
+      throw new Error(`batch decision.findingDecisions[${index}].findingId is invalid.`);
+    }
+    if (!FINDING_DECISIONS.has(findingDecision.decision)) {
+      throw new Error(`batch decision.findingDecisions[${index}].decision is invalid.`);
+    }
+    findingIds.push(findingDecision.findingId);
+  }
+  assertUniqueSortedStrings(
+    findingIds,
+    "batch decision finding IDs",
+    (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+  );
+  if (JSON.stringify(findingIds) !== JSON.stringify(projection.uncertainFindingIds)) {
+    throw new Error("Batch ambiguous surface decision must cover the exact uncertain projection union.");
+  }
+  if (decision.outcome !== outcomeForFindingDecisions(decision.findingDecisions)) {
+    throw new Error("Batch ambiguous surface decision outcome drifted from its finding decisions.");
+  }
+  assertExactKeys(decision.decidedBy, ["actorId", "role"], "batch decision.decidedBy");
+  assertActorId(decision.decidedBy.actorId, "batch decision.decidedBy.actorId");
+  if (decision.decidedBy.role !== "owner") {
+    throw new Error("Batch ambiguous surface decision requires owner role.");
+  }
+  assertCanonicalIsoTimestamp(decision.decidedAt, "Batch ambiguous surface decision decidedAt");
+  assertExactKeys(decision.authority, [
+    "scope", "mayWriteInkOSCanon", "mayPromoteSoul",
+  ], "batch decision.authority");
+  if (
+    decision.authority.scope !== "reference-lab-analysis-surface-only"
+    || decision.authority.mayWriteInkOSCanon !== false
+    || decision.authority.mayPromoteSoul !== false
+  ) throw new Error("Batch ambiguous surface decision authority drifted.");
+  if (decision.decisionId !== expectedDecisionId(decision)) {
+    throw new Error("Batch ambiguous surface decisionId drifted.");
+  }
+
+  if (expected.request !== undefined) {
+    const requestValidation = validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(expected.request);
+    const request = requestValidation.request;
+    const expectedRequestPath = expected.requestPath;
+    assertSafeRelativePath(expectedRequestPath, "expected batch requestPath");
+    if (
+      decision.request.path !== expectedRequestPath
+      || decision.request.sha256 !== requestValidation.sha256
+      || decision.request.sizeBytes !== requestValidation.bytes.byteLength
+      || decision.stage !== request.stage
+      || decision.genre !== request.genre
+      || decision.soulId !== request.soulId
+      || decision.inputDigest !== request.inputDigest
+      || JSON.stringify(decision.candidate) !== JSON.stringify(request.candidate)
+      || JSON.stringify(decision.privateEvidence) !== JSON.stringify(request.privateEvidence)
+      || JSON.stringify(decision.batchSemanticReview) !== JSON.stringify(request.batchSemanticReview)
+      || JSON.stringify(findingIds) !== JSON.stringify(request.findings.map((finding) => finding.findingId))
+    ) throw new Error("Batch ambiguous surface decision drifted from its exact request.");
+  }
+  return true;
+}
+
+export function buildPrivateGenreSoulBatchAmbiguousSurfaceDecision(input) {
+  if (!isObject(input)) throw new Error("Batch ambiguous surface decision input must be an object.");
+  assertExactKeys(input, [
+    "request", "requestPath", "findingDecisions", "decidedByActorId", "decidedByRole", "decidedAt",
+  ], "batch ambiguous surface decision input");
+  const requestValidation = validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(input.request);
+  const request = requestValidation.request;
+  assertSafeRelativePath(input.requestPath, "batch requestPath");
+  assertActorId(input.decidedByActorId, "batch decidedByActorId");
+  if (input.decidedByRole !== "owner") {
+    throw new Error("Batch ambiguous surface decision requires owner role.");
+  }
+  assertCanonicalIsoTimestamp(input.decidedAt, "Batch ambiguous surface decision decidedAt");
+  if (!Array.isArray(input.findingDecisions)) {
+    throw new Error("Batch ambiguous surface findingDecisions must be an array.");
+  }
+  const decisionsById = new Map();
+  for (const findingDecision of input.findingDecisions) {
+    if (!isObject(findingDecision)) throw new Error("Batch ambiguous surface finding decision must be an object.");
+    assertExactKeys(findingDecision, ["findingId", "decision"], "batch finding decision input");
+    if (decisionsById.has(findingDecision.findingId)) {
+      throw new Error("Batch ambiguous surface finding decision is duplicated.");
+    }
+    if (!FINDING_DECISIONS.has(findingDecision.decision)) {
+      throw new Error("Batch ambiguous surface finding decision is invalid.");
+    }
+    decisionsById.set(findingDecision.findingId, findingDecision.decision);
+  }
+  const findingDecisions = request.findings.map((finding) => ({
+    findingId: finding.findingId,
+    decision: decisionsById.get(finding.findingId),
+  })).sort((left, right) => compareStrings(left.findingId, right.findingId));
+  if (
+    findingDecisions.some((entry) => entry.decision === undefined)
+    || decisionsById.size !== findingDecisions.length
+  ) throw new Error("Batch ambiguous surface decision must cover the exact request finding set.");
+  const decision = {
+    schemaVersion: PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_DECISION_SCHEMA,
+    gateVersion: GENRE_SOUL_SURFACE_HIL_GATE_VERSION,
+    stage: request.stage,
+    genre: request.genre,
+    soulId: request.soulId,
+    inputDigest: request.inputDigest,
+    request: {
+      path: input.requestPath,
+      sha256: requestValidation.sha256,
+      sizeBytes: requestValidation.bytes.byteLength,
+    },
+    candidate: request.candidate,
+    privateEvidence: request.privateEvidence,
+    batchSemanticReview: request.batchSemanticReview,
+    findingDecisions,
+    outcome: outcomeForFindingDecisions(findingDecisions),
+    decisionId: "",
+    decidedBy: { actorId: input.decidedByActorId, role: input.decidedByRole },
+    decidedAt: input.decidedAt,
+    authority: {
+      scope: "reference-lab-analysis-surface-only",
+      mayWriteInkOSCanon: false,
+      mayPromoteSoul: false,
+    },
+  };
+  decision.decisionId = expectedDecisionId(decision);
+  validateBatchDecisionObject(decision, {
+    request: requestValidation.bytes,
+    requestPath: input.requestPath,
+  });
+  const bytes = canonicalJsonBytes(decision);
+  return { decision, bytes, sha256: sha256(bytes) };
+}
+
+export function validatePrivateGenreSoulBatchAmbiguousSurfaceDecision(value, expected = {}) {
+  let decision;
+  let suppliedBytes = null;
+  if (typeof value === "string" || Buffer.isBuffer(value) || value instanceof Uint8Array) {
+    suppliedBytes = Buffer.from(value);
+    if (!isUtf8(suppliedBytes)) throw new Error("Batch ambiguous surface decision bytes must be UTF-8.");
+    try {
+      decision = JSON.parse(suppliedBytes.toString("utf8"));
+    } catch (error) {
+      throw new Error(`Batch ambiguous surface decision is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  } else {
+    decision = value;
+  }
+  validateBatchDecisionObject(decision, expected);
+  const bytes = canonicalJsonBytes(decision);
+  if (suppliedBytes && !suppliedBytes.equals(bytes)) {
+    throw new Error("Batch ambiguous surface decision bytes are not canonical.");
+  }
+  return { decision, bytes, sha256: sha256(bytes) };
+}
+
+function validatePendingHilRequest(evaluation) {
+  const suppliedBytes = Buffer.from(evaluation.requestBytes);
+  if (!isUtf8(suppliedBytes)) throw new Error("Pending surface HIL request bytes must be UTF-8.");
+  let parsed;
+  try {
+    parsed = JSON.parse(suppliedBytes.toString("utf8"));
+  } catch (error) {
+    throw new Error(`Pending surface HIL request is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  let validation;
+  if (
+    parsed?.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA
+    || parsed?.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA
+  ) {
+    validation = validatePrivateGenreSoulAmbiguousSurfaceRequest(suppliedBytes);
+  } else if (parsed?.schemaVersion === PRIVATE_GENRE_SOUL_BATCH_AMBIGUOUS_SURFACE_REQUEST_SCHEMA) {
+    validation = validatePrivateGenreSoulBatchAmbiguousSurfaceRequest(suppliedBytes);
+  } else {
+    throw new Error("Pending surface HIL request schema is unsupported.");
+  }
+  assertSha(evaluation.requestSha256, "pending surface HIL requestSha256");
+  if (
+    evaluation.requestSha256 !== validation.sha256
+    || !canonicalJsonBytes(evaluation.request).equals(validation.bytes)
+  ) throw new Error("Pending surface HIL request object or digest drifted from its exact bytes.");
+  const request = validation.request;
+  assertStageGenreSoul(evaluation.stage, evaluation.genre, evaluation.soulId);
+  assertSha(evaluation.inputDigest, "pending surface HIL evaluation inputDigest");
+  assertExactKeys(
+    evaluation.candidate,
+    ["path", "sha256", "sizeBytes"],
+    "pending surface HIL evaluation candidate",
+  );
+  assertSafeRelativePath(evaluation.candidate.path, "pending surface HIL evaluation candidate.path");
+  assertSha(evaluation.candidate.sha256, "pending surface HIL evaluation candidate.sha256");
+  assertPositiveSafeInteger(
+    evaluation.candidate.sizeBytes,
+    "pending surface HIL evaluation candidate.sizeBytes",
+  );
+  assertExactKeys(
+    evaluation.privateEvidence,
+    ["sourceSetSha256", "sampleSetSha256"],
+    "pending surface HIL evaluation privateEvidence",
+  );
+  assertSha(
+    evaluation.privateEvidence.sourceSetSha256,
+    "pending surface HIL evaluation privateEvidence.sourceSetSha256",
+  );
+  assertSha(
+    evaluation.privateEvidence.sampleSetSha256,
+    "pending surface HIL evaluation privateEvidence.sampleSetSha256",
+  );
+  if (
+    request.stage !== evaluation.stage
+    || request.genre !== evaluation.genre
+    || request.soulId !== evaluation.soulId
+    || request.inputDigest !== evaluation.inputDigest
+    || JSON.stringify(request.candidate) !== JSON.stringify(evaluation.candidate)
+    || JSON.stringify(request.privateEvidence) !== JSON.stringify(evaluation.privateEvidence)
+  ) throw new Error("Pending surface HIL request identity drifted from its exact evaluation.");
+  if (!Array.isArray(evaluation.findings) || evaluation.findings.length < 1) {
+    throw new Error("Pending surface HIL evaluation findings must be non-empty.");
+  }
+  const findingContext = {
+    stage: evaluation.stage,
+    genre: evaluation.genre,
+    soulId: evaluation.soulId,
+    inputDigest: evaluation.inputDigest,
+    candidate: evaluation.candidate,
+    privateEvidence: evaluation.privateEvidence,
+  };
+  evaluation.findings.forEach((finding, index) => validateFindingObject(finding, findingContext, index));
+  const evaluationFindingIds = evaluation.findings.map((finding) => finding.findingId);
+  assertUniqueSortedStrings(
+    evaluationFindingIds,
+    "pending surface HIL evaluation finding IDs",
+    (findingId) => /^surface-finding-[0-9a-f]{24}$/u.test(findingId),
+  );
+  assertSha(evaluation.findingSetSha256, "pending surface HIL evaluation findingSetSha256");
+  if (evaluation.findingSetSha256 !== surfaceFindingSetSha256(evaluation.findings)) {
+    throw new Error("Pending surface HIL evaluation finding set drifted.");
+  }
+  if (!Array.isArray(evaluation.blockers) || evaluation.blockers.length !== 0) {
+    throw new Error("Pending surface HIL evaluation must not carry blockers.");
+  }
+  const evaluationFindingById = new Map(
+    evaluation.findings.map((finding) => [finding.findingId, finding]),
+  );
+  for (const finding of request.findings) {
+    const evaluationFinding = evaluationFindingById.get(finding.findingId);
+    if (!evaluationFinding || JSON.stringify(evaluationFinding) !== JSON.stringify(finding)) {
+      throw new Error("Pending surface HIL request finding drifted from its exact evaluation.");
+    }
+  }
+  if (
+    request.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA
+    || request.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA
+  ) {
+    validateSemanticReviewBinding(
+      evaluation.semanticReview,
+      "pending surface HIL evaluation semanticReview",
+    );
+    if (JSON.stringify(request.semanticReview) !== JSON.stringify(evaluation.semanticReview)) {
+      throw new Error("Pending surface HIL request semantic review drifted from its exact evaluation.");
+    }
+    if (request.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA) {
+      const evaluationProjection = validateSingleSemanticProjection(
+        evaluation.semanticProjection,
+        "pending surface HIL evaluation semanticProjection",
+      );
+      if (
+        request.semanticProjection.findingSetSha256 !== evaluation.findingSetSha256
+        || JSON.stringify(request.semanticProjection) !== JSON.stringify(evaluation.semanticProjection)
+        || JSON.stringify(evaluationProjection.findingIds) !== JSON.stringify(evaluationFindingIds)
+      ) {
+        throw new Error("Pending surface HIL request semantic projection drifted from its exact evaluation.");
+      }
+    }
+  } else {
+    const batchProjection = validateBatchSemanticReviewBinding(
+      evaluation.batchSemanticReview,
+      "pending surface HIL evaluation batchSemanticReview",
+    );
+    if (
+      JSON.stringify(request.batchSemanticReview) !== JSON.stringify(evaluation.batchSemanticReview)
+      || JSON.stringify(batchProjection.findingIds) !== JSON.stringify(evaluationFindingIds)
+    ) {
+      throw new Error("Pending batch surface HIL request drifted from its exact evaluation aggregate.");
+    }
+  }
+  return validation;
+}
+
 export function resolveGenreSoulSurfaceHilDecision(evaluation, input) {
   if (
     !isObject(evaluation)
@@ -1215,10 +1884,20 @@ export function resolveGenreSoulSurfaceHilDecision(evaluation, input) {
   ) throw new Error("Surface HIL decision requires an exact pending evaluation.");
   if (!isObject(input)) throw new Error("Surface HIL decision resolution input must be an object.");
   assertExactKeys(input, ["decision", "requestPath"], "surface HIL decision resolution input");
-  const validation = validatePrivateGenreSoulAmbiguousSurfaceDecision(input.decision, {
-    request: evaluation.requestBytes,
-    requestPath: input.requestPath,
-  });
+  const requestValidation = validatePendingHilRequest(evaluation);
+  const singleRequest = (
+    requestValidation.request.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_SCHEMA
+    || requestValidation.request.schemaVersion === PRIVATE_GENRE_SOUL_AMBIGUOUS_SURFACE_REQUEST_V3_SCHEMA
+  );
+  const validation = singleRequest
+    ? validatePrivateGenreSoulAmbiguousSurfaceDecision(input.decision, {
+        request: requestValidation.bytes,
+        requestPath: input.requestPath,
+      })
+    : validatePrivateGenreSoulBatchAmbiguousSurfaceDecision(input.decision, {
+        request: requestValidation.bytes,
+        requestPath: input.requestPath,
+      });
   const decision = validation.decision;
   if (decision.outcome === "approved") {
     return {
