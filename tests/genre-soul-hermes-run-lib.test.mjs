@@ -1235,6 +1235,117 @@ sys.modules["hermes_cli.main"] = stale_main
   await rename(realAuthPath, sourceAuthPath);
 });
 
+test("ignores only volatile Hermes update footers in runtime identity", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-version-footer-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const installRoot = join(root, "install");
+  const wrapper = join(root, "hermes");
+  await mkdir(installRoot, { recursive: true });
+  await writeFile(wrapper, `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  if [ "$HERMES_TEST_VERSION_STATE" = "footer-only" ]; then
+    printf '%s\\n' 'Up to date'
+    exit 0
+  fi
+  version="1.0.0"
+  if [ "$HERMES_TEST_VERSION_STATE" = "static-change" ]; then
+    version="1.0.1"
+  fi
+  printf '%s\\n' "mock-hermes $version" 'Install directory: ${installRoot}'
+  case "$HERMES_TEST_VERSION_STATE" in
+    available)
+      printf '%s\\n' "Update available: 1 commit behind — run 'hermes update'"
+      ;;
+    up-to-date)
+      printf '%s\\n' 'Up to date'
+      ;;
+    update-lookalike)
+      printf '%s\\n' 'Update available: status format changed'
+      ;;
+    stderr-change)
+      printf '%s\\n' 'static stderr drift' >&2
+      ;;
+  esac
+  exit 0
+fi
+exit 64
+`);
+  await chmod(wrapper, 0o755);
+
+  const evidenceFor = (state) => loadHermesBinaryRuntimeEvidence(wrapper, {
+    env: { ...process.env, HERMES_TEST_VERSION_STATE: state },
+  });
+  const absent = await evidenceFor("absent");
+  const available = await evidenceFor("available");
+  const upToDate = await evidenceFor("up-to-date");
+  const updateLookalike = await evidenceFor("update-lookalike");
+  const staticChange = await evidenceFor("static-change");
+  const stderrChange = await evidenceFor("stderr-change");
+
+  assert.equal(available.hermesVersionSha256, absent.hermesVersionSha256);
+  assert.equal(upToDate.hermesVersionSha256, absent.hermesVersionSha256);
+  assert.equal(available.hermesRuntimeIdentitySha256, absent.hermesRuntimeIdentitySha256);
+  assert.equal(upToDate.hermesRuntimeIdentitySha256, absent.hermesRuntimeIdentitySha256);
+  assert.notEqual(updateLookalike.hermesVersionSha256, absent.hermesVersionSha256);
+  assert.notEqual(updateLookalike.hermesRuntimeIdentitySha256, absent.hermesRuntimeIdentitySha256);
+  assert.notEqual(staticChange.hermesVersionSha256, absent.hermesVersionSha256);
+  assert.notEqual(staticChange.hermesRuntimeIdentitySha256, absent.hermesRuntimeIdentitySha256);
+  assert.notEqual(stderrChange.hermesVersionSha256, absent.hermesVersionSha256);
+  assert.notEqual(stderrChange.hermesRuntimeIdentitySha256, absent.hermesRuntimeIdentitySha256);
+  assert.equal(stderrChange.hermesExecutableSha256, absent.hermesExecutableSha256);
+  assert.equal(stderrChange.hermesImplementationSha256, absent.hermesImplementationSha256);
+  await assert.rejects(evidenceFor("footer-only"), /canonical --version output is empty/u);
+});
+
+test("ignores an exact volatile Hermes git banner suffix changing between version probes", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-version-banner-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const installRoot = join(root, "install");
+  const wrapper = join(root, "hermes");
+  const probeState = join(root, "version-probe-state");
+  await mkdir(installRoot, { recursive: true });
+  await writeFile(wrapper, `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  case "$HERMES_TEST_VERSION_STATE" in
+    base)
+      banner='Hermes Agent v1.0.0 (2026.7.20)'
+      ;;
+    changing-exact-banner)
+      if [ -e "$HERMES_TEST_VERSION_PROBE_STATE" ]; then
+        banner='Hermes Agent v1.0.0 (2026.7.20) · upstream bbbbbbbb · local cccccccc (+6 carried commits)'
+      else
+        : > "$HERMES_TEST_VERSION_PROBE_STATE"
+        banner='Hermes Agent v1.0.0 (2026.7.20) · upstream aaaaaaaa'
+      fi
+      ;;
+    banner-lookalike)
+      banner='Hermes Agent v1.0.0 (2026.7.20) · upstream not-a-git-hash'
+      ;;
+  esac
+  printf '%s\\n' "$banner" 'Install directory: ${installRoot}'
+  exit 0
+fi
+exit 64
+`);
+  await chmod(wrapper, 0o755);
+
+  const evidenceFor = (state) => loadHermesBinaryRuntimeEvidence(wrapper, {
+    env: {
+      ...process.env,
+      HERMES_TEST_VERSION_STATE: state,
+      HERMES_TEST_VERSION_PROBE_STATE: probeState,
+    },
+  });
+  const base = await evidenceFor("base");
+  const changingExactBanner = await evidenceFor("changing-exact-banner");
+  const bannerLookalike = await evidenceFor("banner-lookalike");
+
+  assert.equal(changingExactBanner.hermesVersionSha256, base.hermesVersionSha256);
+  assert.equal(changingExactBanner.hermesRuntimeIdentitySha256, base.hermesRuntimeIdentitySha256);
+  assert.notEqual(bannerLookalike.hermesVersionSha256, base.hermesVersionSha256);
+  assert.notEqual(bannerLookalike.hermesRuntimeIdentitySha256, base.hermesRuntimeIdentitySha256);
+});
+
 test("binds the delegated Hermes implementation behind a stable wrapper", async (t) => {
   const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-runtime-fingerprint-")));
   t.after(() => rm(root, { recursive: true, force: true }));

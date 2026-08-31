@@ -731,12 +731,42 @@ async function resolveHermesExecutable(command) {
   throw new Error(`Hermes executable is not available: ${command}`);
 }
 
+// Hermes appends one of these network/cache-derived status lines after its
+// static version report. They are not runtime material and an ephemeral
+// HERMES_HOME does not share the source profile's update cache.
+const HERMES_VOLATILE_VERSION_FOOTER = new RegExp(
+  String.raw`(^|[\r\n])(?:Up to date|Update available: [1-9][0-9]* commits? behind — run '[^'\r\n]+')(\r?\n)?$`,
+  "u",
+);
+const HERMES_VOLATILE_VERSION_BANNER = new RegExp(
+  String.raw`^(Hermes Agent v[^\s\r\n]+ \([^()\r\n]+\)) · upstream [a-f0-9]{8,64}(?: · local [a-f0-9]{8,64} \(\+[1-9][0-9]* carried commits?\))?$`,
+  "u",
+);
+
+function stripHermesVolatileVersionFooter(stdout) {
+  const match = HERMES_VOLATILE_VERSION_FOOTER.exec(stdout);
+  if (!match) return stdout;
+  return stdout.slice(0, match.index + match[1].length);
+}
+
+function stripHermesVolatileVersionBanner(stdout) {
+  const firstLineEnd = stdout.search(/\r?\n/u);
+  const firstLine = firstLineEnd < 0 ? stdout : stdout.slice(0, firstLineEnd);
+  const match = HERMES_VOLATILE_VERSION_BANNER.exec(firstLine);
+  if (!match) return stdout;
+  return `${match[1]}${stdout.slice(firstLine.length)}`;
+}
+
 function canonicalVersionText(version) {
-  const versionText = `${version.stdout}\n---stderr---\n${version.stderr}`;
-  if (versionText.includes("\0") || Buffer.byteLength(versionText) > 16_384 || versionText.trim().length < 1) {
+  const rawVersionText = `${version.stdout}\n---stderr---\n${version.stderr}`;
+  if (rawVersionText.includes("\0") || Buffer.byteLength(rawVersionText) > 16_384 || rawVersionText.trim().length < 1) {
     throw new Error("Hermes --version output is invalid.");
   }
-  return versionText;
+  const canonicalStdout = stripHermesVolatileVersionBanner(
+    stripHermesVolatileVersionFooter(version.stdout),
+  );
+  if (canonicalStdout.trim().length < 1) throw new Error("Hermes canonical --version output is empty.");
+  return `${canonicalStdout}\n---stderr---\n${version.stderr}`;
 }
 
 async function installDirectoryFromVersion(versionText) {
