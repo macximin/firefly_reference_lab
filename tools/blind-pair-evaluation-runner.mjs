@@ -24,6 +24,7 @@ import {
   validateBlindPairEvaluationInput,
   validateBlindPairEvaluationResult,
   validateBlindSurfaceScanReceipt,
+  validateInkOSBlindPairEvaluationTransfer,
 } from "./blind-pair-evaluation-contract.mjs";
 import {
   FICTION_CONTENT_CONTRACT_ID,
@@ -284,6 +285,24 @@ function validateReviewPacketCandidates(packet, input) {
   });
   if (candidates[0].sha256 === candidates[1].sha256) throw new Error("Blind review candidates must differ.");
   return candidates;
+}
+
+function validateInkOSTransferMatchesInput(transfer, input) {
+  validateInkOSBlindPairEvaluationTransfer(transfer);
+  if (
+    transfer.pairId !== input.pairId
+    || transfer.round !== input.round
+    || transfer.blindRunId !== input.blindRunId
+    || transfer.blindSessionId !== input.blindSessionId
+    || !isDeepStrictEqual(transfer.commonContext, input.commonContext)
+    || transfer.commonInputReceiptSha256 !== input.commonInputReceiptSha256
+    || transfer.pairedGenerationReceiptSha256 !== input.pairedGenerationReceiptSha256
+    || transfer.labelAssignmentReceiptSha256 !== input.labelAssignmentReceiptSha256
+    || !isDeepStrictEqual(
+      transfer.candidates.map(({ id, sha256, byteLength }) => ({ id, sha256, byteLength })),
+      input.candidates,
+    )
+  ) throw new Error("InkOS blind evaluation transfer drifted from the sealed RefLab input.");
 }
 
 function buildPrivateHostInput(input) {
@@ -624,6 +643,10 @@ export async function runBlindPairEvaluation(options) {
   } catch (error) {
     throw new Error(`Blind review packet is not valid JSON: ${error.message}`);
   }
+  if (reviewPacketBytes.compare(jsonBytes(reviewPacket)) !== 0) {
+    throw new Error("Blind review packet must use InkOS canonical transfer JSON bytes.");
+  }
+  validateInkOSTransferMatchesInput(reviewPacket, input);
   const candidates = validateReviewPacketCandidates(reviewPacket, input);
   const privateRootRelative = `exports/genre-souls/${soulId}/v1/blind-reviews/${input.pairId}`;
   const privateRoot = resolveInside(repositoryRoot, privateRootRelative, "Blind evaluator private root", "exports");

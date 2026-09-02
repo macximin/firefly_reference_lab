@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 
 import {
   BLIND_PAIR_CANDIDATE_IDS,
@@ -7,10 +8,12 @@ import {
   validateBlindPairEvaluationInput,
   validateBlindPairEvaluationResult,
   validateBlindSurfaceScanReceipt,
+  validateInkOSBlindPairEvaluationTransfer,
 } from "./blind-pair-evaluation-contract.mjs";
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const PACKET_ID = /^frp-[0-9a-f]{24}$/u;
+const UTC_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
 const SOUL_IDS = Object.freeze({
   "modern-fantasy-ko": "male-modern-fantasy-ko",
   "fantasy-ko": "male-fantasy-ko",
@@ -26,6 +29,20 @@ const STORYYARD_AUTHORITY = Object.freeze({
 
 function rawSha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function sortJson(value) {
+  if (Array.isArray(value)) return value.map(sortJson);
+  if (isObject(value)) {
+    return Object.fromEntries(Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, sortJson(nested)]));
+  }
+  return value;
+}
+
+function canonicalSha256(value) {
+  return rawSha256(JSON.stringify(sortJson(value)));
 }
 
 function isObject(value) {
@@ -50,7 +67,9 @@ function assertText(value, label, { allowEmpty = false } = {}) {
 }
 
 function assertIso(value, label) {
-  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) throw new Error(`${label} must be an ISO timestamp.`);
+  if (typeof value !== "string" || !UTC_DATETIME.test(value) || !Number.isFinite(Date.parse(value))) {
+    throw new Error(`${label} must be a UTC-Z ISO timestamp.`);
+  }
 }
 
 function validateCanaryIsolation(value, label) {
@@ -64,7 +83,7 @@ function validateSortedShaPair(value, label) {
   if (value[0] >= value[1]) throw new Error(`${label} must contain two unique sorted SHA-256 values.`);
 }
 
-function validateEnvelope(envelope, input) {
+function validateEnvelope(envelope, input, evaluatorResultSha256, expectedContentNeutralReceipts) {
   exactKeys(envelope, [
     "generatedAt", "source", "work", "artifact", "comparison", "candidatePreparedAt",
     "sealedGenerationEvidence",
@@ -78,6 +97,9 @@ function validateEnvelope(envelope, input) {
 
   exactKeys(envelope.work, ["id", "title", "genre", "status", "targetChapters"], "Storyyard projection work");
   for (const field of ["id", "title", "genre", "status"]) assertText(envelope.work[field], `Storyyard projection work.${field}`);
+  if (envelope.work.genre !== input.genre || SOUL_IDS[envelope.work.genre] === undefined) {
+    throw new Error("Storyyard projection work.genre drifted from the sealed RefLab genre.");
+  }
   if (!Number.isSafeInteger(envelope.work.targetChapters) || envelope.work.targetChapters < 1) {
     throw new Error("Storyyard projection work.targetChapters must be a positive integer.");
   }
@@ -115,6 +137,9 @@ function validateEnvelope(envelope, input) {
     throw new Error("Storyyard projection comparison drifted from the sealed blind input.");
   }
   assertSha(envelope.comparison.runtimeReceiptSha256, "Storyyard projection comparison.runtimeReceiptSha256");
+  if (envelope.comparison.runtimeReceiptSha256 !== evaluatorResultSha256) {
+    throw new Error("Storyyard projection runtime receipt must be the exact evaluator result SHA-256.");
+  }
   validateCanaryIsolation(envelope.comparison.canaryIsolation, "Storyyard projection comparison.canaryIsolation");
   if (envelope.comparison.candidateLabelsShuffled !== true || envelope.comparison.generatorMetadataExcluded !== true) {
     throw new Error("Storyyard projection comparison must remain independently blinded.");
@@ -138,6 +163,53 @@ function validateEnvelope(envelope, input) {
     envelope.sealedGenerationEvidence.contentNeutralReceiptSha256s,
     "Storyyard projection contentNeutralReceiptSha256s",
   );
+  if (!isDeepStrictEqual(
+    envelope.sealedGenerationEvidence.contentNeutralReceiptSha256s,
+    expectedContentNeutralReceipts,
+  )) throw new Error("Storyyard projection content-neutral receipts drifted from the public candidate evaluations.");
+}
+
+function expectedContentNeutralReceipts(input, result) {
+  return BLIND_PAIR_CANDIDATE_IDS.map((id, index) => canonicalSha256({
+    schemaVersion: "firefly-content-neutral-evaluation/v1",
+    candidateId: id,
+    candidateSha256: input.candidates[index].sha256,
+    contentNeutrality: result.evaluations[id].contentNeutrality,
+  })).sort();
+}
+
+function validateTransferBinding(transfer, input, candidateContexts, envelope) {
+  validateInkOSBlindPairEvaluationTransfer(transfer);
+  const transferBytes = Buffer.from(`${JSON.stringify(transfer, null, 2)}\n`, "utf8");
+  if (rawSha256(transferBytes) !== input.reviewPacket.sha256
+    || transferBytes.byteLength !== input.reviewPacket.byteLength) {
+    throw new Error("Storyyard projection transfer bytes drifted from the RefLab reviewPacket artifact binding.");
+  }
+  if (
+    transfer.pairId !== input.pairId
+    || transfer.round !== input.round
+    || transfer.blindRunId !== input.blindRunId
+    || transfer.blindSessionId !== input.blindSessionId
+    || !isDeepStrictEqual(transfer.commonContext, input.commonContext)
+    || transfer.commonInputReceiptSha256 !== input.commonInputReceiptSha256
+    || transfer.pairedGenerationReceiptSha256 !== input.pairedGenerationReceiptSha256
+    || transfer.labelAssignmentReceiptSha256 !== input.labelAssignmentReceiptSha256
+    || !isDeepStrictEqual(
+      transfer.candidates.map(({ id, sha256, byteLength }) => ({ id, sha256, byteLength })),
+      input.candidates,
+    )
+    || !isDeepStrictEqual(
+      transfer.candidates,
+      candidateContexts.map(({ id, body, sha256, byteLength }) => ({ id, body, sha256, byteLength })),
+    )
+  ) throw new Error("Storyyard projection transfer drifted from the sealed RefLab input or candidate bodies.");
+  if (envelope.source.bookId !== transfer.bookId
+    || envelope.work.id !== transfer.bookId
+    || envelope.artifact.chapterNumber !== transfer.chapterNumber
+    || !isDeepStrictEqual(envelope.comparison.canaryIsolation, transfer.canaryIsolation)
+    || BLIND_PAIR_CANDIDATE_IDS.some((id) => envelope.candidatePreparedAt[id] !== transfer.generatedAt)) {
+    throw new Error("Storyyard projection InkOS Book, chapter, canary isolation, or prepared time drifted from the transfer.");
+  }
 }
 
 function validateReviewReceipt(reviewReceipt, input, result, surfaceScans, candidateContexts) {
@@ -234,6 +306,7 @@ export function assertStoryyardV2EvaluationPacketIdentity(packet) {
 }
 
 export function buildStoryyardV2EvaluationProjection({
+  transfer,
   input,
   result,
   candidateContexts,
@@ -242,17 +315,22 @@ export function buildStoryyardV2EvaluationProjection({
   envelope,
 }) {
   validateBlindPairEvaluationInput(input);
-  validateBlindPairEvaluationResult(result, input, candidateContexts);
-  validateEnvelope(envelope, input);
   if (!Array.isArray(candidateContexts) || candidateContexts.length !== 2) {
     throw new Error("Storyyard projection requires two exact candidate contexts.");
   }
+  validateBlindPairEvaluationResult(result, input, candidateContexts);
   if (!Array.isArray(surfaceScans) || surfaceScans.length !== 2) {
     throw new Error("Storyyard projection requires two completed surface scans.");
   }
   validateReviewReceipt(reviewReceipt, input, result, surfaceScans, candidateContexts);
   const evaluatorResultSha256 = reviewReceipt.evaluatorBinding?.evaluatorResultSha256;
   assertSha(evaluatorResultSha256, "RefLab evaluator result SHA-256");
+  const contentNeutralReceiptSha256s = expectedContentNeutralReceipts(input, result);
+  validateEnvelope(envelope, input, evaluatorResultSha256, contentNeutralReceiptSha256s);
+  validateTransferBinding(transfer, input, candidateContexts, envelope);
+  if (surfaceScans[0].receipt.corpus.surfaceIndexSha256 !== surfaceScans[1].receipt.corpus.surfaceIndexSha256) {
+    throw new Error("Storyyard projection blind candidates must use the same public surface corpus.");
+  }
 
   const candidates = BLIND_PAIR_CANDIDATE_IDS.map((id, index) => {
     const context = candidateContexts[index];

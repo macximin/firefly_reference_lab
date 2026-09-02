@@ -233,7 +233,8 @@ export function validateInkOSBlindPairEvaluationTransfer(transfer) {
     if (!OPAQUE_BLIND_ID.test(value ?? "")) throw new Error(`InkOS transfer ${label} must be opaque br-<24 lowercase hex>.`);
   }
   if (transfer.blindRunId === transfer.blindSessionId) throw new Error("InkOS transfer run and session IDs must be distinct.");
-  if (![1, 2, 3].includes(transfer.round) || typeof transfer.bookId !== "string" || transfer.bookId.length > 120
+  if (![1, 2, 3].includes(transfer.round) || typeof transfer.bookId !== "string"
+    || transfer.bookId.length < 1 || transfer.bookId.length > 120
     || transfer.bookId.trim() !== transfer.bookId || transfer.bookId === "." || transfer.bookId === ".."
     || transfer.bookId.includes("..") || INKOS_UNSAFE_BOOK_ID.test(transfer.bookId)
     || !Number.isSafeInteger(transfer.chapterNumber) || transfer.chapterNumber < 1) {
@@ -246,6 +247,13 @@ export function validateInkOSBlindPairEvaluationTransfer(transfer) {
     || rawSha256(commonBytes) !== transfer.commonContext.sha256
     || commonBytes.byteLength !== transfer.commonContext.byteLength) {
     throw new Error("InkOS transfer commonContext text/bytes/hash binding drifted.");
+  }
+  const expectedCommonInputReceiptSha256 = hashInkOSCanonicalJson({
+    schemaVersion: "inkos-blind-common-context/v1",
+    commonContext: transfer.commonContext,
+  });
+  if (transfer.commonInputReceiptSha256 !== expectedCommonInputReceiptSha256) {
+    throw new Error("InkOS transfer commonInputReceiptSha256 drifted from the exact commonContext.");
   }
   for (const field of [
     "commonInputReceiptSha256", "pairedGenerationReceiptSha256", "labelAssignmentReceiptSha256", "transferSelfHash",
@@ -295,6 +303,11 @@ export function assembleBlindPairEvaluationInputFromInkOSTransfer({
   contentContract,
 }) {
   validateInkOSBlindPairEvaluationTransfer(transfer);
+  assertArtifactRef(reviewPacket, "InkOS transfer reviewPacket");
+  const transferBytes = canonicalBytes(transfer);
+  if (reviewPacket.sha256 !== rawSha256(transferBytes) || reviewPacket.byteLength !== transferBytes.byteLength) {
+    throw new Error("InkOS transfer reviewPacket artifact does not bind the exact transfer JSON bytes.");
+  }
   const input = {
     schemaVersion: "firefly-blind-pair-evaluation-input/v2",
     genre,

@@ -198,8 +198,10 @@ promotion eligibility의 완료선은
 manager QA를 통과할 수 없다. Reference Lab의 eligibility는 HQ owner 결정을
 대신하지 않는다.
 
-`tools/blind-pair-evaluation-runner.mjs`는 InkOS가 무작위화한 `candidate-A/B`
-두 본문만 별도 `gpt-5.6-sol/high` 평가자에게 exact-read로 전달한다. 생성 lane,
+`tools/blind-pair-evaluation-runner.mjs`는 exact raw bytes와 self-hash까지 검증한 InkOS
+`inkos-blind-pair-evaluation-transfer/v1`에서 무작위화된 `candidate-A/B` 두 본문만 별도
+`gpt-5.6-sol/high` 평가자에게 exact-read로 전달한다. transfer와 RefLab sealed input의
+opaque IDs, 공통 문맥, generation/label 영수증, 후보 hash·길이가 다르면 실행하지 않는다. 생성 lane,
 생성자 profile, label mapping은 평가 입력과 prompt에서 제외한다. 원고·상세 평가는
 ignored `exports/`에만 보존한다. 평가자의 v2 결과는 후보 SHA에 결속한 상업 점수,
 감정적 정합성 점수, content-neutral 위반, hard canon contradiction·canon leak,
@@ -231,8 +233,11 @@ no-clobber로 게시한다. Storyyard에는 `promotion-evaluation`,
 `select|tie|invalid`, advisory, `manuscriptApply=false`로만 투영할 수 있다. 이 영수증은
 분석 근거이며 InkOS canon 작성이나 Soul 승급 권한이 없다.
 
-`tools/blind-pair-storyyard-projection.mjs`는 InkOS가 제공한 source/work/artifact,
-canary isolation, generation evidence를 임의로 보충하지 않고 현재 Storyyard
+`tools/blind-pair-storyyard-projection.mjs`는 InkOS transfer가 제공한 Book/chapter,
+canary isolation과 후보 bytes를 sealed RefLab input에 재결속하고 source/work/artifact,
+generation evidence를 임의로 보충하지 않는다. evaluator result SHA는 comparison runtime과
+두 candidate commercial receipt에 동일하게 결속하며, 두 후보의 surface corpus 일치와 공개
+content-neutral evaluation의 canonical receipt 두 개를 재계산한 뒤 현재 Storyyard
 `firefly_review_packet/v2`의 `evaluationBindingSha256`, 32,768-byte source selector
 상한, packet identity 규칙에 맞춘 in-memory 호환 projection만 만든다. evaluator의
 `canonLeaks`가 하나라도 있으면 Storyyard schema에서 누락시키지 않고

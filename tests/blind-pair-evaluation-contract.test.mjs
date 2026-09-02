@@ -230,7 +230,10 @@ function inkosTransfer(sealedInput, candidateContexts) {
     bookId: "book-01",
     chapterNumber: 1,
     commonContext: sealedInput.commonContext,
-    commonInputReceiptSha256: sealedInput.commonInputReceiptSha256,
+    commonInputReceiptSha256: rawSha(JSON.stringify(sortJson({
+      schemaVersion: "inkos-blind-common-context/v1",
+      commonContext: sealedInput.commonContext,
+    }))),
     pairedGenerationReceiptSha256: sealedInput.pairedGenerationReceiptSha256,
     labelAssignmentReceiptSha256: sealedInput.labelAssignmentReceiptSha256,
     canaryIsolation: {
@@ -250,6 +253,12 @@ test("assembles an InkOS v1 transfer into the bodyless RefLab v2 input without i
   const candidateContexts = contexts();
   const sealedInput = input(candidateContexts);
   const transfer = inkosTransfer(sealedInput, candidateContexts);
+  const transferBytes = jsonBytes(transfer);
+  sealedInput.reviewPacket = {
+    path: sealedInput.reviewPacket.path,
+    sha256: rawSha(transferBytes),
+    byteLength: transferBytes.byteLength,
+  };
   const assembled = assembleBlindPairEvaluationInputFromInkOSTransfer({
     transfer,
     genre: sealedInput.genre,
@@ -265,6 +274,15 @@ test("assembles an InkOS v1 transfer into the bodyless RefLab v2 input without i
   assert.equal(assembled.reviewer.soulSha256, INKOS_BLIND_EVALUATOR_SOUL_SHA256);
   assert.equal(JSON.stringify(assembled).includes("neutralWorkOrderId"), false);
   assert.equal(JSON.stringify(assembled).includes("candidateToLane"), false);
+
+  assert.throws(() => assembleBlindPairEvaluationInputFromInkOSTransfer({
+    transfer,
+    genre: sealedInput.genre,
+    reviewPacket: { ...sealedInput.reviewPacket, sha256: sha("not-the-transfer-bytes") },
+    producerActors: sealedInput.producerActors,
+    reviewerActorId: sealedInput.reviewer.actorId,
+    contentContract: sealedInput.contentContract,
+  }), /does not bind the exact transfer JSON bytes/u);
 
   const mappingLeak = structuredClone(transfer);
   mappingLeak.candidateToLane = { "candidate-A": "neutral", "candidate-B": "soul" };
@@ -287,6 +305,28 @@ test("assembles an InkOS v1 transfer into the bodyless RefLab v2 input without i
     reviewerActorId: sealedInput.reviewer.actorId,
     contentContract: sealedInput.contentContract,
   }), /body\/sha256\/byteLength binding drifted/u);
+
+  const commonReceiptDrift = structuredClone(transfer);
+  commonReceiptDrift.commonInputReceiptSha256 = sha("wrong-common-receipt");
+  assert.throws(() => assembleBlindPairEvaluationInputFromInkOSTransfer({
+    transfer: commonReceiptDrift,
+    genre: sealedInput.genre,
+    reviewPacket: sealedInput.reviewPacket,
+    producerActors: sealedInput.producerActors,
+    reviewerActorId: sealedInput.reviewer.actorId,
+    contentContract: sealedInput.contentContract,
+  }), /commonInputReceiptSha256 drifted/u);
+
+  const emptyBook = structuredClone(transfer);
+  emptyBook.bookId = "";
+  assert.throws(() => assembleBlindPairEvaluationInputFromInkOSTransfer({
+    transfer: emptyBook,
+    genre: sealedInput.genre,
+    reviewPacket: sealedInput.reviewPacket,
+    producerActors: sealedInput.producerActors,
+    reviewerActorId: sealedInput.reviewer.actorId,
+    contentContract: sealedInput.contentContract,
+  }), /Book ID/u);
 });
 
 test("validates multibyte candidate-local spans and builds a bodyless Storyyard-v2-ready receipt", () => {

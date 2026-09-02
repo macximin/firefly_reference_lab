@@ -21,6 +21,18 @@ const jsonBytes = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 
 const opaqueId = (prefix, value) => `${prefix}-${rawSha(value).slice(0, 24)}`;
 const generatedAt = "2026-09-02T06:00:00.000Z";
 
+function sortJson(value) {
+  if (Array.isArray(value)) return value.map(sortJson);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, sortJson(nested)]));
+  }
+  return value;
+}
+
+const canonicalSha = (value) => rawSha(JSON.stringify(sortJson(value)));
+
 function fullSpan(body) {
   return {
     coordinateKind: "utf8-byte",
@@ -39,6 +51,7 @@ function fixture() {
     evidenceSpans: [fullSpan(body)],
   }));
   const commonText = "공통 Book brief, canon, Arc와 Rail의 lane-neutral 원문 projection.";
+  const commonContext = { text: commonText, sha256: rawSha(commonText), byteLength: Buffer.byteLength(commonText) };
   const input = {
     schemaVersion: "firefly-blind-pair-evaluation-input/v2",
     genre: "modern-fantasy-ko",
@@ -46,9 +59,9 @@ function fixture() {
     round: 2,
     blindRunId: opaqueId("br", "storyyard-run"),
     blindSessionId: opaqueId("br", "storyyard-session"),
-    reviewPacket: { path: "exports/private/review-packet.json", sha256: sealedSha("packet"), byteLength: 200 },
-    commonContext: { text: commonText, sha256: rawSha(commonText), byteLength: Buffer.byteLength(commonText) },
-    commonInputReceiptSha256: sealedSha("common-input"),
+    reviewPacket: { path: "exports/private/review-packet.json", sha256: sealedSha("pending-transfer"), byteLength: 200 },
+    commonContext,
+    commonInputReceiptSha256: canonicalSha({ schemaVersion: "inkos-blind-common-context/v1", commonContext }),
     pairedGenerationReceiptSha256: sealedSha("paired-generation"),
     labelAssignmentReceiptSha256: sealedSha("label-assignment"),
     candidates: candidateContexts.map(({ id, sha256, byteLength }) => ({ id, sha256, byteLength })),
@@ -64,6 +77,36 @@ function fixture() {
       id: "fiction-content-neutral-ko/v1", sha256: sealedSha("content-contract"), intensityDirectiveSha256: sealedSha("intensity"),
     },
     authority: BLIND_PAIR_AUTHORITY,
+  };
+  const canaryIsolation = {
+    receiptSha256: sealedSha("isolation-receipt"), receiptSelfHash: sealedSha("isolation-self"),
+    isolationScopeSha256: sealedSha("isolation-scope"), commonSnapshotSha256: sealedSha("common-snapshot"),
+  };
+  const unsignedTransfer = {
+    schemaVersion: "inkos-blind-pair-evaluation-transfer/v1",
+    pairId: input.pairId,
+    round: input.round,
+    blindRunId: input.blindRunId,
+    blindSessionId: input.blindSessionId,
+    bookId: "book-01",
+    chapterNumber: 1,
+    commonContext,
+    commonInputReceiptSha256: input.commonInputReceiptSha256,
+    pairedGenerationReceiptSha256: input.pairedGenerationReceiptSha256,
+    labelAssignmentReceiptSha256: input.labelAssignmentReceiptSha256,
+    canaryIsolation,
+    candidates: candidateContexts.map(({ id, body, sha256, byteLength }) => ({ id, body, sha256, byteLength })),
+    generatedAt,
+    authority: {
+      scope: "evaluation-input", mayWriteInkOSCanon: false, mayRevealGeneratorIdentity: false, ownerDecisionRequired: true,
+    },
+  };
+  const transfer = { ...unsignedTransfer, transferSelfHash: canonicalSha(unsignedTransfer) };
+  const transferBytes = jsonBytes(transfer);
+  input.reviewPacket = {
+    path: input.reviewPacket.path,
+    sha256: rawSha(transferBytes),
+    byteLength: transferBytes.byteLength,
   };
   const commercial = (score) => ({
     openingPressure: score, protagonistAgency: score, resistanceQuality: score, visiblePayoff: score,
@@ -98,7 +141,7 @@ function fixture() {
     humanDecision: "pending",
     authority: BLIND_PAIR_AUTHORITY,
   };
-  return { input, result, candidateContexts };
+  return { input, result, candidateContexts, transfer };
 }
 
 function surface(candidate, withMatch) {
@@ -186,16 +229,18 @@ function buildReceipt(input, result, candidateContexts, surfaceScans) {
   });
 }
 
-function envelope(input) {
+function envelope(input, result, reviewReceipt, transfer) {
   const currentContent = "현재 InkOS 정본 원고";
-  const canaryIsolation = {
-    receiptSha256: sealedSha("isolation-receipt"), receiptSelfHash: sealedSha("isolation-self"),
-    isolationScopeSha256: sealedSha("isolation-scope"), commonSnapshotSha256: sealedSha("common-snapshot"),
-  };
+  const contentNeutralReceiptSha256s = ["candidate-A", "candidate-B"].map((id) => canonicalSha({
+    schemaVersion: "firefly-content-neutral-evaluation/v1",
+    candidateId: id,
+    candidateSha256: result.evaluations[id].candidateSha256,
+    contentNeutrality: result.evaluations[id].contentNeutrality,
+  })).sort();
   return {
     generatedAt,
     source: { system: "inkos", bookId: "book-01", sourceRevision: "revision-01" },
-    work: { id: "book-01", title: "블라인드 작품", genre: "현대판타지", status: "active", targetChapters: 200 },
+    work: { id: "book-01", title: "블라인드 작품", genre: input.genre, status: "active", targetChapters: 200 },
     artifact: {
       id: "chapter-0001", kind: "chapter", chapterNumber: 1, title: "첫 화", status: "ready-for-review",
       currentContent, currentContentSha256: rawSha(currentContent),
@@ -206,28 +251,29 @@ function envelope(input) {
       commonInputReceiptSha256: input.commonInputReceiptSha256,
       pairedGenerationReceiptSha256: input.pairedGenerationReceiptSha256,
       labelAssignmentReceiptSha256: input.labelAssignmentReceiptSha256,
-      runtimeReceiptSha256: sealedSha("generation-runtime"),
-      canaryIsolation,
+      runtimeReceiptSha256: reviewReceipt.evaluatorBinding.evaluatorResultSha256,
+      canaryIsolation: structuredClone(transfer.canaryIsolation),
       candidateLabelsShuffled: true,
       generatorMetadataExcluded: true,
       runtime: { kernel: "enforce", piWorker: "off", retrieval: "legacy", fts: "off", model: "gpt-5.6-sol", reasoning: "high" },
     },
-    candidatePreparedAt: { "candidate-A": generatedAt, "candidate-B": generatedAt },
+    candidatePreparedAt: { "candidate-A": transfer.generatedAt, "candidate-B": transfer.generatedAt },
     sealedGenerationEvidence: {
       candidateEvidenceReceiptSha256s: [sealedSha("candidate-a"), sealedSha("candidate-b")].sort(),
-      contentNeutralReceiptSha256s: [sealedSha("neutral-a"), sealedSha("neutral-b")].sort(),
+      contentNeutralReceiptSha256s,
     },
   };
 }
 
 function buildProjection(overrides = {}) {
-  const { input, result, candidateContexts } = fixture();
+  const { input, result, candidateContexts, transfer } = fixture();
   const surfaceScans = [surface(candidateContexts[0], true), surface(candidateContexts[1], false)];
   const reviewReceipt = buildReceipt(input, result, candidateContexts, surfaceScans);
+  const projectionEnvelope = envelope(input, result, reviewReceipt, transfer);
   return {
-    input, result, candidateContexts, surfaceScans, reviewReceipt,
+    input, result, candidateContexts, transfer, surfaceScans, reviewReceipt, envelope: projectionEnvelope,
     packet: buildStoryyardV2EvaluationProjection({
-      input, result, candidateContexts, reviewReceipt, surfaceScans, envelope: envelope(input), ...overrides,
+      transfer, input, result, candidateContexts, reviewReceipt, surfaceScans, envelope: projectionEnvelope, ...overrides,
     }),
   };
 }
@@ -273,6 +319,11 @@ test("projects a complete RefLab result into the exact Storyyard v2 evaluation-o
   assert.deepEqual(packet.candidates.map((candidate) => candidate.id), ["candidate-A", "candidate-B"]);
   assert.equal(packet.candidates[0].evaluationBindingSha256, reviewReceipt.candidateBindings["candidate-A"].evaluationBindingSha256);
   assert.equal(packet.candidates[0].commercialEvaluationReceiptSha256, reviewReceipt.evaluatorBinding.evaluatorResultSha256);
+  assert.equal(packet.comparison.runtimeReceiptSha256, reviewReceipt.evaluatorBinding.evaluatorResultSha256);
+  assert.equal(
+    packet.candidates[1].review.surfaceComparison.surfaceIndexSha256,
+    packet.candidates[0].review.surfaceComparison.surfaceIndexSha256,
+  );
   assert.deepEqual(packet.candidates[0].review.emotionalCoherence, result.evaluations["candidate-A"].emotionalCoherence);
   assert.equal(packet.candidates[0].review.surfaceComparison.surfaceMatches[0].source.endByte, 32_768);
   assert.equal(JSON.stringify(packet).includes("canonLeaks"), false);
@@ -282,8 +333,69 @@ test("projects a complete RefLab result into the exact Storyyard v2 evaluation-o
   assert.equal(packet.packetId, `frp-${packet.packetSha256.slice(0, 24)}`);
 });
 
+test("fails closed on Storyyard runtime, content-neutral, transfer, genre, and UTC drift", () => {
+  const state = buildProjection();
+  const rebuild = (projectionEnvelope, transfer = state.transfer) => buildStoryyardV2EvaluationProjection({
+    transfer,
+    input: state.input,
+    result: state.result,
+    candidateContexts: state.candidateContexts,
+    reviewReceipt: state.reviewReceipt,
+    surfaceScans: state.surfaceScans,
+    envelope: projectionEnvelope,
+  });
+
+  const runtimeDrift = structuredClone(state.envelope);
+  runtimeDrift.comparison.runtimeReceiptSha256 = sealedSha("wrong-runtime-receipt");
+  assert.throws(() => rebuild(runtimeDrift), /exact evaluator result SHA-256/u);
+
+  const neutralityDrift = structuredClone(state.envelope);
+  neutralityDrift.sealedGenerationEvidence.contentNeutralReceiptSha256s = [
+    sealedSha("wrong-neutral-a"), sealedSha("wrong-neutral-b"),
+  ].sort();
+  assert.throws(() => rebuild(neutralityDrift), /content-neutral receipts drifted/u);
+
+  const canaryDrift = structuredClone(state.envelope);
+  canaryDrift.comparison.canaryIsolation.receiptSha256 = sealedSha("wrong-canary");
+  assert.throws(() => rebuild(canaryDrift), /canary isolation/u);
+
+  const genreDrift = structuredClone(state.envelope);
+  genreDrift.work.genre = "fantasy-ko";
+  assert.throws(() => rebuild(genreDrift), /work.genre drifted/u);
+
+  const timeDrift = structuredClone(state.envelope);
+  timeDrift.generatedAt = "2026-09-02T06:00:00+00:00";
+  assert.throws(() => rebuild(timeDrift), /UTC-Z/u);
+
+  const transferDrift = structuredClone(state.transfer);
+  transferDrift.candidates[0].body += " 변조";
+  assert.throws(() => rebuild(state.envelope, transferDrift), /body\/sha256\/byteLength binding drifted/u);
+});
+
+test("requires both candidates to use the same exact public surface corpus", () => {
+  const { input, result, candidateContexts, transfer } = fixture();
+  const surfaceScans = [surface(candidateContexts[0], false), surface(candidateContexts[1], false)];
+  const secondUnsigned = { ...surfaceScans[1].receipt };
+  delete secondUnsigned.receiptSelfHash;
+  secondUnsigned.corpus = { ...secondUnsigned.corpus, surfaceIndexSha256: sealedSha("other-surface-index") };
+  surfaceScans[1].receipt = {
+    ...secondUnsigned,
+    receiptSelfHash: hashBlindEvaluationArtifact(secondUnsigned),
+  };
+  const reviewReceipt = buildReceipt(input, result, candidateContexts, surfaceScans);
+  assert.throws(() => buildStoryyardV2EvaluationProjection({
+    transfer,
+    input,
+    result,
+    candidateContexts,
+    reviewReceipt,
+    surfaceScans,
+    envelope: envelope(input, result, reviewReceipt, transfer),
+  }), /same public surface corpus/u);
+});
+
 test("blocks Storyyard materialization on any typed canon leak instead of dropping it", () => {
-  const { input, result, candidateContexts } = fixture();
+  const { input, result, candidateContexts, transfer } = fixture();
   result.evaluations["candidate-A"].canonLeaks = [{
     code: "canon-leak", evidence: [candidateContexts[0].evidenceSpans[0]],
   }];
@@ -291,7 +403,8 @@ test("blocks Storyyard materialization on any typed canon leak instead of droppi
   const reviewReceipt = buildReceipt(input, result, candidateContexts, surfaceScans);
   assert.equal(reviewReceipt.outcome.canonLeakCount, 1);
   assert.throws(() => buildStoryyardV2EvaluationProjection({
-    input, result, candidateContexts, reviewReceipt, surfaceScans, envelope: envelope(input),
+    transfer, input, result, candidateContexts, reviewReceipt, surfaceScans,
+    envelope: envelope(input, result, reviewReceipt, transfer),
   }), /canonLeakPolicy=block-on-nonzero/u);
 });
 

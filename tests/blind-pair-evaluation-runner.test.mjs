@@ -34,6 +34,18 @@ const REVIEWER_CONFIG_SHA256 = INKOS_BLIND_EVALUATOR_CONFIG_SHA256;
 const REVIEWER_SOUL_SHA256 = INKOS_BLIND_EVALUATOR_SOUL_SHA256;
 const COMMON_CONTEXT_TEXT = "공통 Book brief와 캐논, 현재 Arc·Rail은 두 후보에 동일하게 적용된다.";
 
+function sortJson(value) {
+  if (Array.isArray(value)) return value.map(sortJson);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, sortJson(nested)]));
+  }
+  return value;
+}
+
+const inkosCanonicalSha = (value) => rawSha(JSON.stringify(sortJson(value)));
+
 function commercialEvaluation(score) {
   return {
     openingPressure: score,
@@ -138,22 +150,55 @@ async function fixture(t, { pairId = "modern-pair-01" } = {}) {
     "후보 A는 첫 압박을 견디고 계약서를 뒤집었다.",
     `후보 B는 ${EXACT_TWELVE} 뒤 자산을 확보했다.`,
   ];
-  const packet = {
-    schemaVersion: "private-test-review-packet/v1",
-    producerEvidence: {
-      lane: "genre-soul",
-      labelMap: { "candidate-A": "neutral", "candidate-B": "soul" },
+  const pairSeed = pairId;
+  const opaquePairId = opaqueId("bp", `pair-${pairSeed}`);
+  const opaqueBlindRunId = opaqueId("br", `run-${pairSeed}`);
+  const opaqueBlindSessionId = opaqueId("br", `session-${pairSeed}`);
+  const commonContext = {
+    text: COMMON_CONTEXT_TEXT,
+    sha256: rawSha(COMMON_CONTEXT_TEXT),
+    byteLength: Buffer.byteLength(COMMON_CONTEXT_TEXT),
+  };
+  const commonInputReceiptSha256 = inkosCanonicalSha({
+    schemaVersion: "inkos-blind-common-context/v1",
+    commonContext,
+  });
+  const pairedGenerationReceiptSha256 = sealedSha(`generation-${pairId}`);
+  const labelAssignmentReceiptSha256 = sealedSha(`labels-${pairId}`);
+  const unsignedTransfer = {
+    schemaVersion: "inkos-blind-pair-evaluation-transfer/v1",
+    pairId: opaquePairId,
+    round: 1,
+    blindRunId: opaqueBlindRunId,
+    blindSessionId: opaqueBlindSessionId,
+    bookId: "book-01",
+    chapterNumber: 1,
+    commonContext,
+    commonInputReceiptSha256,
+    pairedGenerationReceiptSha256,
+    labelAssignmentReceiptSha256,
+    canaryIsolation: {
+      receiptSha256: sealedSha("canary-receipt"),
+      receiptSelfHash: sealedSha("canary-self"),
+      isolationScopeSha256: sealedSha("canary-scope"),
+      commonSnapshotSha256: sealedSha("canary-snapshot"),
     },
     candidates: bodies.map((body, index) => ({
       id: `candidate-${index === 0 ? "A" : "B"}`,
       body,
       sha256: rawSha(body),
-      hiddenLane: index === 0 ? "neutral" : "soul",
+      byteLength: Buffer.byteLength(body),
     })),
+    generatedAt: "2026-09-02T02:00:00.000Z",
+    authority: {
+      scope: "evaluation-input",
+      mayWriteInkOSCanon: false,
+      mayRevealGeneratorIdentity: false,
+      ownerDecisionRequired: true,
+    },
   };
-  const reviewPacketBytes = jsonBytes(packet);
-  const pairSeed = pairId;
-  const opaquePairId = opaqueId("bp", `pair-${pairSeed}`);
+  const transfer = { ...unsignedTransfer, transferSelfHash: inkosCanonicalSha(unsignedTransfer) };
+  const reviewPacketBytes = jsonBytes(transfer);
   const reviewPacketRelativePath = `exports/incoming/${opaquePairId}.json`;
   const reviewPacketPath = join(root, reviewPacketRelativePath);
   await mkdir(dirname(reviewPacketPath), { recursive: true });
@@ -163,21 +208,17 @@ async function fixture(t, { pairId = "modern-pair-01" } = {}) {
     genre: "modern-fantasy-ko",
     pairId: opaquePairId,
     round: 1,
-    blindRunId: opaqueId("br", `run-${pairSeed}`),
-    blindSessionId: opaqueId("br", `session-${pairSeed}`),
+    blindRunId: opaqueBlindRunId,
+    blindSessionId: opaqueBlindSessionId,
     reviewPacket: {
       path: reviewPacketRelativePath,
       sha256: rawSha(reviewPacketBytes),
       byteLength: reviewPacketBytes.byteLength,
     },
-    commonContext: {
-      text: COMMON_CONTEXT_TEXT,
-      sha256: rawSha(COMMON_CONTEXT_TEXT),
-      byteLength: Buffer.byteLength(COMMON_CONTEXT_TEXT),
-    },
-    commonInputReceiptSha256: sealedSha(`common-${pairId}`),
-    pairedGenerationReceiptSha256: sealedSha(`generation-${pairId}`),
-    labelAssignmentReceiptSha256: sealedSha(`labels-${pairId}`),
+    commonContext,
+    commonInputReceiptSha256,
+    pairedGenerationReceiptSha256,
+    labelAssignmentReceiptSha256,
     candidates: bodies.map((body, index) => ({
       id: `candidate-${index === 0 ? "A" : "B"}`,
       sha256: rawSha(body),
@@ -203,7 +244,7 @@ async function fixture(t, { pairId = "modern-pair-01" } = {}) {
     },
     authority: BLIND_PAIR_AUTHORITY,
   };
-  return { root, input, bodies, pairSeed };
+  return { root, input, bodies, pairSeed, transfer };
 }
 
 function stubExecutor(input, observations = {}, mutateResult = (value) => value, mutateReceipt = (value) => value) {
@@ -461,7 +502,7 @@ test("rejects profile collapse, production-shaped injection, symlink roots, pack
   bodyDrift.candidates[0].sha256 = sealedSha("wrong-body");
   await assert.rejects(runBlindPairEvaluation({
     input: bodyDrift, testOnly: true, testOnlyRepositoryRoot: root, testOnlyExecutor: stubExecutor(bodyDrift),
-  }), /body binding drifted/u);
+  }), /transfer drifted|body binding drifted/u);
 
   const semanticPair = structuredClone(input);
   semanticPair.pairId = "bp-modern-fantasy-pair";
@@ -474,6 +515,55 @@ test("rejects profile collapse, production-shaped injection, symlink roots, pack
   await assert.rejects(runBlindPairEvaluation({
     input: contextDrift, testOnly: true, testOnlyRepositoryRoot: root, testOnlyExecutor: stubExecutor(contextDrift),
   }), /commonContext text\/bytes\/hash binding drifted/u);
+});
+
+test("runner accepts only the exact lane-free InkOS transfer and binds it to the sealed input", async (t) => {
+  const noncanonical = await fixture(t, { pairId: "transfer-encoding-01" });
+  const noncanonicalPacketPath = join(noncanonical.root, noncanonical.input.reviewPacket.path);
+  const noncanonicalPacket = JSON.parse(await readFile(noncanonicalPacketPath, "utf8"));
+  const noncanonicalBytes = Buffer.from(JSON.stringify(noncanonicalPacket), "utf8");
+  await writeFile(noncanonicalPacketPath, noncanonicalBytes);
+  const noncanonicalInput = structuredClone(noncanonical.input);
+  noncanonicalInput.reviewPacket = {
+    ...noncanonicalInput.reviewPacket,
+    sha256: rawSha(noncanonicalBytes),
+    byteLength: noncanonicalBytes.byteLength,
+  };
+  await assert.rejects(runBlindPairEvaluation({
+    input: noncanonicalInput,
+    testOnly: true,
+    testOnlyRepositoryRoot: noncanonical.root,
+    testOnlyExecutor: stubExecutor(noncanonicalInput),
+  }), /canonical transfer JSON bytes/u);
+
+  const leaked = await fixture(t, { pairId: "transfer-leak-01" });
+  const leakedPacketPath = join(leaked.root, leaked.input.reviewPacket.path);
+  const leakedPacket = JSON.parse(await readFile(leakedPacketPath, "utf8"));
+  leakedPacket.candidateToLane = { "candidate-A": "neutral", "candidate-B": "soul" };
+  const leakedBytes = jsonBytes(leakedPacket);
+  await writeFile(leakedPacketPath, leakedBytes);
+  const leakedInput = structuredClone(leaked.input);
+  leakedInput.reviewPacket = {
+    ...leakedInput.reviewPacket,
+    sha256: rawSha(leakedBytes),
+    byteLength: leakedBytes.byteLength,
+  };
+  await assert.rejects(runBlindPairEvaluation({
+    input: leakedInput,
+    testOnly: true,
+    testOnlyRepositoryRoot: leaked.root,
+    testOnlyExecutor: stubExecutor(leakedInput),
+  }), /keys must be exactly/u);
+
+  const drifted = await fixture(t, { pairId: "transfer-binding-01" });
+  const driftedInput = structuredClone(drifted.input);
+  driftedInput.labelAssignmentReceiptSha256 = sealedSha("different-label-receipt");
+  await assert.rejects(runBlindPairEvaluation({
+    input: driftedInput,
+    testOnly: true,
+    testOnlyRepositoryRoot: drifted.root,
+    testOnlyExecutor: stubExecutor(driftedInput),
+  }), /transfer drifted from the sealed RefLab input/u);
 });
 
 test("refuses to overwrite a conflicting tracked receipt and leaves the original bytes intact", async (t) => {
