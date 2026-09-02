@@ -490,11 +490,17 @@ async function loadProfilePromptContextEvidence(profileHome) {
 }
 
 const HERMES_CANONICAL_ENV_KEYS = new Set([
+  "HERMES_API_CALL_STALE_TIMEOUT",
+  "HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS",
+  "HERMES_CODEX_TTFB_TIMEOUT_SECONDS",
   "HERMES_CONTEXT_CACHE_PATH",
   "HERMES_HOME",
   "TERMINAL_CWD",
   "TERMINAL_ENV",
 ]);
+const HERMES_API_CALL_STALE_TIMEOUT_SECONDS = "600";
+const HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS = "120";
+const HERMES_CODEX_TTFB_TIMEOUT_SECONDS = "120";
 const HERMES_EPHEMERAL_BUNDLED_PLUGINS_KEY = "HERMES_BUNDLED_PLUGINS";
 const HERMES_EPHEMERAL_BUNDLED_PLUGINS_DIRECTORY = "hermes-bundled-plugins";
 
@@ -567,6 +573,9 @@ export function buildHermesExecutionEnvironment({
   }
   env.HERMES_HOME = absoluteProfileHome;
   env.HERMES_CONTEXT_CACHE_PATH = absoluteContextCachePath;
+  env.HERMES_API_CALL_STALE_TIMEOUT = HERMES_API_CALL_STALE_TIMEOUT_SECONDS;
+  env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS = HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS;
+  env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS = HERMES_CODEX_TTFB_TIMEOUT_SECONDS;
   env.TERMINAL_CWD = absoluteProjectCwd;
   env.TERMINAL_ENV = "local";
   env.PYTHONDONTWRITEBYTECODE = "1";
@@ -580,6 +589,9 @@ export function buildHermesExecutionEnvironment({
     profileHome: absoluteProfileHome,
     projectCwd: absoluteProjectCwd,
     contextCachePath: absoluteContextCachePath,
+    apiCallStaleTimeoutSeconds: env.HERMES_API_CALL_STALE_TIMEOUT,
+    codexEventStaleTimeoutSeconds: env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS,
+    codexTtfbTimeoutSeconds: env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS,
     terminalCwd: env.TERMINAL_CWD,
     terminalEnvironment: env.TERMINAL_ENV,
     pythonDontWriteBytecode: env.PYTHONDONTWRITEBYTECODE,

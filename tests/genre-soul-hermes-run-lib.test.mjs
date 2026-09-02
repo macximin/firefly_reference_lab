@@ -783,10 +783,31 @@ test("allows only the capsule-owned bundled plugin discovery root", { concurrenc
   const projectCwd = join(root, "workspace");
   const bundledPluginsPath = join(root, "hermes-bundled-plugins");
   const previous = process.env.HERMES_BUNDLED_PLUGINS;
+  const previousEventTimeout = process.env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS;
+  const previousTtfbTimeout = process.env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS;
+  const previousApiCallTimeout = process.env.HERMES_API_CALL_STALE_TIMEOUT;
   try {
     process.env.HERMES_BUNDLED_PLUGINS = "/tmp/hostile-bundled-plugins";
+    process.env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS = "1";
+    process.env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS = "1";
+    process.env.HERMES_API_CALL_STALE_TIMEOUT = "1";
     const sourceEnvironment = buildHermesExecutionEnvironment({ profileHome, projectCwd });
     assert.equal(sourceEnvironment.env.HERMES_BUNDLED_PLUGINS, undefined);
+    assert.equal(sourceEnvironment.env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS, "120");
+    assert.equal(sourceEnvironment.env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS, "120");
+    assert.equal(sourceEnvironment.env.HERMES_API_CALL_STALE_TIMEOUT, "600");
+    assert.equal(sourceEnvironment.descriptor.codexEventStaleTimeoutSeconds, "120");
+    assert.equal(sourceEnvironment.descriptor.codexTtfbTimeoutSeconds, "120");
+    assert.equal(sourceEnvironment.descriptor.apiCallStaleTimeoutSeconds, "600");
+    assert.deepEqual(sourceEnvironment.descriptor.canonicalOverrideKeys, [
+      "HERMES_API_CALL_STALE_TIMEOUT",
+      "HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS",
+      "HERMES_CODEX_TTFB_TIMEOUT_SECONDS",
+      "HERMES_CONTEXT_CACHE_PATH",
+      "HERMES_HOME",
+      "TERMINAL_CWD",
+      "TERMINAL_ENV",
+    ]);
     const capsuleEnvironment = buildHermesExecutionEnvironment({
       profileHome,
       projectCwd,
@@ -802,6 +823,12 @@ test("allows only the capsule-owned bundled plugin discovery root", { concurrenc
   } finally {
     if (previous === undefined) delete process.env.HERMES_BUNDLED_PLUGINS;
     else process.env.HERMES_BUNDLED_PLUGINS = previous;
+    if (previousEventTimeout === undefined) delete process.env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS;
+    else process.env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS = previousEventTimeout;
+    if (previousTtfbTimeout === undefined) delete process.env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS;
+    else process.env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS = previousTtfbTimeout;
+    if (previousApiCallTimeout === undefined) delete process.env.HERMES_API_CALL_STALE_TIMEOUT;
+    else process.env.HERMES_API_CALL_STALE_TIMEOUT = previousApiCallTimeout;
   }
 });
 
@@ -1652,7 +1679,10 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
 		  if (args.filter((value) => value === "--model").length !== 1 || args[args.indexOf("--model") + 1] !== "gpt-5.6-sol") throw new Error("model drifted");
 		  if (args.filter((value) => value === "--provider").length !== 1 || args[args.indexOf("--provider") + 1] !== "openai-codex") throw new Error("provider drifted");
 		  const hermesKeys = Object.keys(process.env).filter((key) => key.startsWith("HERMES_")).sort();
-		  if (JSON.stringify(hermesKeys) !== JSON.stringify(["HERMES_BUNDLED_PLUGINS", "HERMES_CONTEXT_CACHE_PATH", "HERMES_HOME"])) throw new Error("non-canonical HERMES variables leaked: " + hermesKeys.join(","));
+		  if (JSON.stringify(hermesKeys) !== JSON.stringify(["HERMES_API_CALL_STALE_TIMEOUT", "HERMES_BUNDLED_PLUGINS", "HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS", "HERMES_CODEX_TTFB_TIMEOUT_SECONDS", "HERMES_CONTEXT_CACHE_PATH", "HERMES_HOME"])) throw new Error("non-canonical HERMES variables leaked: " + hermesKeys.join(","));
+		  if (process.env.HERMES_API_CALL_STALE_TIMEOUT !== "600") throw new Error("API call stale timeout drifted");
+		  if (process.env.HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS !== "120") throw new Error("Codex event stale timeout drifted");
+		  if (process.env.HERMES_CODEX_TTFB_TIMEOUT_SECONDS !== "120") throw new Error("Codex TTFB timeout drifted");
 		  const terminalKeys = Object.keys(process.env).filter((key) => key.startsWith("TERMINAL_")).sort();
 		  if (JSON.stringify(terminalKeys) !== JSON.stringify(["TERMINAL_CWD", "TERMINAL_ENV"])) throw new Error("non-canonical TERMINAL variables leaked: " + terminalKeys.join(","));
 		  const executionRoot = dirname(dirname(dirname(process.env.HERMES_HOME)));
