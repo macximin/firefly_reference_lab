@@ -28,6 +28,7 @@ node tools/genre-soul-survey-runner.mjs
 node tools/genre-soul-deep-read-runner.mjs --source-id gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN
 node tools/genre-soul-profile-runner.mjs --genre modern-fantasy-ko
 node tools/genre-soul-manager-qa-runner.mjs --genre modern-fantasy-ko
+node tools/blind-pair-evaluation-runner.mjs --input exports/<blind-input>.json
 node tools/validate-five-work-analyses.mjs --strict
 node tools/validate-writing-system-contracts.mjs
 ```
@@ -196,6 +197,13 @@ promotion eligibility의 완료선은
 `gpt-5.6-sol/high` config·trace 영수증, zero-match scanner receipt가 없으면
 manager QA를 통과할 수 없다. Reference Lab의 eligibility는 HQ owner 결정을
 대신하지 않는다.
+
+`tools/blind-pair-evaluation-runner.mjs`는 InkOS가 무작위화한 `candidate-A/B`
+두 본문만 별도 `gpt-5.6-sol/high` 평가자에게 exact-read로 전달한다. 생성 lane,
+생성자 profile, label mapping은 평가 입력과 prompt에서 제외한다. 원고·상세 평가는
+ignored `exports/`에만 보존하고, Git에는 상업 점수·장르 정체성·content-neutral
+요약과 `humanDecision=pending`만 담은 bodyless 영수증을 no-clobber로 게시한다.
+이 영수증은 분석 근거이며 InkOS canon 작성이나 Soul 승급 권한이 없다.
 
 ## 폴더
 
