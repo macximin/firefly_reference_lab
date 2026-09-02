@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "firefly-blind-review-receipt/v2",
+  "genre": "fantasy-ko",
+  "pairId": "bp-d3f3a18a92fd67454fd1605e",
+  "round": 2,
+  "blindRunId": "br-589e5c7b9ed6c58e58a67c7d",
+  "blindSessionId": "br-444abdad253186541adb7710",
+  "sealedInputSha256": "eeff9932a8846974acdcd8572461eff6d17a48ab9d1ae61e6b538423bb90e580",
+  "commonContextSha256": "bf1eb0b45663b7e38e7d812a5d84bbdb431bbec57c51782cc37e9805e66f119f",
+  "commonContextByteLength": 22465,
+  "evaluatorBinding": {
+    "evaluatorInputSha256": "dbec1e512a846848fdb9e5234fd23e7c16d22b75c5d0a68796fb16c026320a66",
+    "evaluatorResultSha256": "9319e8c2ba360e33e3761d58377c4ebd96d5dce7aae79c795cf2948e7cc61537",
+    "hostReceiptSha256": "c64ddbeb2c7f8daae14108084545f415e29371958a38488d108d199154488375",
+    "tripleBindingSha256": "adfe9a328a28f30f94b5632ec1b799950f9a9f8553ce574ced08b886481c5787"
+  },
+  "reviewPacketSha256": "60ed39ae6871f27fb5a6996653ac5c17700e179c7f76c8e41821de3cd0c7f5e4",
+  "commonInputReceiptSha256": "cfe88631591a255a0d4d9ea91739f29fe935daceb42888c01be478bdf5d02101",
+  "pairedGenerationReceiptSha256": "6fdf7cb0b6e2946e3d3f60bf7a6ba33e8d4311998b60ee6f16ae7ef95df67ec8",
+  "labelAssignmentReceiptSha256": "448b39ce8e61f0760a5687200ed58bf91b52d9ca7adfe3bb68dff9ff531338c2",
+  "reviewer": {
+    "actorId": "reviewer-bp-8b688885516b6d752cbbacc4",
+    "profileId": "inkos_blind_evaluator",
+    "configSha256": "4124e16bc40d28732d1dd02f9f2e8b78127a202313e1ace21021f16fca809f46",
+    "soulSha256": "5c4cca60c9971312682f7b71cac5d4d61b6f9e2c42d19af99c8fe6daedacd94b",
+    "model": "gpt-5.6-sol",
+    "reasoning": "high",
+    "actorDistinctFromProducers": true,
+    "runId": "20260902_232131_a2fb8c"
+  },
+  "candidateBindings": {
+    "candidate-A": {
+      "candidateSha256": "0f4f5a8064b2316ca6d437ffb789827466461d1001f87015141fd7337e9ad870",
+      "evaluationBindingSha256": "f69c3226fe4dedafdb556a4f956a390f71b0fc44e138e738b36d16b13904fe19",
+      "surfaceScanReceiptSha256": "ef95f8b1952901297730586fd31db9f2c9e54392a09ded656faa53e5a4ae1b3c",
+      "surfaceIndexSha256": "432f7ea6adbb1f5bea351d832c568879e75a39f945a6564e627772e911861df5",
+      "surfaceScanStatus": "completed-no-match",
+      "surfaceMatchCount": 0
+    },
+    "candidate-B": {
+      "candidateSha256": "63516d1bb17d7847970ce9c86e1959a305777d02bf94f0daf50ec87a6d61d28e",
+      "evaluationBindingSha256": "0b6be38a31c5eb65688cfaad15b063803990ae28fea91f2d7215de0c2e397f68",
+      "surfaceScanReceiptSha256": "cc75b3716a6fa1db7b2118f68fa63b2bd4f69dc2b8c60fb52fdc463072aad779",
+      "surfaceIndexSha256": "432f7ea6adbb1f5bea351d832c568879e75a39f945a6564e627772e911861df5",
+      "surfaceScanStatus": "completed-no-match",
+      "surfaceMatchCount": 0
+    }
+  },
+  "outcome": {
+    "winner": "candidate-B",
+    "commercialScores": {
+      "candidate-A": 92.9,
+      "candidate-B": 93
+    },
+    "emotionalCoherenceScores": {
+      "candidate-A": 95,
+      "candidate-B": 96
+    },
+    "genreIdentityPassed": {
+      "candidate-A": true,
+      "candidate-B": true
+    },
+    "contentNeutralViolationCounts": {
+      "candidate-A": 0,
+      "candidate-B": 0
+    },
+    "hardContradictionCount": 0,
+    "canonLeakCount": 0,
+    "humanDecision": "pending"
+  },
+  "storyyardProjection": {
+    "purpose": "promotion-evaluation",
+    "actions": [
+      "select",
+      "tie",
+      "invalid"
+    ],
+    "decisionEffect": "advisory",
+    "manuscriptApply": false,
+    "canonLeakPolicy": "block-on-nonzero"
+  },
+  "authority": {
+    "scope": "analysis-only",
+    "mayWriteInkOSCanon": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  },
+  "createdAt": "2026-09-02T14:23:23.831Z",
+  "receiptSelfHash": "7d16c69dd3050e9c737a23976bc1ab38bafa9e4b5b940badd9f170d8aeace1f0"
+}
