@@ -34,6 +34,14 @@ const COMMERCIAL_ENGINE_MECHANISM_KEYS = [
   "payoff",
   "recognition",
 ];
+export const MANAGER_QA_PHASE_MECHANISM_FIELDS = Object.freeze({
+  early: Object.freeze(["pressure", "protagonistRepeatedVerb"]),
+  middle: Object.freeze(["activeChoice", "protagonistRepeatedVerb", "resistance"]),
+  late: Object.freeze(["payoff", "recognition"]),
+});
+export const MANAGER_QA_MECHANISM_FIELDS = Object.freeze(
+  [...new Set(Object.values(MANAGER_QA_PHASE_MECHANISM_FIELDS).flat())].sort(),
+);
 const DEEP_READ_OBSERVATION_KINDS = new Set([
   "commercial-engine",
   "protagonist-action",
@@ -618,11 +626,13 @@ export function validateGenreProfileArtifact(profile) {
 export function validateManagerQaReceipt(receipt, context = {}) {
   if (
     !isObject(receipt)
-    || !new Set(["genre-soul-manager-qa/v1", "genre-soul-manager-qa/v2"]).has(receipt.schemaVersion)
+    || !new Set(["genre-soul-manager-qa/v1", "genre-soul-manager-qa/v2", "genre-soul-manager-qa/v3"]).has(receipt.schemaVersion)
   ) {
-    throw new Error("Manager QA must use genre-soul-manager-qa/v1 or v2.");
+    throw new Error("Manager QA must use genre-soul-manager-qa/v1, v2, or v3.");
   }
-  const currentSurfaceContract = receipt.schemaVersion === "genre-soul-manager-qa/v2";
+  const currentSurfaceContract = new Set(["genre-soul-manager-qa/v2", "genre-soul-manager-qa/v3"])
+    .has(receipt.schemaVersion);
+  const phaseAwareContract = receipt.schemaVersion === "genre-soul-manager-qa/v3";
   const receiptKeys = [
     "schemaVersion",
     "state",
@@ -673,8 +683,17 @@ export function validateManagerQaReceipt(receipt, context = {}) {
   if (!new Set([
     "private-genre-soul-manager-qa-input/v1",
     "private-genre-soul-manager-qa-input/v2",
+    "private-genre-soul-manager-qa-input/v3",
   ]).has(receipt.privateInput.schemaVersion)) {
     throw new Error("Manager QA private input schema is invalid.");
+  }
+  const expectedPrivateInputSchema = {
+    "genre-soul-manager-qa/v1": "private-genre-soul-manager-qa-input/v1",
+    "genre-soul-manager-qa/v2": "private-genre-soul-manager-qa-input/v2",
+    "genre-soul-manager-qa/v3": "private-genre-soul-manager-qa-input/v3",
+  }[receipt.schemaVersion];
+  if (receipt.privateInput.schemaVersion !== expectedPrivateInputSchema) {
+    throw new Error(`${receipt.schemaVersion} requires ${expectedPrivateInputSchema}.`);
   }
   assertRepoRelativePath(receipt.privateInput.path, "managerQa.privateInput.path");
   const privateInputPrefix = `exports/genre-souls/${receipt.soulId}/v1/manager-qa-runs/`;
@@ -777,6 +796,9 @@ export function validateManagerQaReceipt(receipt, context = {}) {
         "genre-soul-manager-surface-review-proof/v3",
       ]).has(review.schemaVersion)
     ) {
+      if (phaseAwareContract && review.schemaVersion !== "genre-soul-manager-surface-review-proof/v3") {
+        throw new Error("Manager QA v3 requires the current surface review proof v3.");
+      }
       assertExactKeys(review, [
         "schemaVersion", "gateVersion", "extractorVersion", "mode", "candidate", "deterministic",
         "semantic", "ownerDecision", "authority",
@@ -794,7 +816,9 @@ export function validateManagerQaReceipt(receipt, context = {}) {
         throw new Error("Manager QA surface review candidate path is not bound to the current Manager input digest.");
       }
       const expectedCandidateBytes = canonicalJsonBytes({
-        schemaVersion: "genre-soul-manager-surface-candidate/v1",
+        schemaVersion: phaseAwareContract
+          ? "genre-soul-manager-surface-candidate/v2"
+          : "genre-soul-manager-surface-candidate/v1",
         genre: receipt.genre,
         soulId: receipt.soulId,
         profile: {
@@ -805,6 +829,12 @@ export function validateManagerQaReceipt(receipt, context = {}) {
           runId: receipt.manager.runId,
           outputSha256: receipt.manager.outputSha256,
         },
+        ...(phaseAwareContract ? {
+          sourceEngineAssessments: receipt.sources.map((source) => ({
+            sourceId: source.sourceId,
+            collectiveAssessment: source.collectiveAssessment,
+          })),
+        } : {}),
         engineComparisons: receipt.engineComparisons,
       });
       if (
@@ -887,8 +917,11 @@ export function validateManagerQaReceipt(receipt, context = {}) {
         ) throw new Error("Manager QA semantic reviewer identity or run separation drifted.");
         assertSha(review.semantic.reviewer.promptSha256, "managerQa.surfaceReview.semantic.reviewer.promptSha256");
         if (review.schemaVersion === "genre-soul-manager-surface-review-proof/v3") {
-          if (receipt.privateInput.schemaVersion !== "private-genre-soul-manager-qa-input/v2") {
-            throw new Error("Manager QA surface proof v3 requires private Manager input v2.");
+          const expectedPrivateInputSchema = phaseAwareContract
+            ? "private-genre-soul-manager-qa-input/v3"
+            : "private-genre-soul-manager-qa-input/v2";
+          if (receipt.privateInput.schemaVersion !== expectedPrivateInputSchema) {
+            throw new Error(`Manager QA surface proof v3 requires ${expectedPrivateInputSchema}.`);
           }
           const contextEvidence = review.semantic.contextEvidence;
           assertExactKeys(contextEvidence, [
@@ -1071,16 +1104,19 @@ export function validateManagerQaReceipt(receipt, context = {}) {
   const expectedSourceIds = [...receipt.privateInput.sourceIds];
   const sourceById = new Map();
   const mechanismSignatures = new Set();
+  const trackedSampleIds = new Set();
   for (const [index, source] of receipt.sources.entries()) {
     const label = `managerQa.sources[${index}]`;
-    assertExactKeys(source, [
+    const sourceKeys = [
       "sourceId",
       "sourceSizeBytes",
       "engineId",
       "engineSignatureSha256",
       "mechanismSignatureSha256",
       "samples",
-    ], label);
+    ];
+    if (phaseAwareContract) sourceKeys.push("collectiveAssessment");
+    assertExactKeys(source, sourceKeys, label);
     if (!SAFE_SOURCE_ID.test(source.sourceId ?? "") || sourceById.has(source.sourceId)) {
       throw new Error(`${label}.sourceId is invalid or duplicated.`);
     }
@@ -1095,9 +1131,30 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     const spans = [];
     for (const [sampleIndex, sample] of source.samples.entries()) {
       const sampleLabel = `${label}.samples[${sampleIndex}]`;
-      assertExactKeys(sample, ["span", "observationId", "kind", "selector", "sliceSha256"], sampleLabel);
+      const sampleKeys = ["span", "observationId", "kind", "selector", "sliceSha256"];
+      if (phaseAwareContract) sampleKeys.push(
+        "sampleId", "phaseContribution", "supportedMechanismFields",
+      );
+      assertExactKeys(sample, sampleKeys, sampleLabel);
       if (!["early", "middle", "late"].includes(sample.span)) throw new Error(`${sampleLabel}.span is invalid.`);
       spans.push(sample.span);
+      if (phaseAwareContract) {
+        assertNonEmptyString(sample.sampleId, `${sampleLabel}.sampleId`);
+        if (trackedSampleIds.has(sample.sampleId)) {
+          throw new Error(`${sampleLabel}.sampleId is duplicated.`);
+        }
+        trackedSampleIds.add(sample.sampleId);
+        if (sample.phaseContribution !== "supports-phase") {
+          throw new Error(`${sampleLabel}.phaseContribution must be supports-phase in a passing v3 receipt.`);
+        }
+        assertUniqueSorted(sample.supportedMechanismFields, `${sampleLabel}.supportedMechanismFields`);
+        if (sample.supportedMechanismFields.some((field) => !COMMERCIAL_ENGINE_MECHANISM_KEYS.includes(field))) {
+          throw new Error(`${sampleLabel}.supportedMechanismFields contains an unknown mechanism field.`);
+        }
+        if (sample.supportedMechanismFields.some((field) => (
+          !MANAGER_QA_PHASE_MECHANISM_FIELDS[sample.span].includes(field)
+        ))) throw new Error(`${sampleLabel}.supportedMechanismFields is not allowed for its bound phase.`);
+      }
       assertNonEmptyString(sample.observationId, `${sampleLabel}.observationId`);
       if (!DEEP_READ_OBSERVATION_KINDS.has(sample.kind)) throw new Error(`${sampleLabel}.kind is invalid.`);
       assertExactKeys(sample.selector, ["type", "startByte", "endByte"], `${sampleLabel}.selector`);
@@ -1108,12 +1165,40 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     if (JSON.stringify(spans.sort()) !== JSON.stringify(["early", "late", "middle"])) {
       throw new Error(`${label}.samples must cover exactly early, middle, and late.`);
     }
+    if (phaseAwareContract) {
+      const assessment = source.collectiveAssessment;
+      assertExactKeys(assessment, [
+        "phaseSampleIds", "supportedMechanismFields", "collectiveVerdict", "rationale", "commercialConsequence",
+      ], `${label}.collectiveAssessment`);
+      assertExactKeys(assessment.phaseSampleIds, ["early", "middle", "late"], `${label}.collectiveAssessment.phaseSampleIds`);
+      const sampleBySpan = new Map(source.samples.map((sample) => [sample.span, sample]));
+      for (const span of ["early", "middle", "late"]) {
+        if (assessment.phaseSampleIds[span] !== sampleBySpan.get(span)?.sampleId) {
+          throw new Error(`${label}.collectiveAssessment phase sample binding drifted.`);
+        }
+      }
+      assertUniqueSorted(
+        assessment.supportedMechanismFields,
+        `${label}.collectiveAssessment.supportedMechanismFields`,
+      );
+      const canonicalMechanismFields = MANAGER_QA_MECHANISM_FIELDS;
+      if (
+        JSON.stringify(assessment.supportedMechanismFields) !== JSON.stringify(canonicalMechanismFields)
+        || assessment.collectiveVerdict !== "supported"
+      ) throw new Error(`${label}.collectiveAssessment must prove complete phase-aware engine support.`);
+      assertNonEmptyString(assessment.rationale, `${label}.collectiveAssessment.rationale`);
+      assertNonEmptyString(assessment.commercialConsequence, `${label}.collectiveAssessment.commercialConsequence`);
+      const projectedUnion = [...new Set(source.samples.flatMap((sample) => sample.supportedMechanismFields))].sort();
+      if (JSON.stringify(projectedUnion) !== JSON.stringify(canonicalMechanismFields)) {
+        throw new Error(`${label}.sample mechanism field union is incomplete.`);
+      }
+    }
     sourceById.set(source.sourceId, source);
   }
   if (JSON.stringify([...sourceById.keys()].sort()) !== JSON.stringify(expectedSourceIds)) {
     throw new Error("Manager QA source audits must match the exact private input sources.");
   }
-  if (mechanismSignatures.size !== 3) {
+  if (!phaseAwareContract && mechanismSignatures.size !== 3) {
     throw new Error("Manager QA cannot pass when primary commercial mechanisms are byte-identical.");
   }
 
@@ -1149,9 +1234,17 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     }
     const pair = `${comparison.leftSourceId}::${comparison.rightSourceId}`;
     const expectedComparisonId = `comparison-${sha256(pair).slice(0, 24)}`;
-    if (comparison.comparisonId !== expectedComparisonId || comparison.verdict !== "different") {
-      throw new Error(`${label} must prove a host-bound different verdict.`);
+    const acceptedVerdicts = phaseAwareContract
+      ? new Set(["shared-core", "distinct-variant"])
+      : new Set(["different"]);
+    if (comparison.comparisonId !== expectedComparisonId || !acceptedVerdicts.has(comparison.verdict)) {
+      throw new Error(`${label} must prove a host-bound evidence-complete relation verdict.`);
     }
+    if (
+      phaseAwareContract
+      && comparison.verdict === "distinct-variant"
+      && left.mechanismSignatureSha256 === right.mechanismSignatureSha256
+    ) throw new Error(`${label} cannot claim a distinct variant for byte-identical commercial mechanisms.`);
     assertNonEmptyString(comparison.semanticDifference, `${label}.semanticDifference`);
     assertNonEmptyString(comparison.commercialConsequence, `${label}.commercialConsequence`);
     actualPairs.push(pair);
@@ -1160,7 +1253,15 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     throw new Error("Manager QA pairwise comparisons are incomplete or duplicated.");
   }
 
-  assertExactKeys(receipt.checks, [
+  assertExactKeys(receipt.checks, phaseAwareContract ? [
+    "profileEvidenceBinding",
+    "exactSourceCoverage",
+    "rawSampleReadback",
+    "phaseAwareCollectiveEvidenceComplete",
+    "engineRelationsEvidenceComplete",
+    "profileSurfaceLeakScanPassed",
+    "contentNeutrality",
+  ] : [
     "profileEvidenceBinding",
     "exactSourceCoverage",
     "rawSampleReadback",
@@ -1224,6 +1325,17 @@ export function validateManagerQaReceipt(receipt, context = {}) {
     }
     const expectedSources = new Map(expectedProfile.evidenceSet.sources.map((source) => [source.sourceId, source]));
     const expectedEngines = new Map(expectedProfile.primaryCommercialEngines.map((engine) => [engine.sourceId, engine]));
+    if (phaseAwareContract && receipt.engineComparisons.some((comparison) => comparison.verdict === "shared-core")) {
+      const patternById = new Map(expectedProfile.patterns.map((pattern) => [pattern.patternId, pattern]));
+      const hasBoundGenreCommonEngine = expectedProfile.dimensions.commercialEngines.some((patternId) => {
+        const pattern = patternById.get(patternId);
+        return pattern?.classification === "genre-common"
+          && JSON.stringify(pattern.sourceIds) === JSON.stringify(expectedSourceIds);
+      });
+      if (!hasBoundGenreCommonEngine) {
+        throw new Error("Manager QA shared-core relation lacks expectedProfile genre-common commercial-engine evidence.");
+      }
+    }
     if (expectedSources.size !== receipt.sources.length || expectedEngines.size !== receipt.sources.length) {
       throw new Error("Manager QA expectedProfile source or engine count drifted.");
     }

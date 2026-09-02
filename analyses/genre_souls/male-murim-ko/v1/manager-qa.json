@@ -1,0 +1,387 @@
+{
+  "schemaVersion": "genre-soul-manager-qa/v2",
+  "state": "candidate-qa-passed",
+  "genre": "murim-ko",
+  "soulId": "male-murim-ko",
+  "version": "v1",
+  "profile": {
+    "path": "analyses/genre_souls/male-murim-ko/v1/genre-profile.json",
+    "sha256": "7b36b5ec9d37d2c88a98b23167a5bdab0667d7c85cea929e511c2b94eb882e1d",
+    "sizeBytes": 50779,
+    "synthesisRunId": "20260831_213711_e1b894",
+    "leakScanReceipt": {
+      "path": "analyses/genre_souls/male-murim-ko/v1/leak-scan-receipts/genre-profile.json",
+      "sha256": "4759bfd00645ff5aa686467369d60d7df5d61120d73f70bb883891ac7993733d",
+      "sizeBytes": 762
+    }
+  },
+  "privateInput": {
+    "schemaVersion": "private-genre-soul-manager-qa-input/v2",
+    "path": "exports/genre-souls/male-murim-ko/v1/manager-qa-runs/7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467/input.json",
+    "sha256": "7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467",
+    "sizeBytes": 177165,
+    "sourceIds": [
+      "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+      "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+      "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+    ],
+    "rawSampleCount": 9
+  },
+  "manager": {
+    "actorId": "hermes:inkos_male_murim:20260902_094323_ed0538",
+    "role": "manager",
+    "runId": "20260902_094323_ed0538",
+    "inputDigest": "25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a",
+    "model": "gpt-5.6-sol",
+    "provider": "openai-codex",
+    "reasoningEffort": "high",
+    "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+    "traceReceiptSha256": "4497879e5ad2f09838b5a5f77f94f608f0b83437e0bdbe0a0c4a6bd9db7d8582",
+    "outputSha256": "0fd3da9d2d08d35d76747b50f78e373ca1ade58ede5b7b6e27f1e5fc498eb93d"
+  },
+  "decidedAt": "2026-09-02T00:44:52.170Z",
+  "sources": [
+    {
+      "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+      "sourceSizeBytes": 6782198,
+      "engineId": "engine-c00214f20bdc90ccd0bb95d5",
+      "engineSignatureSha256": "c00214f20bdc90ccd0bb95d5f2fcb7aaa4bde2cd001b6ad1fb21629af17418be",
+      "mechanismSignatureSha256": "1ca6b53b5d17a1137f6b9c169eb90b709d060fc84b0fb69d79742ec0bef8495a",
+      "samples": [
+        {
+          "span": "early",
+          "observationId": "obs-1B5jgTxwxyab-0001-01-fe359076ea4a",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 47545,
+            "endByte": 59542
+          },
+          "sliceSha256": "9f1b44173fd913e15628ae594722a8dd8c89ba17441673162575f0d58016263b"
+        },
+        {
+          "span": "middle",
+          "observationId": "obs-1B5jgTxwxyab-0008-01-c467152c0663",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 2705885,
+            "endByte": 2717884
+          },
+          "sliceSha256": "91810f3460d1e98cca54a83485eb5105c329a21d558654504ef9c62aef0a47c6"
+        },
+        {
+          "span": "late",
+          "observationId": "obs-1B5jgTxwxyab-0020-01-74c931800d01",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 6727575,
+            "endByte": 6739573
+          },
+          "sliceSha256": "6516551b54c8a185cf693dbffedca4fa07d3a7636fa8017c855edc4abe7fcfa2"
+        }
+      ]
+    },
+    {
+      "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+      "sourceSizeBytes": 2336689,
+      "engineId": "engine-682d5d6f76258690d04552bf",
+      "engineSignatureSha256": "682d5d6f76258690d04552bf9c27d56ac2887efe0637f29123bd2fa9c98bac22",
+      "mechanismSignatureSha256": "76611c157c800b736fe5d24c59bc32b3594a8ecd02bd48c5936c12414c2357fc",
+      "samples": [
+        {
+          "span": "early",
+          "observationId": "obs-1T4OGOvaC_VF-0001-01-73911dbcf43d",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 0,
+            "endByte": 11172
+          },
+          "sliceSha256": "a3fc88e24b580340408019b7abb4516417da85b47bf86e854c26cb3974b612bf"
+        },
+        {
+          "span": "middle",
+          "observationId": "obs-1T4OGOvaC_VF-0004-01-cbc2ff895544",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 1366160,
+            "endByte": 1378157
+          },
+          "sliceSha256": "6bd8a6e0f9e4938c4f2ea2b016314453535d106dbf68ac456dd3e5931f7d3521"
+        },
+        {
+          "span": "late",
+          "observationId": "obs-1T4OGOvaC_VF-0007-01-913f0dd770fd",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 2112310,
+            "endByte": 2124306
+          },
+          "sliceSha256": "3992267320e540a21bd0bc5137e6e77028a5c5f7afb0c51920c38943b09d3dd9"
+        }
+      ]
+    },
+    {
+      "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+      "sourceSizeBytes": 5826988,
+      "engineId": "engine-bf0727ecad0f5ada0dc8223e",
+      "engineSignatureSha256": "bf0727ecad0f5ada0dc8223ebb92ad98b898ba261b5d6d3858aeaf4e1a6b548d",
+      "mechanismSignatureSha256": "9a63e6045d7f74da70b4da31cc6e38324fffa3717d1d20d79e7155e32c63109e",
+      "samples": [
+        {
+          "span": "early",
+          "observationId": "obs-1fmc_c6WhPri-0001-01-369dbbe65e4d",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 30408,
+            "endByte": 42405
+          },
+          "sliceSha256": "74f6114cdcfc175d17a2cd1486681f94e9a79921658e4710c56c64fea555d699"
+        },
+        {
+          "span": "middle",
+          "observationId": "obs-1fmc_c6WhPri-0007-06-09506684340d",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 2232686,
+            "endByte": 2244684
+          },
+          "sliceSha256": "328fc1a73dbd301c7472ae36ce0122852c8a6ab9c9b11fdb9f574be85b252fb3"
+        },
+        {
+          "span": "late",
+          "observationId": "obs-1fmc_c6WhPri-0015-01-cc117786e7d0",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 4955299,
+            "endByte": 4967296
+          },
+          "sliceSha256": "0b121ce0a928e47a93dc76b48e4dd760ba9b9395a1a989eca9adeef82a51ac69"
+        }
+      ]
+    }
+  ],
+  "engineComparisons": [
+    {
+      "comparisonId": "comparison-aba9a006aade5a493f8180f4",
+      "leftSourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+      "rightSourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+      "leftEngineId": "engine-c00214f20bdc90ccd0bb95d5",
+      "rightEngineId": "engine-682d5d6f76258690d04552bf",
+      "verdict": "different",
+      "semanticDifference": "한쪽은 수수께끼와 적의 수단을 조사하고 역이용하여 자산과 접근권을 회수하는 설계형 순환이고, 다른 쪽은 확정된 파국을 바탕으로 전승과 공동체를 복구하고 방어 체계를 다시 세우는 재건형 순환이다.",
+      "commercialConsequence": "전자는 계책의 역전과 다음 비밀 접근을 주된 보상으로 삼고, 후자는 잃었던 관계와 조직 역량의 단계적 회복을 주된 보상으로 삼아 독자 기대가 구별된다."
+    },
+    {
+      "comparisonId": "comparison-a7714b424b852c93e26a5679",
+      "leftSourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+      "rightSourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+      "leftEngineId": "engine-c00214f20bdc90ccd0bb95d5",
+      "rightEngineId": "engine-bf0727ecad0f5ada0dc8223e",
+      "verdict": "different",
+      "semanticDifference": "한쪽은 개인적 추적과 정보 판독을 통해 함정을 뒤집고 핵심 표적에 접근하는 데 집중하며, 다른 쪽은 사람의 신분과 대규모 전력을 자산화한 뒤 제도 권력과 공개 지휘권을 장악하는 데 집중한다.",
+      "commercialConsequence": "전자는 비밀 해명과 정밀한 역이용의 만족을 누적하고, 후자는 세력 확장과 공개 권한 행사의 규모감을 누적하므로 보상의 중심이 다르다."
+    },
+    {
+      "comparisonId": "comparison-cfc3acb2ff0ea0d496ece21c",
+      "leftSourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+      "rightSourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+      "leftEngineId": "engine-682d5d6f76258690d04552bf",
+      "rightEngineId": "engine-bf0727ecad0f5ada0dc8223e",
+      "verdict": "different",
+      "semanticDifference": "한쪽은 상실된 전승과 공동체의 생존 기반을 복원하면서 과거의 파국을 수정하는 구조이고, 다른 쪽은 후계 신분, 군사력, 공적 지위를 연쇄적으로 획득해 다중 조직의 질서를 재편하는 구조이다.",
+      "commercialConsequence": "전자는 복구와 재결합에서 감정적 회수를 제공하고, 후자는 자산화와 통치 범위 확대에서 권력 상승의 지급을 제공해 장기 성장의 방향이 구별된다."
+    }
+  ],
+  "checks": {
+    "profileEvidenceBinding": true,
+    "exactSourceCoverage": true,
+    "rawSampleReadback": true,
+    "primaryEnginesPairwiseDifferent": true,
+    "profileSurfaceLeakScanPassed": true,
+    "contentNeutrality": true
+  },
+  "contentNeutrality": {
+    "moralFitnessGate": false,
+    "automaticRewrite": false,
+    "userIntensityPreserved": true
+  },
+  "authority": {
+    "scope": "reference-lab-qa-only",
+    "mayWriteInkOSCanon": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  },
+  "result": "pass",
+  "surfaceReview": {
+    "schemaVersion": "genre-soul-manager-surface-review-proof/v3",
+    "gateVersion": "genre-soul-protected-surface-hil/v3",
+    "extractorVersion": "genre-soul-surface-candidate-extractor/v3",
+    "mode": "semantic-auto-passed",
+    "candidate": {
+      "path": "exports/genre-souls/male-murim-ko/v1/manager-qa-runs/7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467/structured-runs/25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a/surface-review/candidate.json",
+      "sha256": "9800bc461961d49a515f7b05217d90099a86fad9fa32239dcdd3e4bd32531b4f",
+      "sizeBytes": 3073
+    },
+    "deterministic": {
+      "status": "pending_semantic_review",
+      "privateEvidence": {
+        "sourceSetSha256": "f7285dfc8b6041cb5a177e955f2c7b730142fb04fb551995670ec97fd11dbc08",
+        "sampleSetSha256": "de5cdfb1beb591a6b24e6b008049a9109a075a522c0e7e71c03b871b154eca68"
+      },
+      "findingSetSha256": "5db675b8806173100bf4d395e1ddb9e5e4eda9687d4d25a36cb117da9f8f1d95",
+      "findingIds": [
+        "surface-finding-04940cd545e70d9fb81b8cdf",
+        "surface-finding-2e6eab4ec559c61e52fb8343",
+        "surface-finding-5725f2940aae30af282f33a1",
+        "surface-finding-8910d12c25d4d00afeebea92",
+        "surface-finding-a4aff22dc2f89d87d700eea6",
+        "surface-finding-f7ce85b91f69f0af7ab3668d"
+      ]
+    },
+    "semantic": {
+      "input": {
+        "path": "exports/genre-souls/male-murim-ko/v1/manager-qa-runs/7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467/structured-runs/25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a/surface-review/input.json",
+        "sha256": "af7370ac9c59038cd7395520dd8d2059f05d8ec7684d64224307bb1e103536c4",
+        "sizeBytes": 32234
+      },
+      "result": {
+        "path": "exports/genre-souls/male-murim-ko/v1/manager-qa-runs/7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467/structured-runs/25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a/surface-review/semantic/accepted.json",
+        "sha256": "2aa85b1e02deeb36d680f6785bbdc054107be042c771692a8cfc39cb561d837a",
+        "sizeBytes": 2274
+      },
+      "receipt": {
+        "path": "exports/genre-souls/male-murim-ko/v1/manager-qa-runs/7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467/structured-runs/25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a/surface-review/semantic/accepted-host-receipt.json",
+        "sha256": "f7298683d370d1e891cb1b30c759cec072f59235fb5809253cd1bee3297c9265",
+        "sizeBytes": 3493
+      },
+      "readCapability": {
+        "path": "exports/genre-souls/male-murim-ko/v1/manager-qa-runs/7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467/structured-runs/25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a/surface-review/semantic/hermes/attempts/attempt-20260902004515286-08033b3a-f9f3d990bc0404f9fe0b8dc11a8e1c1f278b535c53cb20c210654400cba796c9/read-capability.json",
+        "sha256": "189cf4712f06e3ff8d2f86c90a5d76062497d6eef6a55fcc6fc78a683b4ad914",
+        "sizeBytes": 3407
+      },
+      "reviewer": {
+        "role": "genre-soul-surface-semantic-review:manager-qa:af7370ac9c59038cd7395520",
+        "runId": "20260902_094528_4fe69a",
+        "model": "gpt-5.6-sol",
+        "provider": "openai-codex",
+        "reasoningEffort": "high",
+        "promptSha256": "eb88ef4a2391ee2631c0c8aba73a8eaad0a0e832808bf411b0f850737fef85bc"
+      },
+      "contextEvidence": {
+        "schemaVersion": "private-genre-soul-manager-surface-context-evidence/v1",
+        "runDescriptor": {
+          "path": "exports/genre-souls/male-murim-ko/v1/manager-qa-runs/7b75b22a5b394af84174158bdcf54726e2297da85a0ad2d3abb4a7a78289a467/structured-runs/25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a/run-descriptor.json",
+          "sha256": "25b7fa03ca67140a5109e73f4ae50f938d992ee252265fdc364b33b64d3ea44a",
+          "sizeBytes": 4235
+        },
+        "budget": {
+          "schemaVersion": "genre-soul-surface-semantic-review-context-budget/v2",
+          "inputSha256": "af7370ac9c59038cd7395520dd8d2059f05d8ec7684d64224307bb1e103536c4",
+          "inputSizeBytes": 32234,
+          "chunkCount": 1,
+          "readTranscriptProxyBytes": 38123,
+          "conservativeTokenProxy": 19062,
+          "maxInputConservativeTokenProxy": 190000,
+          "promptSha256": "eb88ef4a2391ee2631c0c8aba73a8eaad0a0e832808bf411b0f850737fef85bc",
+          "promptSizeBytes": 2319,
+          "outputReserveTokens": 8192,
+          "contextLimit": 272000,
+          "profilePromptContextBytes": 5105,
+          "projectPromptContextBytes": 2832,
+          "pluginContextBytes": 12520,
+          "contextPlan": {
+            "schemaVersion": "hermes-structured-context-budget/v2",
+            "contextProxyBytesPerToken": 2,
+            "staticPromptReserveTokens": 16384,
+            "profilePromptContextBytes": 5105,
+            "projectPromptContextBytes": 2832,
+            "pluginContextBytes": 12520,
+            "promptSizeBytes": 2319,
+            "readTranscriptProxyBytes": 38123,
+            "contextInputProxyTokens": 46834,
+            "outputReserveTokens": 8192,
+            "preflightBudgetTokens": 55026,
+            "contextLimit": 272000,
+            "fits": true
+          }
+        }
+      },
+      "findingDecisions": [
+        {
+          "findingId": "surface-finding-04940cd545e70d9fb81b8cdf",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-a307c7da72128d4daab225b5",
+            "surface-window-acc7d0dbaa6b152e914e5878"
+          ]
+        },
+        {
+          "findingId": "surface-finding-2e6eab4ec559c61e52fb8343",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-4457d22b82a803d515bd0796",
+            "surface-window-727ddc0abd8bd446dfa516f5"
+          ]
+        },
+        {
+          "findingId": "surface-finding-5725f2940aae30af282f33a1",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-5b48d692f798a8354ac6f2f9",
+            "surface-window-98111bd8e28b3d1da660e546"
+          ]
+        },
+        {
+          "findingId": "surface-finding-8910d12c25d4d00afeebea92",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-2b724a68c24c420763dd6b82",
+            "surface-window-a51e6ebc27e7caf9d17e23f0"
+          ]
+        },
+        {
+          "findingId": "surface-finding-a4aff22dc2f89d87d700eea6",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-5126bdf89e39d6fbc32edb03",
+            "surface-window-7dd45651a160901e642d0c8c"
+          ]
+        },
+        {
+          "findingId": "surface-finding-f7ce85b91f69f0af7ab3668d",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-4192ed8ff743551a58b32dff",
+            "surface-window-7061baa7fbd7a62dd545a97e"
+          ]
+        }
+      ],
+      "verdictCounts": {
+        "genericOverlap": 6,
+        "protectedIdentity": 0,
+        "uncertain": 0
+      },
+      "outcome": "auto-passed"
+    },
+    "ownerDecision": null,
+    "authority": {
+      "scope": "reference-lab-analysis-surface-only",
+      "mayWriteInkOSCanon": false,
+      "mayPromoteSoul": false
+    }
+  }
+}

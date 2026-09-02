@@ -347,42 +347,56 @@ function makeProfile(evidence, privateProfileInput) {
 
 function privateResult(input) {
   const sourceIds = input.profile.artifact.evidenceSet.sources.map((source) => source.sourceId).sort();
+  const fieldsBySpan = {
+    early: ["pressure", "protagonistRepeatedVerb"],
+    middle: ["activeChoice", "resistance"],
+    late: ["payoff", "recognition"],
+  };
   const engineComparisons = [];
   for (let left = 0; left < sourceIds.length; left += 1) {
     for (let right = left + 1; right < sourceIds.length; right += 1) {
       engineComparisons.push({
         leftSourceId: sourceIds[left],
         rightSourceId: sourceIds[right],
-        verdict: "different",
+        verdict: "distinct-variant",
         semanticDifference: "반복 행동과 압력 해소 순서가 구조적으로 다르다",
         commercialConsequence: "보상 기대의 지급 주기와 다음 행동 약속이 분리된다",
       });
     }
   }
   return {
-    schemaVersion: "private-genre-soul-manager-qa-result/v1",
+    schemaVersion: "private-genre-soul-manager-qa-result/v3",
     genre: input.genre,
     soulId: input.soulId,
     profileSha256: input.profile.sha256,
     synthesisRunId: input.profile.synthesisRunId,
     sampleVerdicts: input.rawSamples.map((sample) => ({
       sampleId: sample.sampleId,
-      sourceId: sample.sourceId,
-      span: sample.span,
-      observationId: sample.observationId,
-      kind: sample.kind,
-      selector: sample.selector,
-      sliceSha256: sample.sliceSha256,
-      supportsPrimaryEngine: true,
+      phaseContribution: "supports-phase",
+      supportedMechanismFields: fieldsBySpan[sample.span],
       rationale: "표본의 행동과 압력이 엔진을 지지한다",
       commercialConsequence: "보상 기대가 다음 장면으로 이어진다",
     })),
+    sourceEngineAssessments: sourceIds.map((sourceId) => {
+      const samples = input.rawSamples.filter((sample) => sample.sourceId === sourceId);
+      return {
+        sourceId,
+        phaseSampleIds: Object.fromEntries(samples.map((sample) => [sample.span, sample.sampleId])),
+        supportedMechanismFields: [
+          "activeChoice", "payoff", "pressure", "protagonistRepeatedVerb", "recognition", "resistance",
+        ],
+        collectiveVerdict: "supported",
+        rationale: "초중후 표본이 압박과 실행과 지급의 전체 순환을 지지한다",
+        commercialConsequence: "공통 독자 약속과 작품별 실행 변주가 함께 유지된다",
+      };
+    }),
     engineComparisons,
     checks: {
       profileEvidenceBinding: true,
       exactSourceCoverage: true,
       rawSampleReadback: true,
-      primaryEnginesPairwiseDifferent: true,
+      phaseAwareCollectiveEvidenceComplete: true,
+      engineRelationsEvidenceComplete: true,
       profileSurfaceLeakScanPassed: true,
       contentNeutrality: true,
     },
@@ -903,10 +917,12 @@ function runnerOptions(fixture, overrides = {}) {
 test("builds a fresh manager receipt, scans before publication, and reuses identical bytes", async () => {
   const fixture = await setupFixture();
   const roles = [];
+  let privateInput;
   const run = fakeRun();
   const options = runnerOptions(fixture, {
     testOnlyRunStructured: async (runOptions) => {
       roles.push(runOptions.role);
+      privateInput = JSON.parse(await readFile(runOptions.expectedReadPaths[0], "utf8"));
       return run(runOptions);
     },
   });
@@ -915,12 +931,31 @@ test("builds a fresh manager receipt, scans before publication, and reuses ident
     assert.equal(first.status, "written");
     assert.deepEqual(roles, ["manager-qa"]);
     assert.equal(first.receipt.manager.actorId, `hermes:${PROFILE_ID}:manager-qa-run`);
-    assert.equal(first.receipt.schemaVersion, "genre-soul-manager-qa/v2");
+    assert.equal(first.receipt.schemaVersion, "genre-soul-manager-qa/v3");
     assert.equal(first.receipt.surfaceReview.mode, "deterministic-clean");
     assert.equal(first.receipt.surfaceReview.semantic, null);
     assert.equal(first.receipt.sources.length, 3);
     assert.equal(first.receipt.sources.flatMap((source) => source.samples).length, 9);
     assert.equal(new Set(first.receipt.sources.map((source) => source.mechanismSignatureSha256)).size, 3);
+    const projectedIdentities = first.receipt.sources.flatMap((source) => source.samples.map((sample) => ({
+      sampleId: sample.sampleId,
+      sourceId: source.sourceId,
+      span: sample.span,
+      observationId: sample.observationId,
+      kind: sample.kind,
+      selector: sample.selector,
+      sliceSha256: sample.sliceSha256,
+    }))).sort((left, right) => left.sampleId.localeCompare(right.sampleId));
+    const expectedIdentities = privateInput.rawSamples.map((sample) => ({
+      sampleId: sample.sampleId,
+      sourceId: sample.sourceId,
+      span: sample.span,
+      observationId: sample.observationId,
+      kind: sample.kind,
+      selector: sample.selector,
+      sliceSha256: sample.sliceSha256,
+    })).sort((left, right) => left.sampleId.localeCompare(right.sampleId));
+    assert.deepEqual(projectedIdentities, expectedIdentities);
     assert.equal(validateManagerQaReceipt(first.receipt), true);
     const tracked = await readFile(join(fixture.root, first.qaPath));
     assert.equal(sha256(tracked), first.leakReceipt.artifact.sha256);
@@ -933,13 +968,71 @@ test("builds a fresh manager receipt, scans before publication, and reuses ident
   }
 });
 
+test("phase-aware Manager QA accepts a mixed shared-core and distinct-variant relation set", async () => {
+  const fixture = await setupFixture();
+  try {
+    const result = await runGenreSoulManagerQa(runnerOptions(fixture, {
+      testOnlyRunStructured: fakeRun({
+        mutateResult: (candidate) => {
+          candidate.engineComparisons[0].verdict = "shared-core";
+        },
+      }),
+    }));
+    assert.equal(result.status, "written");
+    assert.deepEqual(
+      [...new Set(result.receipt.engineComparisons.map((entry) => entry.verdict))].sort(),
+      ["distinct-variant", "shared-core"],
+    );
+    assert.equal(result.receipt.sources.every((source) => (
+      source.collectiveAssessment.collectiveVerdict === "supported"
+    )), true);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("valid negative Manager QA verdicts persist immutable private decisions without publishing a pass marker", async () => {
   const cases = [
     {
       expectedStatus: "needs-revision",
-      expectedReason: "sample-primary-engine-unsupported",
+      expectedReason: "source-engine-collective-insufficient",
       mutateResult: (result) => {
-        result.sampleVerdicts[0].supportsPrimaryEngine = false;
+        result.sampleVerdicts[0].phaseContribution = "insufficient";
+        result.sampleVerdicts[0].supportedMechanismFields = [];
+        const assessment = result.sourceEngineAssessments.find(
+          (entry) => Object.values(entry.phaseSampleIds).includes(result.sampleVerdicts[0].sampleId),
+        );
+        assessment.supportedMechanismFields = assessment.supportedMechanismFields.filter(
+          (field) => field !== "pressure" && field !== "protagonistRepeatedVerb",
+        );
+        assessment.collectiveVerdict = "insufficient";
+        result.checks.phaseAwareCollectiveEvidenceComplete = false;
+        result.result = "needs-revision";
+      },
+    },
+    {
+      expectedStatus: "needs-revision",
+      expectedReason: "source-engine-collective-contradicted",
+      mutateResult: (result) => {
+        result.sampleVerdicts[0].phaseContribution = "contradicts";
+        result.sampleVerdicts[0].supportedMechanismFields = [];
+        const assessment = result.sourceEngineAssessments.find(
+          (entry) => Object.values(entry.phaseSampleIds).includes(result.sampleVerdicts[0].sampleId),
+        );
+        assessment.supportedMechanismFields = assessment.supportedMechanismFields.filter(
+          (field) => field !== "pressure" && field !== "protagonistRepeatedVerb",
+        );
+        assessment.collectiveVerdict = "contradicted";
+        result.checks.phaseAwareCollectiveEvidenceComplete = false;
+        result.result = "needs-revision";
+      },
+    },
+    {
+      expectedStatus: "needs-revision",
+      expectedReason: "primary-engine-relation-insufficient",
+      mutateResult: (result) => {
+        result.engineComparisons[0].verdict = "insufficient";
+        result.checks.engineRelationsEvidenceComplete = false;
         result.result = "needs-revision";
       },
     },
@@ -958,7 +1051,7 @@ test("valid negative Manager QA verdicts persist immutable private decisions wit
       const first = await runGenreSoulManagerQa(options);
       assert.equal(first.status, scenario.expectedStatus);
       assert.equal(first.decisionPublication, "written");
-      assert.equal(first.decision.schemaVersion, "private-genre-soul-manager-qa-decision/v1");
+      assert.equal(first.decision.schemaVersion, "private-genre-soul-manager-qa-decision/v2");
       assert.equal(first.decision.executionValid, true);
       assert.equal(first.decision.verdict.result, scenario.expectedStatus);
       assert.equal(first.decision.verdict.reasonCodes.includes(scenario.expectedReason), true);
@@ -1011,7 +1104,16 @@ test("host-derived Manager QA verdict rejects declared mismatches and content-ne
     await assert.rejects(runGenreSoulManagerQa(runnerOptions(mismatch, {
       testOnlyRunStructured: fakeRun({
         mutateResult: (result) => {
-          result.sampleVerdicts[0].supportsPrimaryEngine = false;
+          result.sampleVerdicts[0].phaseContribution = "insufficient";
+          result.sampleVerdicts[0].supportedMechanismFields = [];
+          const assessment = result.sourceEngineAssessments.find(
+            (entry) => Object.values(entry.phaseSampleIds).includes(result.sampleVerdicts[0].sampleId),
+          );
+          assessment.supportedMechanismFields = assessment.supportedMechanismFields.filter(
+            (field) => field !== "pressure" && field !== "protagonistRepeatedVerb",
+          );
+          assessment.collectiveVerdict = "insufficient";
+          result.checks.phaseAwareCollectiveEvidenceComplete = false;
         },
       }),
     })), /declared verdict mismatch: declared pass, host derived needs-revision/u);
@@ -1038,20 +1140,21 @@ test("host-derived Manager QA verdict rejects declared mismatches and content-ne
   }
 
   const result = {
-    sampleVerdicts: [{ supportsPrimaryEngine: true }],
-    engineComparisons: [{ verdict: "same" }],
+    sourceEngineAssessments: [{ collectiveVerdict: "supported" }],
+    engineComparisons: [{ verdict: "insufficient" }],
     checks: {
       profileEvidenceBinding: false,
       exactSourceCoverage: true,
       rawSampleReadback: true,
-      primaryEnginesPairwiseDifferent: false,
+      phaseAwareCollectiveEvidenceComplete: true,
+      engineRelationsEvidenceComplete: false,
       profileSurfaceLeakScanPassed: true,
       contentNeutrality: true,
     },
   };
   assert.deepEqual(derivePrivateManagerQaVerdict(result), {
     result: "needs-revision",
-    reasonCodes: ["primary-engine-pair-same", "primary-engines-not-pairwise-different"],
+    reasonCodes: ["primary-engine-relation-insufficient"],
   });
 });
 
@@ -1337,7 +1440,7 @@ test("source drift during Hermes execution fails the publication-time private me
   }
 });
 
-test("rejects shared synthesis runs, identical mechanisms, and incomplete pairwise output", async () => {
+test("rejects shared synthesis runs and incomplete pairwise output while accepting a host-bound shared core", async () => {
   const shared = await setupFixture();
   try {
     await assert.rejects(
@@ -1348,9 +1451,27 @@ test("rejects shared synthesis runs, identical mechanisms, and incomplete pairwi
     await rm(shared.root, { recursive: true, force: true });
   }
 
+  const identicalInvalid = await setupFixture({ identicalMechanisms: true });
+  try {
+    await assert.rejects(
+      runGenreSoulManagerQa(runnerOptions(identicalInvalid)),
+      /cannot claim a distinct variant for byte-identical commercial mechanisms/u,
+    );
+  } finally {
+    await rm(identicalInvalid.root, { recursive: true, force: true });
+  }
+
   const identical = await setupFixture({ identicalMechanisms: true });
   try {
-    await assert.rejects(runGenreSoulManagerQa(runnerOptions(identical)), /identical primary commercial mechanisms/u);
+    const result = await runGenreSoulManagerQa(runnerOptions(identical, {
+      testOnlyRunStructured: fakeRun({
+        mutateResult: (candidate) => {
+          for (const comparison of candidate.engineComparisons) comparison.verdict = "shared-core";
+        },
+      }),
+    }));
+    assert.equal(result.status, "written");
+    assert.equal(result.receipt.engineComparisons.every((entry) => entry.verdict === "shared-core"), true);
   } finally {
     await rm(identical.root, { recursive: true, force: true });
   }
@@ -1396,10 +1517,74 @@ test("strict private validators reject missing samples, spans, and unbound verdi
       /runtime identity drifted/u,
     );
     const unboundVerdict = structuredClone(capturedResult);
-    unboundVerdict.sampleVerdicts[0].sliceSha256 = "0".repeat(64);
+    unboundVerdict.sampleVerdicts[0].sampleId = "sample-unbound0000000000000000";
     assert.throws(
       () => validatePrivateManagerQaResult(unboundVerdict, { input: capturedInput }),
       /missing, duplicated, or unbound/u,
+    );
+    const missingVerdict = structuredClone(capturedResult);
+    missingVerdict.sampleVerdicts.pop();
+    assert.throws(
+      () => validatePrivateManagerQaResult(missingVerdict, { input: capturedInput }),
+      /requires nine sample verdicts/u,
+    );
+    const duplicatedVerdict = structuredClone(capturedResult);
+    duplicatedVerdict.sampleVerdicts[8].sampleId = duplicatedVerdict.sampleVerdicts[0].sampleId;
+    assert.throws(
+      () => validatePrivateManagerQaResult(duplicatedVerdict, { input: capturedInput }),
+      /missing, duplicated, or unbound/u,
+    );
+    const redundantHostIdentity = structuredClone(capturedResult);
+    redundantHostIdentity.sampleVerdicts[0].observationId = "obs-model-repeated-the-wrong-host-identity";
+    assert.throws(
+      () => validatePrivateManagerQaResult(redundantHostIdentity, { input: capturedInput }),
+      /keys (?:must be exactly|drifted)/u,
+    );
+    const unknownMechanismField = structuredClone(capturedResult);
+    unknownMechanismField.sampleVerdicts[0].supportedMechanismFields.push("unknownField");
+    assert.throws(
+      () => validatePrivateManagerQaResult(unknownMechanismField, { input: capturedInput }),
+      /canonical mechanism fields/u,
+    );
+    const unsortedMechanismFields = structuredClone(capturedResult);
+    unsortedMechanismFields.sampleVerdicts[0].supportedMechanismFields.reverse();
+    assert.throws(
+      () => validatePrivateManagerQaResult(unsortedMechanismFields, { input: capturedInput }),
+      /unique, sorted/u,
+    );
+    const wrongPhaseMechanismField = structuredClone(capturedResult);
+    wrongPhaseMechanismField.sampleVerdicts.find(
+      (verdict) => verdict.sampleId === wrongPhaseMechanismField.sourceEngineAssessments[0].phaseSampleIds.early,
+    )
+      .supportedMechanismFields = ["activeChoice"];
+    assert.throws(
+      () => validatePrivateManagerQaResult(wrongPhaseMechanismField, { input: capturedInput }),
+      /not allowed for its bound phase/u,
+    );
+    const duplicateAssessment = structuredClone(capturedResult);
+    duplicateAssessment.sourceEngineAssessments[1] = structuredClone(duplicateAssessment.sourceEngineAssessments[0]);
+    assert.throws(
+      () => validatePrivateManagerQaResult(duplicateAssessment, { input: capturedInput }),
+      /missing, duplicated, or unbound/u,
+    );
+    const wrongPhaseSample = structuredClone(capturedResult);
+    const firstAssessment = wrongPhaseSample.sourceEngineAssessments[0];
+    firstAssessment.phaseSampleIds.early = firstAssessment.phaseSampleIds.middle;
+    assert.throws(
+      () => validatePrivateManagerQaResult(wrongPhaseSample, { input: capturedInput }),
+      /phase sample binding is missing, duplicated, or unbound/u,
+    );
+    const incompleteUnion = structuredClone(capturedResult);
+    incompleteUnion.sourceEngineAssessments[0].supportedMechanismFields.pop();
+    assert.throws(
+      () => validatePrivateManagerQaResult(incompleteUnion, { input: capturedInput }),
+      /field union drifted/u,
+    );
+    const relationCheckDrift = structuredClone(capturedResult);
+    relationCheckDrift.checks.engineRelationsEvidenceComplete = false;
+    assert.throws(
+      () => validatePrivateManagerQaResult(relationCheckDrift, { input: capturedInput }),
+      /engine-relation check drifted/u,
     );
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
@@ -1495,7 +1680,7 @@ test("Manager QA consumes an exact owner surface decision before publishing a pe
     assert.equal(tracked.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v3");
     assert.equal(tracked.surfaceReview.candidate.path, published.surfaceHil.candidatePath);
     assert.equal(tracked.surfaceReview.semantic.outcome, "owner-approved");
-    assert.equal(tracked.privateInput.schemaVersion, "private-genre-soul-manager-qa-input/v2");
+    assert.equal(tracked.privateInput.schemaVersion, "private-genre-soul-manager-qa-input/v3");
     assert.equal(
       tracked.surfaceReview.semantic.contextEvidence.schemaVersion,
       "private-genre-soul-manager-surface-context-evidence/v1",
@@ -1512,7 +1697,20 @@ test("Manager QA consumes an exact owner surface decision before publishing a pe
     assert.equal(validateManagerQaReceipt(tracked), true);
     const historicalV1 = structuredClone(tracked);
     historicalV1.schemaVersion = "genre-soul-manager-qa/v1";
+    historicalV1.privateInput.schemaVersion = "private-genre-soul-manager-qa-input/v1";
     delete historicalV1.manager.inputDigest;
+    for (const source of historicalV1.sources) {
+      delete source.collectiveAssessment;
+      for (const sample of source.samples) {
+        delete sample.sampleId;
+        delete sample.phaseContribution;
+        delete sample.supportedMechanismFields;
+      }
+    }
+    for (const comparison of historicalV1.engineComparisons) comparison.verdict = "different";
+    delete historicalV1.checks.phaseAwareCollectiveEvidenceComplete;
+    delete historicalV1.checks.engineRelationsEvidenceComplete;
+    historicalV1.checks.primaryEnginesPairwiseDifferent = true;
     const structuredRoot = tracked.surfaceReview.candidate.path.slice(0, -"/surface-review/candidate.json".length);
     const historicalRequestSha256 = "7".repeat(64);
     historicalV1.surfaceReview = {
@@ -1638,7 +1836,7 @@ test("Manager QA lets the separate semantic reviewer auto-pass a generic 군 com
     assert.equal(result.surfaceHil, undefined);
     assert.equal(result.receipt.surfaceReview.schemaVersion, "genre-soul-manager-surface-review-proof/v3");
     assert.equal(result.receipt.surfaceReview.semantic.outcome, "auto-passed");
-    assert.equal(result.receipt.privateInput.schemaVersion, "private-genre-soul-manager-qa-input/v2");
+    assert.equal(result.receipt.privateInput.schemaVersion, "private-genre-soul-manager-qa-input/v3");
     assert.equal(
       result.receipt.surfaceReview.semantic.contextEvidence.budget.projectPromptContextBytes,
       1_024,
@@ -1769,7 +1967,7 @@ async function assertSurfaceEvidenceMutationFailsClosed({ root, receipt, referen
   }
 }
 
-test("Manager QA current v2 live readback requires every deterministic, semantic, and owner evidence byte", async () => {
+test("Manager QA current v3 live readback requires every deterministic, semantic, and owner evidence byte", async () => {
   const deterministic = await setupFixture();
   try {
     const result = await runGenreSoulManagerQa(runnerOptions(deterministic));
@@ -1890,7 +2088,7 @@ test("deterministic surface lint blocks hard facts and routes ambiguous names wh
     const result = await runGenreSoulManagerQa(runnerOptions(fixture));
     const privateInput = JSON.parse(await readFile(join(fixture.root, result.privateInputPath), "utf8"));
     const rawSamples = structuredClone(privateInput.rawSamples);
-    rawSamples[0].sourceText = "차도윤과 함께 움직였다. 압박을 돈으로 바꾼 뒤 목격자 앞에서 즉시 지위를 얻는다 그리고 돌아섰다.";
+    rawSamples[0].sourceText = "차도윤은 낡은 창가에 서서 바깥의 빗줄기를 한참 바라보았다.";
     assert.equal(assertManagerQaTrackedSemanticSafety({
       receipt: result.receipt,
       evidence: fixture.evidence,
@@ -2029,6 +2227,7 @@ test("deterministic surface lint blocks hard facts and routes ambiguous names wh
       rawSamples,
     }), true);
 
+    rawSamples[1].sourceText = "압박을 돈으로 바꾼 뒤 목격자 앞에서 즉시 지위를 얻는다";
     const shortCopy = structuredClone(result.receipt);
     shortCopy.engineComparisons[0].semanticDifference = "압박을 돈으로 바꾼 뒤 목격자 앞에서 즉시 지위를 얻는다";
     assert.throws(() => assertManagerQaTrackedSemanticSafety({
@@ -2055,8 +2254,14 @@ test("high-confidence protected Manager prose fails before the structured result
         calls += 1;
         return protectedRun(options);
       },
-    })), /Manager QA tracked semantic output contains a protected proper surface/u);
+    })), /Manager QA candidate contains a protected private surface/u);
     assert.equal(calls, 1);
+    const managerRunFiles = await readdir(
+      join(fixture.root, `exports/genre-souls/${SOUL_ID}/v1/manager-qa-runs`),
+      { recursive: true },
+    );
+    assert.equal(managerRunFiles.some((path) => String(path).endsWith("completed.json")), false);
+    assert.equal(managerRunFiles.some((path) => String(path).endsWith("host-receipt.json")), false);
     await assert.rejects(
       readFile(join(fixture.root, `analyses/genre_souls/${SOUL_ID}/v1/manager-qa.json`)),
       /ENOENT/u,
@@ -2551,7 +2756,7 @@ test("manager run digest and immutable capability bind the exact auth adapter pl
       "run-descriptor.json",
     );
     const descriptor = JSON.parse(await readFile(descriptorPath, "utf8"));
-    assert.equal(descriptor.schemaVersion, "private-genre-soul-manager-qa-run-input-digest/v5");
+    assert.equal(descriptor.schemaVersion, "private-genre-soul-manager-qa-run-input-digest/v6");
     assert.equal(
       descriptor.exactInputAuthProjectionContractVersion,
       "hermes-global-auth-store-adapter/v1",

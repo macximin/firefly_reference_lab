@@ -267,6 +267,7 @@ function makeManagerQaReceipt() {
 function makeCurrentManagerQaReceipt(surfaceMode = "deterministic-clean") {
   const receipt = makeManagerQaReceipt();
   receipt.schemaVersion = "genre-soul-manager-qa/v2";
+  receipt.privateInput.schemaVersion = "private-genre-soul-manager-qa-input/v2";
   receipt.manager.inputDigest = hash("b");
   const structuredRoot = `${receipt.privateInput.path.slice(0, -"/input.json".length)}/structured-runs/${receipt.manager.inputDigest}`;
   const surfaceRoot = `${structuredRoot}/surface-review`;
@@ -385,6 +386,65 @@ function makeCurrentManagerQaReceipt(surfaceMode = "deterministic-clean") {
   return receipt;
 }
 
+function rebindPhaseAwareCandidate(receipt) {
+  const candidateBytes = jsonBytes({
+    schemaVersion: "genre-soul-manager-surface-candidate/v2",
+    genre: receipt.genre,
+    soulId: receipt.soulId,
+    profile: {
+      sha256: receipt.profile.sha256,
+      synthesisRunId: receipt.profile.synthesisRunId,
+    },
+    manager: {
+      runId: receipt.manager.runId,
+      outputSha256: receipt.manager.outputSha256,
+    },
+    sourceEngineAssessments: receipt.sources.map((source) => ({
+      sourceId: source.sourceId,
+      collectiveAssessment: source.collectiveAssessment,
+    })),
+    engineComparisons: receipt.engineComparisons,
+  });
+  receipt.surfaceReview.candidate.sha256 = sha256(candidateBytes);
+  receipt.surfaceReview.candidate.sizeBytes = candidateBytes.byteLength;
+}
+
+function makePhaseAwareManagerQaReceipt() {
+  const receipt = makeCurrentManagerQaReceipt();
+  receipt.schemaVersion = "genre-soul-manager-qa/v3";
+  receipt.privateInput.schemaVersion = "private-genre-soul-manager-qa-input/v3";
+  receipt.surfaceReview.schemaVersion = "genre-soul-manager-surface-review-proof/v3";
+  const fieldsBySpan = {
+    early: ["pressure", "protagonistRepeatedVerb"],
+    middle: ["activeChoice", "resistance"],
+    late: ["payoff", "recognition"],
+  };
+  for (const [sourceIndex, source] of receipt.sources.entries()) {
+    const phaseSampleIds = {};
+    for (const [sampleIndex, sample] of source.samples.entries()) {
+      sample.sampleId = `sample-${sourceIndex}-${sampleIndex}`;
+      sample.phaseContribution = "supports-phase";
+      sample.supportedMechanismFields = fieldsBySpan[sample.span];
+      phaseSampleIds[sample.span] = sample.sampleId;
+    }
+    source.collectiveAssessment = {
+      phaseSampleIds,
+      supportedMechanismFields: [
+        "activeChoice", "payoff", "pressure", "protagonistRepeatedVerb", "recognition", "resistance",
+      ],
+      collectiveVerdict: "supported",
+      rationale: "초중후 표본이 압박과 실행과 지급의 전체 순환을 지지한다.",
+      commercialConsequence: "공통 독자 약속과 작품별 실행 변주가 함께 유지된다.",
+    };
+  }
+  for (const comparison of receipt.engineComparisons) comparison.verdict = "shared-core";
+  delete receipt.checks.primaryEnginesPairwiseDifferent;
+  receipt.checks.phaseAwareCollectiveEvidenceComplete = true;
+  receipt.checks.engineRelationsEvidenceComplete = true;
+  rebindPhaseAwareCandidate(receipt);
+  return receipt;
+}
+
 function makeManagerQaValidationContext(receipt, profile = makeGenreProfile()) {
   return {
     requireLiveBindings: true,
@@ -399,6 +459,7 @@ function makeManagerQaValidationContext(receipt, profile = makeGenreProfile()) {
       receipt: {
         profileId: "inkos_male_modern_fantasy",
         runId: receipt.manager.runId,
+        ...(receipt.manager.inputDigest === undefined ? {} : { inputDigest: receipt.manager.inputDigest }),
         model: receipt.manager.model,
         provider: receipt.manager.provider,
         reasoningEffort: receipt.manager.reasoningEffort,
@@ -757,6 +818,61 @@ test("current Manager QA v2 requires an exact deterministic, semantic, or owner 
   ownerPathDrift.surfaceReview.ownerDecision.decision.path = ownerPathDrift.surfaceReview.ownerDecision.decision.path
     .replace("/owner-hil/decisions/", "/owner-hil/requests/");
   assert.throws(() => validateManagerQaReceipt(ownerPathDrift), /require(?:s)? an exact approved owner decision/u);
+});
+
+test("current Manager QA v3 accepts phase-complete shared cores and rejects drifted phase or relation evidence", () => {
+  const valid = makePhaseAwareManagerQaReceipt();
+  assert.equal(validateManagerQaReceipt(valid), true);
+  assert.equal(validateManagerQaReceipt(valid, makeManagerQaValidationContext(valid)), true);
+
+  const schemaSubstitution = makeCurrentManagerQaReceipt();
+  schemaSubstitution.schemaVersion = "genre-soul-manager-qa/v3";
+  assert.throws(() => validateManagerQaReceipt(schemaSubstitution), /requires private-genre-soul-manager-qa-input\/v3/u);
+
+  const proofDowngrade = makePhaseAwareManagerQaReceipt();
+  proofDowngrade.surfaceReview.schemaVersion = "genre-soul-manager-surface-review-proof/v2";
+  assert.throws(() => validateManagerQaReceipt(proofDowngrade), /requires the current surface review proof v3/u);
+
+  const duplicateSample = makePhaseAwareManagerQaReceipt();
+  duplicateSample.sources[1].samples[0].sampleId = duplicateSample.sources[0].samples[0].sampleId;
+  duplicateSample.sources[1].collectiveAssessment.phaseSampleIds.early = duplicateSample.sources[1].samples[0].sampleId;
+  rebindPhaseAwareCandidate(duplicateSample);
+  assert.throws(() => validateManagerQaReceipt(duplicateSample), /sampleId is duplicated/u);
+
+  const incompleteUnion = makePhaseAwareManagerQaReceipt();
+  incompleteUnion.sources[0].samples[0].supportedMechanismFields = ["pressure"];
+  rebindPhaseAwareCandidate(incompleteUnion);
+  assert.throws(() => validateManagerQaReceipt(incompleteUnion), /sample mechanism field union is incomplete/u);
+
+  const wrongPhase = makePhaseAwareManagerQaReceipt();
+  wrongPhase.sources[0].samples.find((sample) => sample.span === "early").supportedMechanismFields = ["activeChoice"];
+  rebindPhaseAwareCandidate(wrongPhase);
+  assert.throws(() => validateManagerQaReceipt(wrongPhase), /not allowed for its bound phase/u);
+
+  const insufficientPair = makePhaseAwareManagerQaReceipt();
+  insufficientPair.engineComparisons[0].verdict = "insufficient";
+  rebindPhaseAwareCandidate(insufficientPair);
+  assert.throws(() => validateManagerQaReceipt(insufficientPair), /evidence-complete relation verdict/u);
+
+  const identicalDistinct = makePhaseAwareManagerQaReceipt();
+  identicalDistinct.sources[1].mechanismSignatureSha256 = identicalDistinct.sources[0].mechanismSignatureSha256;
+  identicalDistinct.engineComparisons[0].verdict = "distinct-variant";
+  rebindPhaseAwareCandidate(identicalDistinct);
+  assert.throws(() => validateManagerQaReceipt(identicalDistinct), /cannot claim a distinct variant/u);
+
+  const checkDrift = makePhaseAwareManagerQaReceipt();
+  checkDrift.checks.engineRelationsEvidenceComplete = false;
+  assert.throws(() => validateManagerQaReceipt(checkDrift), /every deterministic check passes/u);
+
+  const noCommonProfile = makeGenreProfile();
+  const commercialPatternId = noCommonProfile.dimensions.commercialEngines[0];
+  const commercialPattern = noCommonProfile.patterns.find((pattern) => pattern.patternId === commercialPatternId);
+  commercialPattern.classification = "conditional";
+  const sharedCore = makePhaseAwareManagerQaReceipt();
+  assert.throws(
+    () => validateManagerQaReceipt(sharedCore, makeManagerQaValidationContext(sharedCore, noCommonProfile)),
+    /lacks expectedProfile genre-common/u,
+  );
 });
 
 test("manager QA live context rebinds the actual profile engines, synthesis run, and Hermes receipt", () => {

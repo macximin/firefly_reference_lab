@@ -11,7 +11,7 @@ source ID, UTF-8 byte 범위, SHA-256, 파생 관찰과 판정 영수증만 둔�
 3. `genre-soul-deep-read/v1`: 앵커별 `0..sourceSizeBytes` gap-free 전수 범위와 실제 `gpt-5.6-sol/high` readback을 남긴다.
 4. `genre-soul-analysis-profile/v1`: 정확히 세 앵커의 검증된 전수 관찰을 bounded private partition → 작품별 consolidation → 장르 synthesis 순서로 합성한다. 세계 제약, 주인공 반복 동사, 압박·적대, 보상·지위 통화, 다음 행동, 상업 엔진, 감정적 정합성, Arc·성장, 실패 패턴의 아홉 차원을 모두 포함한다.
 5. `tracked-projection-leak-scan/v1`: 전체 available corpus에 대해 exact 12-token과 120 UTF-8 byte 공통 표면을 검사한다.
-6. `genre-soul-manager-qa/v2`: 프로필 synthesis와 다른 실제 `gpt-5.6-sol/high` run이 세 작품에서 early·middle·late 원문 sub-slice를 하나씩, 총 9개 새로 읽는다. 각 표본은 live private source selector·byte SHA에 재결속한다. profile/input/raw readback/leak 결속은 host가 먼저 증명하고 모델이 false로 뒤집으면 유효한 실패 판정이 아니라 invalid output으로 거절한다. 표본 미지지·동일/불충분 pair는 `needs-revision`, 나머지는 `pass`로 결정론적으로 계산하며 모델 선언과 다르면 거절한다. 유효 음성 판정은 immutable private decision으로 보존하며 tracked PASS marker를 만들지 않는다. 세 상업 엔진의 3개 pairwise 비교, distinct mechanism signature, exact profile/input/prompt SHA, current-attested Hermes binary·implementation·dependency·profile/project context, immutable trace·usage·result·host receipt·completion pointer와 zero-match receipt가 모두 통과했을 때만 candidate QA를 pass할 수 있다. tracked leak receipt는 target lock/no-clobber CAS 아래 먼저 게시하고 `manager-qa.json` visibility marker는 마지막에 게시·readback한다. `genre-soul-manager-qa/v1`은 역사 영수증으로만 검증하며 current v2 proof로 대체하지 않는다.
+6. `genre-soul-manager-qa/v3`: 프로필 synthesis와 다른 실제 `gpt-5.6-sol/high` run이 세 작품에서 early·middle·late 원문 sub-slice를 하나씩, 총 9개 새로 읽는다. 모델은 `sampleId`와 의미 판정만 반환하고 host가 exact private input의 source·span·observation·selector·SHA를 투영해 각 표본을 live private source에 재결속한다. exact phase allowlist는 early=`pressure`,`protagonistRepeatedVerb`; middle=`activeChoice`,`protagonistRepeatedVerb`,`resistance`; late=`payoff`,`recognition`뿐이다. 작품별 세 phase의 mechanism-field 합집합이 여섯 필드를 모두 덮고, 세 source pair가 `shared-core` 또는 `distinct-variant`로 evidence-complete일 때만 pass한다. 장르 공통 코어는 정상 학습 신호다. byte-identical mechanism은 장르 공통 evidence가 있는 `shared-core`로만 판정할 수 있고 `distinct-variant`는 invalid output이다. `insufficient`·모순·누락·중복·미결속은 fail-closed한다. profile/input/raw readback/leak 결속은 host가 먼저 증명하고 모델이 false로 뒤집으면 유효한 실패 판정이 아니라 invalid output으로 거절한다. 유효 음성 판정은 immutable private decision으로 보존하며 tracked PASS marker를 만들지 않는다. exact profile/input/prompt SHA, current-attested Hermes binary·implementation·dependency·profile/project context, immutable trace·usage·result·host receipt·completion pointer와 zero-match receipt가 모두 통과해야 한다. tracked leak receipt는 target lock/no-clobber CAS 아래 먼저 게시하고 `manager-qa.json` visibility marker는 마지막에 게시·readback한다. `genre-soul-manager-qa/v1`·`v2`는 불변 역사 영수증으로만 검증하며 current v3로 재표기하거나 덮어쓰지 않는다.
 7. `genre-soul-promotion-eligibility/v1`: 장르당 전수 독해 3편, Review Packet v2, 독립 blind pair 3개와 상업 기준을 집계한다. 이 파일은 owner 승급 결정을 소유하지 않는다.
 
 신규 Hermes 실행은 경로·glob·offset을 모델에 주지 않는다. host가 exact input bytes를
@@ -111,7 +111,7 @@ semantic result reference와 함께 결속한다. 과거 request v3는 읽기·�
 plan·aggregate·모든 part input/result/receipt hash와 uncertain 전체 finding을
 결속한다. v1/v2/v3/v4 증거는 각 schema validator로만 읽고 서로 대체하지 않는다.
 
-Manager current v2는 single v1 semantic proof만 사용하고 자동 partition하지 않는다.
+Manager current v3는 single v1 semantic proof만 사용하고 자동 partition하지 않는다.
 대신 semantic input/prompt를 private semantic evidence write와 provider 호출 전에
 공용 exact context preflight한다. 초과하면 semantic reviewer·HIL·누출 검사·tracked
 publication 없이 fail-closed한다.

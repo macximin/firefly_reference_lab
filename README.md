@@ -117,8 +117,16 @@ exact profile synthesis와 별도 비-adapter Soul 실행을 동시에 돌리지
 sub-slice 9개를 새로 읽고, 세 작품의 상업 엔진을 세 쌍 모두 비교한다. 프로필
 SHA·private 입력 SHA·run ID·zero-match 영수증이 모두 닫혀야 candidate QA가
 `pass`할 수 있다. 핵심 결속은 host가 먼저 증명하며 모델이 이를 false로 뒤집으면
-실패 판정이 아니라 invalid output이다. host는 표본 미지지·동일/불충분 엔진
-비교를 `needs-revision`, 나머지를 `pass`로 결정론적으로 계산한다. 유효한 음성
+실패 판정이 아니라 invalid output이다. 모델은 표본별 `sampleId`와 의미 판정만
+반환하고, host가 그 ID를 exact private input의 source·span·observation·selector·SHA에
+재결속해 tracked receipt로 투영한다. 표본은 긴 엔진 전체가 아니라 exact phase
+allowlist만 판정한다: early는 `pressure`·`protagonistRepeatedVerb`, middle은
+`activeChoice`·`protagonistRepeatedVerb`·`resistance`, late는
+`payoff`·`recognition`만 허용한다. 작품별 세 phase의
+합집합이 상업 엔진 여섯 필드를 덮고, 세 pair가 `shared-core` 또는
+`distinct-variant`로 evidence-complete일 때 pass한다. 장르 공통 코어는 결함이
+아니며, byte-identical mechanism은 장르 공통 evidence가 있는 `shared-core`로만
+판정할 수 있고 `distinct-variant`로 판정하면 invalid output이다. 모순·불충분·누락·중복·미결속만 fail-close한다. 유효한 음성
 판정은 ignored 실행 경로의 immutable `manager-decision.json`으로 보존하고 tracked
 PASS marker나 누출 검사는 만들지 않는다. top-level profile `completed` seal이 없으면 하위 support 파일이
 모두 보여도 Manager QA를 시작하거나 재사용하지 않는다. QA 통과도 InkOS canon
@@ -141,16 +149,17 @@ input·result·host receipt·trace는
 producer run/receipt와 함께 immutable private evidence로 봉인하고, 성공한
 completion의 재사용 때 prompt와 exact-read chain을 다시 만든다. pending 상태에서는 tracked 후보·누출
 영수증·visibility marker·top-level completion seal을 쓰지 않는다. 현재 Manager
-tracked receipt는 `genre-soul-manager-qa/v2`이며 clean 후보도 deterministic proof를
+tracked receipt는 `genre-soul-manager-qa/v3`, surface candidate는 v2이며 clean 후보도 deterministic proof를
 필수로 가진다. semantic proof는 Manager input digest, canonical candidate bytes,
 finding decision/result SHA, 실제 private evidence readback에 함께 결속되고 현재
 receipt에는 legacy v1 proof를 넣을 수 없다. 기존 Storyyard
 `firefly_review_packet/v2`는 InkOS 원고 두 후보 전용이므로 이 분석 판정에
 재라벨해 쓰지 않는다. 반면 `대기업` 같은 짧은 일반 상업 메커니즘 문구는 길이만으로
 자동 거절하지 않는다. 문장부호 너머 인접 토큰은 조직 구조에서 제외하고, 불완전한
-window coverage는 semantic reviewer가 반드시 `uncertain`으로 남긴다. v1/v2
-pending 요청·결정은 v3 판단으로 재사용하지 않는다.
-Manager current v2 semantic 경로는 partition하지 않는다. 대신 single v1 입력과
+window coverage는 semantic reviewer가 반드시 `uncertain`으로 남긴다. 과거 Manager
+v1/v2 receipt와 pending 요청·결정은 불변 이력으로 검증하되 current v3로 재표기하거나
+새 digest에 재사용하지 않는다.
+Manager current v3 semantic 경로는 partition하지 않는다. 대신 single v1 입력과
 prompt를 semantic evidence write·provider 호출보다 먼저 exact context preflight하고,
 초과하면 HIL·누출 검사·tracked publication 없이 fail-closed한다.
 Manager 실행 digest는 exact prompt bytes와 현재 attested Hermes

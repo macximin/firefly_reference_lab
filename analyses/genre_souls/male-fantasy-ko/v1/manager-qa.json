@@ -1,0 +1,543 @@
+{
+  "schemaVersion": "genre-soul-manager-qa/v3",
+  "state": "candidate-qa-passed",
+  "genre": "fantasy-ko",
+  "soulId": "male-fantasy-ko",
+  "version": "v1",
+  "profile": {
+    "path": "analyses/genre_souls/male-fantasy-ko/v1/genre-profile.json",
+    "sha256": "9f854c62e88e2b6f99e621d60c3c8a3661b98f2bc1beadc04e512b82190494c9",
+    "sizeBytes": 66179,
+    "synthesisRunId": "20260831_212722_385730",
+    "leakScanReceipt": {
+      "path": "analyses/genre_souls/male-fantasy-ko/v1/leak-scan-receipts/genre-profile.json",
+      "sha256": "c6e9eabd8af21a04b1fd6c667377b622cad30fd153b4d3cbe04826934db7272f",
+      "sizeBytes": 764
+    }
+  },
+  "privateInput": {
+    "schemaVersion": "private-genre-soul-manager-qa-input/v3",
+    "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/input.json",
+    "sha256": "26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35",
+    "sizeBytes": 192733,
+    "sourceIds": [
+      "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+      "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+      "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b"
+    ],
+    "rawSampleCount": 9
+  },
+  "manager": {
+    "actorId": "hermes:inkos_male_fantasy:20260902_102807_496580",
+    "role": "manager",
+    "runId": "20260902_102807_496580",
+    "inputDigest": "294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389",
+    "model": "gpt-5.6-sol",
+    "provider": "openai-codex",
+    "reasoningEffort": "high",
+    "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+    "traceReceiptSha256": "0e2e9d6a49e98a196a4fc415aa80ae533c55ea2a9653667e7961efa842894717",
+    "outputSha256": "4801b017221a71fa3371627f3000f841797540749fa25ad2660b38ab0ead44d0"
+  },
+  "decidedAt": "2026-09-02T01:29:18.927Z",
+  "sources": [
+    {
+      "sourceId": "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+      "sourceSizeBytes": 4397705,
+      "engineId": "engine-f3d4189c9f28d59722c54ebb",
+      "engineSignatureSha256": "f3d4189c9f28d59722c54ebbc65aa19e5e72706e424b3d89a1b5d9c5f50dafbe",
+      "mechanismSignatureSha256": "b4d69730c4a83a018fe34bcb0d6a0493d1b65e90542912e7d4f98adb49841c72",
+      "samples": [
+        {
+          "sampleId": "sample-5a8a7949cb37f321e63d1372",
+          "span": "early",
+          "observationId": "obs-1cKpe8b5G76V-0001-01-3227b944781d",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 121334,
+            "endByte": 132251
+          },
+          "sliceSha256": "40c7161d8698d6f5928f5436cdd5b72129f75c5159ad99c3393a5fecca686109",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "pressure",
+            "protagonistRepeatedVerb"
+          ]
+        },
+        {
+          "sampleId": "sample-e713237c46dd67537dbf1ff3",
+          "span": "middle",
+          "observationId": "obs-1cKpe8b5G76V-0006-01-70df32431248",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 1861354,
+            "endByte": 1873350
+          },
+          "sliceSha256": "68c7f19be5c86b0d689203860ee60816063ead4139a576ea038bfcf1024b706c",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "activeChoice",
+            "protagonistRepeatedVerb",
+            "resistance"
+          ]
+        },
+        {
+          "sampleId": "sample-54042c3ffdd0f8d99af1d561",
+          "span": "late",
+          "observationId": "obs-1cKpe8b5G76V-0011-01-d17e2208f4a4",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 3682003,
+            "endByte": 3693999
+          },
+          "sliceSha256": "ae1383effa71826ae8ec37467be3e0266aa7c5307a03874e291838cd595c9646",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "payoff",
+            "recognition"
+          ]
+        }
+      ],
+      "collectiveAssessment": {
+        "phaseSampleIds": {
+          "early": "sample-5a8a7949cb37f321e63d1372",
+          "middle": "sample-e713237c46dd67537dbf1ff3",
+          "late": "sample-54042c3ffdd0f8d99af1d561"
+        },
+        "supportedMechanismFields": [
+          "activeChoice",
+          "payoff",
+          "pressure",
+          "protagonistRepeatedVerb",
+          "recognition",
+          "resistance"
+        ],
+        "collectiveVerdict": "supported",
+        "rationale": "초기의 자원 압박과 선점 행동, 중기의 계산된 전력 확장과 잔존 저항, 후기의 대규모 승리와 승복이 완전한 상업 사슬을 이룬다.",
+        "commercialConsequence": "생산과 전력 축적을 실제 지배력 변화로 환전해 장편 확장의 누적 효능감을 보장한다."
+      }
+    },
+    {
+      "sourceId": "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+      "sourceSizeBytes": 3378950,
+      "engineId": "engine-0182eda394ba2cd7cba0450f",
+      "engineSignatureSha256": "0182eda394ba2cd7cba0450f3b0fee632be9c1e7c34b3837be181dff8032cad5",
+      "mechanismSignatureSha256": "c72b23e326fd60c0e4c620ff141893579d4ec90f96cf325563f5a39615c60c3a",
+      "samples": [
+        {
+          "sampleId": "sample-2248f9a1f3617da1db0fe644",
+          "span": "early",
+          "observationId": "obs-1fwf7btYmJFp-0001-01-1e4d98a762ba",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 98148,
+            "endByte": 110147
+          },
+          "sliceSha256": "16d282a492e8ddca028efb83800de276c27af197e62a38a92fd745073828a14b",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "pressure",
+            "protagonistRepeatedVerb"
+          ]
+        },
+        {
+          "sampleId": "sample-d2607537d570ed232379bf3c",
+          "span": "middle",
+          "observationId": "obs-1fwf7btYmJFp-0006-01-105070aab03c",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 1910013,
+            "endByte": 1922011
+          },
+          "sliceSha256": "7357bf03c5cf0b00e74e19419154259ae3d89f6ae36d277ddd182d3f155e2592",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "activeChoice",
+            "protagonistRepeatedVerb",
+            "resistance"
+          ]
+        },
+        {
+          "sampleId": "sample-73dcda391d0431ee81e947b8",
+          "span": "late",
+          "observationId": "obs-1fwf7btYmJFp-0010-09-7786f26fc0fc",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 3230663,
+            "endByte": 3242662
+          },
+          "sliceSha256": "10f006b8412bab616302ffa11657f1705b4bb053941d91bf77ca0e1369ff74a0",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "payoff",
+            "recognition"
+          ]
+        }
+      ],
+      "collectiveAssessment": {
+        "phaseSampleIds": {
+          "early": "sample-2248f9a1f3617da1db0fe644",
+          "middle": "sample-d2607537d570ed232379bf3c",
+          "late": "sample-73dcda391d0431ee81e947b8"
+        },
+        "supportedMechanismFields": [
+          "activeChoice",
+          "payoff",
+          "pressure",
+          "protagonistRepeatedVerb",
+          "recognition",
+          "resistance"
+        ],
+        "collectiveVerdict": "supported",
+        "rationale": "초기의 경쟁 압박과 반복 도전, 중기의 자율적 공략 설계와 우세한 저항, 후기의 생존·직위 지급과 공개 인정이 완전한 상업 사슬을 이룬다.",
+        "commercialConsequence": "규칙 해석과 성장 실험을 지위 회복과 선택권 확대로 연결해 연속적인 등반 만족을 제공한다."
+      }
+    },
+    {
+      "sourceId": "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b",
+      "sourceSizeBytes": 3201149,
+      "engineId": "engine-9a4f65ea19909a80182bde1b",
+      "engineSignatureSha256": "9a4f65ea19909a80182bde1bccf5081a0e5738308943aa1634cfbec6a39124a0",
+      "mechanismSignatureSha256": "366502ce27f74445f8e381a018923a3069c1e371d169889f9cd11ea34d982860",
+      "samples": [
+        {
+          "sampleId": "sample-dd2e3e7acda6202a7f644c37",
+          "span": "early",
+          "observationId": "obs-1tvlx7aVmtCQ-0001-01-62886175a51c",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 124147,
+            "endByte": 136144
+          },
+          "sliceSha256": "9745a7d859e917083f25b467593c8aae0a3d620c186e649236a3902a4d53d4ad",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "pressure",
+            "protagonistRepeatedVerb"
+          ]
+        },
+        {
+          "sampleId": "sample-f41a6b9ae5838871b5da9112",
+          "span": "middle",
+          "observationId": "obs-1tvlx7aVmtCQ-0004-01-20070495f16d",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 1135439,
+            "endByte": 1147436
+          },
+          "sliceSha256": "c9d4f15003a81a146ca26d557ae034922bc245205bbc3b7264dd6d306c1e69b0",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "activeChoice",
+            "protagonistRepeatedVerb",
+            "resistance"
+          ]
+        },
+        {
+          "sampleId": "sample-318d268f1ef2415774356d06",
+          "span": "late",
+          "observationId": "obs-1tvlx7aVmtCQ-0007-08-7ea336b9d503",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 2279457,
+            "endByte": 2291455
+          },
+          "sliceSha256": "b7fb935131026162ea4ae5a9100d3388bc2c923dd111c69860436a6ea2893912",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "payoff",
+            "recognition"
+          ]
+        }
+      ],
+      "collectiveAssessment": {
+        "phaseSampleIds": {
+          "early": "sample-dd2e3e7acda6202a7f644c37",
+          "middle": "sample-f41a6b9ae5838871b5da9112",
+          "late": "sample-318d268f1ef2415774356d06"
+        },
+        "supportedMechanismFields": [
+          "activeChoice",
+          "payoff",
+          "pressure",
+          "protagonistRepeatedVerb",
+          "recognition",
+          "resistance"
+        ],
+        "collectiveVerdict": "supported",
+        "rationale": "초기의 정보 기반 선점과 자원 압박, 중기의 보호 선택과 제약 있는 공략, 후기의 전투 우위 지급과 적대적 인정이 완전한 상업 사슬을 이룬다.",
+        "commercialConsequence": "정보와 준비 자산을 생존, 전투 성과와 다음 선택권으로 복리 전환하는 추진력을 확보한다."
+      }
+    }
+  ],
+  "engineComparisons": [
+    {
+      "comparisonId": "comparison-e481bfb707afccda7fb02717",
+      "leftSourceId": "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+      "rightSourceId": "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+      "leftEngineId": "engine-f3d4189c9f28d59722c54ebb",
+      "rightEngineId": "engine-0182eda394ba2cd7cba0450f",
+      "verdict": "distinct-variant",
+      "semanticDifference": "한쪽은 자원·생산·전력의 누적 확장을 지배적 실행으로 삼고, 다른 쪽은 규칙 해석·반복 대결·성장 실험을 지배적 실행으로 삼는다.",
+      "commercialConsequence": "공통의 준비·충돌·지급 사슬을 유지하면서 각각 확장 경영의 만족과 공략 등반의 만족을 제공한다."
+    },
+    {
+      "comparisonId": "comparison-324d254cb5586448c500a0da",
+      "leftSourceId": "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+      "rightSourceId": "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b",
+      "leftEngineId": "engine-f3d4189c9f28d59722c54ebb",
+      "rightEngineId": "engine-9a4f65ea19909a80182bde1b",
+      "verdict": "distinct-variant",
+      "semanticDifference": "한쪽은 생산 기반과 집단 전력을 통한 규모 확장을 강조하고, 다른 쪽은 미래 정보에 따른 선점과 다양한 자산의 기회 전환을 강조한다.",
+      "commercialConsequence": "동일한 누적 성장 핵심을 서로 다른 선택 구조로 실행해 확장성과 탐색성을 각각 강화한다."
+    },
+    {
+      "comparisonId": "comparison-95d5d553abc7f66cfa945589",
+      "leftSourceId": "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+      "rightSourceId": "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b",
+      "leftEngineId": "engine-0182eda394ba2cd7cba0450f",
+      "rightEngineId": "engine-9a4f65ea19909a80182bde1b",
+      "verdict": "distinct-variant",
+      "semanticDifference": "한쪽은 강한 저항의 규칙을 분해하고 새 해법을 시험하는 실행이 우세하며, 다른 쪽은 정보 우위로 인력·자원·기회를 선점하고 재투자하는 실행이 우세하다.",
+      "commercialConsequence": "공통의 능동 선택과 가시적 지급을 보존하면서 공략 학습과 기회 복리라는 서로 다른 반복 쾌감을 만든다."
+    }
+  ],
+  "checks": {
+    "profileEvidenceBinding": true,
+    "exactSourceCoverage": true,
+    "rawSampleReadback": true,
+    "phaseAwareCollectiveEvidenceComplete": true,
+    "engineRelationsEvidenceComplete": true,
+    "profileSurfaceLeakScanPassed": true,
+    "contentNeutrality": true
+  },
+  "contentNeutrality": {
+    "moralFitnessGate": false,
+    "automaticRewrite": false,
+    "userIntensityPreserved": true
+  },
+  "authority": {
+    "scope": "reference-lab-qa-only",
+    "mayWriteInkOSCanon": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  },
+  "result": "pass",
+  "surfaceReview": {
+    "schemaVersion": "genre-soul-manager-surface-review-proof/v3",
+    "gateVersion": "genre-soul-protected-surface-hil/v3",
+    "extractorVersion": "genre-soul-surface-candidate-extractor/v3",
+    "mode": "semantic-owner-approved",
+    "candidate": {
+      "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/surface-review/candidate.json",
+      "sha256": "3c3aa8a6e9fdc69835ca3a99d6848a2972d0e44ab11f2165fb6686791ae862ad",
+      "sizeBytes": 5483
+    },
+    "deterministic": {
+      "status": "pending_semantic_review",
+      "privateEvidence": {
+        "sourceSetSha256": "a6c846d76f5af6ca47c128694429b55edbd54552b73c0d1ee3d9750332a683f5",
+        "sampleSetSha256": "27530a37563a374b93118b82c0fec894328c192f23dd22aef7c455d080555794"
+      },
+      "findingSetSha256": "9a235e01f00eb4fa685d636d3511f09f4c9260dd186e9176cbec3f55535ecd4a",
+      "findingIds": [
+        "surface-finding-06d5ab2128a9162820b618dd",
+        "surface-finding-0b7618e9eb494e8753d6f100",
+        "surface-finding-378955b6dea89b0eb053aa49",
+        "surface-finding-473c45a608ed6b38d7b3f2f8",
+        "surface-finding-6640be9539c7296b2843ab00",
+        "surface-finding-6abb4917c378352bbffad70a",
+        "surface-finding-c1aaaea33b45de9b8d3b0a28",
+        "surface-finding-d7d6145100e062741ffd9d00",
+        "surface-finding-eb599f20896ccd34fb790bf4"
+      ]
+    },
+    "semantic": {
+      "input": {
+        "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/surface-review/input.json",
+        "sha256": "677308b1ec4da900e58468f1f2c018cca42de1db4fea171d25cfba3d736baa8f",
+        "sizeBytes": 65847
+      },
+      "result": {
+        "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/surface-review/semantic/accepted.json",
+        "sha256": "b8d3980a1157c768e56a03438bcceca28523500bdc5afb7f823bb8b137d20410",
+        "sizeBytes": 3140
+      },
+      "receipt": {
+        "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/surface-review/semantic/accepted-host-receipt.json",
+        "sha256": "8d5bad82877ce04dc965fa6b9cc2de290edc95dd22eaa23165c067207f3e6ac3",
+        "sizeBytes": 3495
+      },
+      "readCapability": {
+        "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/surface-review/semantic/hermes/attempts/attempt-20260902012947203-c02db37c-8da2bbcb61092f6f3958d7f1631ec9ecfb06c332c194cfd897d0a9b06356e017/read-capability.json",
+        "sha256": "fcd82590e916d2f433b72c3e7a4372dde1a9c279b7bacc059341af4881f81706",
+        "sizeBytes": 3409
+      },
+      "reviewer": {
+        "role": "genre-soul-surface-semantic-review:manager-qa:677308b1ec4da900e58468f1",
+        "runId": "20260902_103000_fcf91e",
+        "model": "gpt-5.6-sol",
+        "provider": "openai-codex",
+        "reasoningEffort": "high",
+        "promptSha256": "3b1739376be891d3bdbb78e9fc82a1ded72a968968e48b4936da96caf2dcbc88"
+      },
+      "contextEvidence": {
+        "schemaVersion": "private-genre-soul-manager-surface-context-evidence/v1",
+        "runDescriptor": {
+          "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/run-descriptor.json",
+          "sha256": "294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389",
+          "sizeBytes": 4245
+        },
+        "budget": {
+          "schemaVersion": "genre-soul-surface-semantic-review-context-budget/v2",
+          "inputSha256": "677308b1ec4da900e58468f1f2c018cca42de1db4fea171d25cfba3d736baa8f",
+          "inputSizeBytes": 65847,
+          "chunkCount": 1,
+          "readTranscriptProxyBytes": 75540,
+          "conservativeTokenProxy": 37770,
+          "maxInputConservativeTokenProxy": 190000,
+          "promptSha256": "3b1739376be891d3bdbb78e9fc82a1ded72a968968e48b4936da96caf2dcbc88",
+          "promptSizeBytes": 2323,
+          "outputReserveTokens": 8192,
+          "contextLimit": 272000,
+          "profilePromptContextBytes": 5084,
+          "projectPromptContextBytes": 2832,
+          "pluginContextBytes": 12520,
+          "contextPlan": {
+            "schemaVersion": "hermes-structured-context-budget/v2",
+            "contextProxyBytesPerToken": 2,
+            "staticPromptReserveTokens": 16384,
+            "profilePromptContextBytes": 5084,
+            "projectPromptContextBytes": 2832,
+            "pluginContextBytes": 12520,
+            "promptSizeBytes": 2323,
+            "readTranscriptProxyBytes": 75540,
+            "contextInputProxyTokens": 65534,
+            "outputReserveTokens": 8192,
+            "preflightBudgetTokens": 73726,
+            "contextLimit": 272000,
+            "fits": true
+          }
+        }
+      },
+      "findingDecisions": [
+        {
+          "findingId": "surface-finding-06d5ab2128a9162820b618dd",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-3de4ba7355ccbf28563736f9",
+            "surface-window-5317b09c986cb29629f41512"
+          ]
+        },
+        {
+          "findingId": "surface-finding-0b7618e9eb494e8753d6f100",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-0af4867d4ebca493ee1333d2",
+            "surface-window-522a8287842c75bf6e2eb24f"
+          ]
+        },
+        {
+          "findingId": "surface-finding-378955b6dea89b0eb053aa49",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-2f4d81de778af35182222a02",
+            "surface-window-ea8d4d10af9a5aa450063c9b"
+          ]
+        },
+        {
+          "findingId": "surface-finding-473c45a608ed6b38d7b3f2f8",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-0bbefae936d56ea5cf05d7f5",
+            "surface-window-3c712451bd216954f1853538"
+          ]
+        },
+        {
+          "findingId": "surface-finding-6640be9539c7296b2843ab00",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-23dc848d6eaf6cfa7f6f7fa6",
+            "surface-window-e1201be8779d688fcc80fbe0"
+          ]
+        },
+        {
+          "findingId": "surface-finding-6abb4917c378352bbffad70a",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-54752f4f6f5edd6c020070aa",
+            "surface-window-770d4a4ba71bced4987d630d"
+          ]
+        },
+        {
+          "findingId": "surface-finding-c1aaaea33b45de9b8d3b0a28",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-14b1f5c1700884ef9040e133",
+            "surface-window-69da5b33e6fe7c64f7bbfed4"
+          ]
+        },
+        {
+          "findingId": "surface-finding-d7d6145100e062741ffd9d00",
+          "verdict": "uncertain",
+          "reasonCode": "insufficient-context",
+          "evidenceWindowIds": [
+            "surface-window-0f2c7824fec378309bec2a4b",
+            "surface-window-3c81281e605e9cc17a5be219"
+          ]
+        },
+        {
+          "findingId": "surface-finding-eb599f20896ccd34fb790bf4",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-620ae7fd45e5f4da8ae5cc28",
+            "surface-window-a3355cbd824dbbdf72a3215a"
+          ]
+        }
+      ],
+      "verdictCounts": {
+        "genericOverlap": 8,
+        "protectedIdentity": 0,
+        "uncertain": 1
+      },
+      "outcome": "owner-approved"
+    },
+    "ownerDecision": {
+      "request": {
+        "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/surface-review/owner-hil/requests/15c52282e563ab72f012ef6d01a0efb52c20dd6704414006bb02d16a85d893fd.json",
+        "sha256": "15c52282e563ab72f012ef6d01a0efb52c20dd6704414006bb02d16a85d893fd",
+        "sizeBytes": 14290
+      },
+      "decision": {
+        "path": "exports/genre-souls/male-fantasy-ko/v1/manager-qa-runs/26b164c8fa9bcdf27b0811b738425f1481bc22cb66300ec0166ed4c673bf4a35/structured-runs/294dcf70d17b66ad3841bb7dc28acb430c5ad5f348254f8a1d2078b7d53aa389/surface-review/owner-hil/decisions/15c52282e563ab72f012ef6d01a0efb52c20dd6704414006bb02d16a85d893fd.json",
+        "sha256": "469d8cad0da3b10c10116a9c3304045578e8e46dbdbd7049d42ea0a691ac5330",
+        "sizeBytes": 2543,
+        "decisionId": "surface-decision-3328f24db11349160cd4a499",
+        "outcome": "approved",
+        "decidedByRole": "owner"
+      }
+    },
+    "authority": {
+      "scope": "reference-lab-analysis-surface-only",
+      "mayWriteInkOSCanon": false,
+      "mayPromoteSoul": false
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "tracked-projection-leak-scan/v1",
+  "scanner": {
+    "version": "genre-soul-surface-scanner/v1",
+    "exactTokenCount": 12,
+    "longCommonUtf8Bytes": 120
+  },
+  "artifact": {
+    "path": "analyses/genre_souls/male-fantasy-ko/v1/manager-qa.json",
+    "sha256": "3025b953a0a2d602c8951cd95812a4ba5bbb79388f9ea1b07ab485a1e422e015",
+    "sizeBytes": 23700
+  },
+  "corpus": {
+    "privateRegistrySha256": "21dbb85ca19383c6ff7c6702e8ab1092f6d11290016496074f15a8e4fd31652b",
+    "availableSourceCount": 32,
+    "observedSourceSetSha256": "3e5fcbad8f76dcece6de219746744336b0d9cc552a1e906a80b34de1b4839ea3"
+  },
+  "matchCount": 0,
+  "matches": [],
+  "truncated": false,
+  "status": "pass",
+  "automaticRewrite": false,
+  "automaticReject": false
+}

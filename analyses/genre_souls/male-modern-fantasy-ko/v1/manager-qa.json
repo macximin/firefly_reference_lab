@@ -1,0 +1,611 @@
+{
+  "schemaVersion": "genre-soul-manager-qa/v3",
+  "state": "candidate-qa-passed",
+  "genre": "modern-fantasy-ko",
+  "soulId": "male-modern-fantasy-ko",
+  "version": "v1",
+  "profile": {
+    "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
+    "sha256": "54ab91f1ac4ce5d59936190e4efa5663beaeabd2a1ed2e203b2b6f952dedb262",
+    "sizeBytes": 68712,
+    "synthesisRunId": "20260831_215018_7587a7",
+    "leakScanReceipt": {
+      "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/leak-scan-receipts/genre-profile.json",
+      "sha256": "e55f8529ed86efd180abdff6cf5274b0c962321f686173aca25b20f74c14df4f",
+      "sizeBytes": 771
+    }
+  },
+  "privateInput": {
+    "schemaVersion": "private-genre-soul-manager-qa-input/v3",
+    "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/input.json",
+    "sha256": "56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3",
+    "sizeBytes": 193551,
+    "sourceIds": [
+      "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+      "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+      "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+    ],
+    "rawSampleCount": 9
+  },
+  "manager": {
+    "actorId": "hermes:inkos_male_modern_fantasy:20260902_102349_47cddb",
+    "role": "manager",
+    "runId": "20260902_102349_47cddb",
+    "inputDigest": "ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d",
+    "model": "gpt-5.6-sol",
+    "provider": "openai-codex",
+    "reasoningEffort": "high",
+    "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+    "traceReceiptSha256": "5645d51076de3e3ad84a67459ccc9c1bbe56b64ab4bb99256f044c77301d68d1",
+    "outputSha256": "ab276209f7d1c5fd7e2af4fbfb352f5578dc43fb405bb48d8799dc7dfd7eea6c"
+  },
+  "decidedAt": "2026-09-02T01:25:10.588Z",
+  "sources": [
+    {
+      "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+      "sourceSizeBytes": 10220730,
+      "engineId": "engine-5618606319fb85c83a40c369",
+      "engineSignatureSha256": "5618606319fb85c83a40c369f818d10b73425938c1e64a1e8a578064462c9044",
+      "mechanismSignatureSha256": "69e414d0c2f3a8c989b0c0c215e328789c9c283166e5c4d04b71429ee9553a13",
+      "samples": [
+        {
+          "sampleId": "sample-f21c13be1d917eea98bd81b6",
+          "span": "early",
+          "observationId": "obs-1BzfNJPOBwau-0001-01-06ee92a0d643",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 193762,
+            "endByte": 205760
+          },
+          "sliceSha256": "b0a80cf8261f2e1ecebaa16b752ecd060a0f6c17f03f640af5de3927b4773e43",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "pressure",
+            "protagonistRepeatedVerb"
+          ]
+        },
+        {
+          "sampleId": "sample-810788ea6242ac988c24eec8",
+          "span": "middle",
+          "observationId": "obs-1BzfNJPOBwau-0011-01-3ead5560e98d",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 3550847,
+            "endByte": 3562845
+          },
+          "sliceSha256": "676fcf052bfd3056d7f9a931b954cd064f9385ebf35dd81d2c1cc374519f53b0",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "activeChoice",
+            "protagonistRepeatedVerb",
+            "resistance"
+          ]
+        },
+        {
+          "sampleId": "sample-2b069f67dee245266b836ee8",
+          "span": "late",
+          "observationId": "obs-1BzfNJPOBwau-0024-01-8655d0a5e590",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 8195225,
+            "endByte": 8207223
+          },
+          "sliceSha256": "659efb81c38fb865497ed04eceb7ac31f26e8324b597abeb404e118c0c7d9b64",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "payoff",
+            "recognition"
+          ]
+        }
+      ],
+      "collectiveAssessment": {
+        "phaseSampleIds": {
+          "early": "sample-f21c13be1d917eea98bd81b6",
+          "middle": "sample-810788ea6242ac988c24eec8",
+          "late": "sample-2b069f67dee245266b836ee8"
+        },
+        "supportedMechanismFields": [
+          "activeChoice",
+          "payoff",
+          "pressure",
+          "protagonistRepeatedVerb",
+          "recognition",
+          "resistance"
+        ],
+        "collectiveVerdict": "supported",
+        "rationale": "초기의 위험 제약과 선점 행동, 중반의 거래 구조 설계와 제도적 저항, 후반의 자산 지급과 신뢰 확대가 단계별로 연결된다.",
+        "commercialConsequence": "예측 우위를 대규모 통제권으로 복리 전환하는 순환이 완성되어 지속적인 규모 상승과 다음 거래 추진력을 제공한다."
+      }
+    },
+    {
+      "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+      "sourceSizeBytes": 2782069,
+      "engineId": "engine-86d3e75d08329c31e5f40d71",
+      "engineSignatureSha256": "86d3e75d08329c31e5f40d7120da9d06c8cadde94312900e5413a6dca559cab7",
+      "mechanismSignatureSha256": "fa2f4b30649b2cab0483b5cc87123374fb5b4d5586053317e14ff207be2eabe6",
+      "samples": [
+        {
+          "sampleId": "sample-38e7e4685d130eedda7c5400",
+          "span": "early",
+          "observationId": "obs-1IveOliU4R7F-0001-01-5203018e10b3",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 0,
+            "endByte": 8938
+          },
+          "sliceSha256": "6ab73e543ecf6e57dc92f55bcfc6c2e71857fd7bff74672f0330d0ce842302a2",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "pressure"
+          ]
+        },
+        {
+          "sampleId": "sample-dff037b9393aebc61813b77f",
+          "span": "middle",
+          "observationId": "obs-1IveOliU4R7F-0005-01-690f581f7841",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 1463643,
+            "endByte": 1475641
+          },
+          "sliceSha256": "3087e53bb1b7e9c2808e18c603a8b44f13db71736d13d3f7aa43cc860b32390e",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "activeChoice",
+            "protagonistRepeatedVerb",
+            "resistance"
+          ]
+        },
+        {
+          "sampleId": "sample-de50855e6d86319e5012d0b5",
+          "span": "late",
+          "observationId": "obs-1IveOliU4R7F-0006-01-1a4d5081e3d8",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 1879089,
+            "endByte": 1891086
+          },
+          "sliceSha256": "dd26b267e1860ff798dbebd4c61bdd459d1f2bf156e843f3b76447eee73769db",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "payoff",
+            "recognition"
+          ]
+        }
+      ],
+      "collectiveAssessment": {
+        "phaseSampleIds": {
+          "early": "sample-38e7e4685d130eedda7c5400",
+          "middle": "sample-dff037b9393aebc61813b77f",
+          "late": "sample-de50855e6d86319e5012d0b5"
+        },
+        "supportedMechanismFields": [
+          "activeChoice",
+          "payoff",
+          "pressure",
+          "protagonistRepeatedVerb",
+          "recognition",
+          "resistance"
+        ],
+        "collectiveVerdict": "supported",
+        "rationale": "초기의 결핍과 관계 압박, 중반의 미래 정보 기반 선점과 경쟁 대응, 후반의 계량 수익과 통제권 인정이 완결된 상승 구조를 이룬다.",
+        "commercialConsequence": "개인적 결핍에서 출발한 동력이 자산 획득과 경영 권한으로 환전되어 감정적 회수와 상업적 성장감을 동시에 확보한다."
+      }
+    },
+    {
+      "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+      "sourceSizeBytes": 4979490,
+      "engineId": "engine-24c41431db53e1e4b5689f4f",
+      "engineSignatureSha256": "24c41431db53e1e4b5689f4ffe7158a762536a23dcf8f7cc01e9f9dbd9cc5958",
+      "mechanismSignatureSha256": "4bbe21d1a41681fbbfe63ea32ff54aea3995724247c34d394fbeb5abc785b187",
+      "samples": [
+        {
+          "sampleId": "sample-7d7847fac5d4aa06d5bff9b5",
+          "span": "early",
+          "observationId": "obs-1SRFbbNIAztK-0001-01-561d195282aa",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 79273,
+            "endByte": 91271
+          },
+          "sliceSha256": "e4deb33f18bac2c1700011d016bf5279bc7d0b1fd6b1e8db9768f2ed5187010f",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "pressure"
+          ]
+        },
+        {
+          "sampleId": "sample-b18fbd88c411c3bab7357899",
+          "span": "middle",
+          "observationId": "obs-1SRFbbNIAztK-0006-01-5ca993a81401",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 1907341,
+            "endByte": 1919161
+          },
+          "sliceSha256": "e6a24cf57d0cdc7b0b761fd245d9b92c39a0bc141755ee84d860432389d0bfd3",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "activeChoice",
+            "protagonistRepeatedVerb",
+            "resistance"
+          ]
+        },
+        {
+          "sampleId": "sample-c4eefa58a9d32c96681582db",
+          "span": "late",
+          "observationId": "obs-1SRFbbNIAztK-0013-01-dc6ee428dfe1",
+          "kind": "commercial-engine",
+          "selector": {
+            "type": "utf8-byte",
+            "startByte": 4312113,
+            "endByte": 4324111
+          },
+          "sliceSha256": "1f852ca122762b28c48ea2ea26bf6f3e007ff3da0b537c92d4b7805089c6385b",
+          "phaseContribution": "supports-phase",
+          "supportedMechanismFields": [
+            "payoff",
+            "recognition"
+          ]
+        }
+      ],
+      "collectiveAssessment": {
+        "phaseSampleIds": {
+          "early": "sample-7d7847fac5d4aa06d5bff9b5",
+          "middle": "sample-b18fbd88c411c3bab7357899",
+          "late": "sample-c4eefa58a9d32c96681582db"
+        },
+        "supportedMechanismFields": [
+          "activeChoice",
+          "payoff",
+          "pressure",
+          "protagonistRepeatedVerb",
+          "recognition",
+          "resistance"
+        ],
+        "collectiveVerdict": "supported",
+        "rationale": "초기의 생존 압박, 중반의 역할·자본·지분 배치와 내부 저항, 후반의 수익·권리·접근권 지급이 단계별 상업 기능을 충족한다.",
+        "commercialConsequence": "생존에서 시작한 주도권 욕망이 자본 배치와 제도 권리 확장으로 커져 장편 성장 사다리와 반복 거래 동력을 형성한다."
+      }
+    }
+  ],
+  "engineComparisons": [
+    {
+      "comparisonId": "comparison-4e4cd3ec403d98462c626756",
+      "leftSourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+      "rightSourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+      "leftEngineId": "engine-5618606319fb85c83a40c369",
+      "rightEngineId": "engine-86d3e75d08329c31e5f40d71",
+      "verdict": "distinct-variant",
+      "semanticDifference": "한쪽은 거시 위기와 제도 협상을 결합한 대규모 인수·통제 전환이 우세하고, 다른 쪽은 개인적 결핍에서 출발해 유동성 확보·지분 선점·경영권 획득으로 상승하는 실행이 우세하다.",
+      "commercialConsequence": "공통된 선점과 복리 성장 핵심을 유지하면서도 전자는 거래 규모의 압도감을, 후자는 결핍 회수와 소유권 상승의 밀착감을 강화한다."
+    },
+    {
+      "comparisonId": "comparison-0d4caca4037eb608736f44ad",
+      "leftSourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+      "rightSourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+      "leftEngineId": "engine-5618606319fb85c83a40c369",
+      "rightEngineId": "engine-24c41431db53e1e4b5689f4f",
+      "verdict": "distinct-variant",
+      "semanticDifference": "한쪽은 금융·산업 위기를 제도 지원과 인수 구조로 흡수하는 실행이 중심이고, 다른 쪽은 생존 압박 이후 사람·지분·법적 권리·개발 권한을 다층 배치하는 실행이 중심이다.",
+      "commercialConsequence": "전자는 위기 흡수와 규모 확장의 만족을 높이고, 후자는 통제 범위와 선택권이 단계적으로 넓어지는 장기 성장감을 높인다."
+    },
+    {
+      "comparisonId": "comparison-101e064de1d431f9d9afb3fd",
+      "leftSourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+      "rightSourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+      "leftEngineId": "engine-86d3e75d08329c31e5f40d71",
+      "rightEngineId": "engine-24c41431db53e1e4b5689f4f",
+      "verdict": "distinct-variant",
+      "semanticDifference": "한쪽은 자산 처분과 유동성 축적을 바탕으로 저평가된 지분과 경영권을 선점하는 실행이 우세하고, 다른 쪽은 인력·역할·지분·제도 권리를 동시에 설계해 광범위한 통제권으로 전환하는 실행이 우세하다.",
+      "commercialConsequence": "전자는 자본 증식과 소유권 독식의 속도감을 제공하고, 후자는 복합 자원 배치와 권한 확장의 규모감을 제공한다."
+    }
+  ],
+  "checks": {
+    "profileEvidenceBinding": true,
+    "exactSourceCoverage": true,
+    "rawSampleReadback": true,
+    "phaseAwareCollectiveEvidenceComplete": true,
+    "engineRelationsEvidenceComplete": true,
+    "profileSurfaceLeakScanPassed": true,
+    "contentNeutrality": true
+  },
+  "contentNeutrality": {
+    "moralFitnessGate": false,
+    "automaticRewrite": false,
+    "userIntensityPreserved": true
+  },
+  "authority": {
+    "scope": "reference-lab-qa-only",
+    "mayWriteInkOSCanon": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  },
+  "result": "pass",
+  "surfaceReview": {
+    "schemaVersion": "genre-soul-manager-surface-review-proof/v3",
+    "gateVersion": "genre-soul-protected-surface-hil/v3",
+    "extractorVersion": "genre-soul-surface-candidate-extractor/v3",
+    "mode": "semantic-owner-approved",
+    "candidate": {
+      "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/surface-review/candidate.json",
+      "sha256": "433d45a5a52f8a0001176276714f09c2d1d510f5db1bf001dcd71ca082701494",
+      "sizeBytes": 5849
+    },
+    "deterministic": {
+      "status": "pending_semantic_review",
+      "privateEvidence": {
+        "sourceSetSha256": "e31c68cfdc1986b96250f0045580bb08c137e2170df3d28040de7ed6516ad4c0",
+        "sampleSetSha256": "d02bdde0137bb3d6a12cad283aa2bc0cec44f2c2933c431d4cad5ec66e0fe698"
+      },
+      "findingSetSha256": "6c88508077ed06c7f00614b428989c6b801042c80ce18a771e8191ffbb59a458",
+      "findingIds": [
+        "surface-finding-06d9525fa19769af646d087c",
+        "surface-finding-09d89adfb7a51bb6a1091c4a",
+        "surface-finding-512ead3f781bba2b9b41a114",
+        "surface-finding-645303397230b0e43f6f8e20",
+        "surface-finding-7b77bd70737740d84ca6d09f",
+        "surface-finding-88153db808f93e1653d636c5",
+        "surface-finding-8bb959d9db7e9f7ab403cdc8",
+        "surface-finding-9515d113a70f586661bc0b27",
+        "surface-finding-a9ad62bd3c1a0380b998f98b",
+        "surface-finding-aaf44e6212b48aac9b86993f",
+        "surface-finding-ba9327964e5fd9f05bd75ee8",
+        "surface-finding-bf534bf610696ef4cd1b33e4",
+        "surface-finding-c1315f924a7e10c1bf7b0ec5",
+        "surface-finding-f08cad4d181b1c598bdb5f39",
+        "surface-finding-fce54be8f74467de81b47128",
+        "surface-finding-fe2bbe2f5af64607fe592a45"
+      ]
+    },
+    "semantic": {
+      "input": {
+        "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/surface-review/input.json",
+        "sha256": "3e827092a0075b4a5ae8d43c0e1c5e3614ef5eb210dc0498bd62f76d43a84a1b",
+        "sizeBytes": 107362
+      },
+      "result": {
+        "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/surface-review/semantic/accepted.json",
+        "sha256": "67073f015d0ab2377cc9592dd743300ca179d868d2a60c1574af16651f688122",
+        "sizeBytes": 5226
+      },
+      "receipt": {
+        "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/surface-review/semantic/accepted-host-receipt.json",
+        "sha256": "0012dcda7edcb81fd584bbbd1c13525899644a3d95cedc893e39f478749ca1df",
+        "sizeBytes": 3504
+      },
+      "readCapability": {
+        "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/surface-review/semantic/hermes/attempts/attempt-20260902012538384-e05874a7-11520949bb9ac003753a451ec176638501194e26b31de7ba7dd38ccdcf9c8024/read-capability.json",
+        "sha256": "f476489781f031c8570dbc6bac079a7619ed5a8bab72d1d8f3d71b31fb6ee99b",
+        "sizeBytes": 3417
+      },
+      "reviewer": {
+        "role": "genre-soul-surface-semantic-review:manager-qa:3e827092a0075b4a5ae8d43c",
+        "runId": "20260902_102558_3a4300",
+        "model": "gpt-5.6-sol",
+        "provider": "openai-codex",
+        "reasoningEffort": "high",
+        "promptSha256": "e7f273f70e74f584e8a46f55a628d731caed27faa04346ba284550edbeb65bb0"
+      },
+      "contextEvidence": {
+        "schemaVersion": "private-genre-soul-manager-surface-context-evidence/v1",
+        "runDescriptor": {
+          "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/run-descriptor.json",
+          "sha256": "ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d",
+          "sizeBytes": 4280
+        },
+        "budget": {
+          "schemaVersion": "genre-soul-surface-semantic-review-context-budget/v2",
+          "inputSha256": "3e827092a0075b4a5ae8d43c0e1c5e3614ef5eb210dc0498bd62f76d43a84a1b",
+          "inputSizeBytes": 107362,
+          "chunkCount": 2,
+          "readTranscriptProxyBytes": 123444,
+          "conservativeTokenProxy": 61722,
+          "maxInputConservativeTokenProxy": 190000,
+          "promptSha256": "e7f273f70e74f584e8a46f55a628d731caed27faa04346ba284550edbeb65bb0",
+          "promptSizeBytes": 2337,
+          "outputReserveTokens": 8192,
+          "contextLimit": 272000,
+          "profilePromptContextBytes": 5160,
+          "projectPromptContextBytes": 2832,
+          "pluginContextBytes": 12520,
+          "contextPlan": {
+            "schemaVersion": "hermes-structured-context-budget/v2",
+            "contextProxyBytesPerToken": 2,
+            "staticPromptReserveTokens": 16384,
+            "profilePromptContextBytes": 5160,
+            "projectPromptContextBytes": 2832,
+            "pluginContextBytes": 12520,
+            "promptSizeBytes": 2337,
+            "readTranscriptProxyBytes": 123444,
+            "contextInputProxyTokens": 89531,
+            "outputReserveTokens": 8192,
+            "preflightBudgetTokens": 97723,
+            "contextLimit": 272000,
+            "fits": true
+          }
+        }
+      },
+      "findingDecisions": [
+        {
+          "findingId": "surface-finding-06d9525fa19769af646d087c",
+          "verdict": "generic-overlap",
+          "reasonCode": "contextual-role-not-identity",
+          "evidenceWindowIds": [
+            "surface-window-a55c4e41fa95c67c5a7df453",
+            "surface-window-c52b0735435cd55eb008c334"
+          ]
+        },
+        {
+          "findingId": "surface-finding-09d89adfb7a51bb6a1091c4a",
+          "verdict": "generic-overlap",
+          "reasonCode": "contextual-role-not-identity",
+          "evidenceWindowIds": [
+            "surface-window-01e1729362b5b2726bc635f0",
+            "surface-window-6b06d8ba2328ab02ada16e84"
+          ]
+        },
+        {
+          "findingId": "surface-finding-512ead3f781bba2b9b41a114",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-201aa8c54d67192099245be7",
+            "surface-window-268fe02feb3630cff36165e6"
+          ]
+        },
+        {
+          "findingId": "surface-finding-645303397230b0e43f6f8e20",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-096acfb880632e4ca56dfeaf",
+            "surface-window-f9f0f27688954aeb88d6fb85"
+          ]
+        },
+        {
+          "findingId": "surface-finding-7b77bd70737740d84ca6d09f",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-5ed4503600bbceaab50c658f",
+            "surface-window-80dc0da1913155f757c8d576"
+          ]
+        },
+        {
+          "findingId": "surface-finding-88153db808f93e1653d636c5",
+          "verdict": "uncertain",
+          "reasonCode": "insufficient-context",
+          "evidenceWindowIds": [
+            "surface-window-0cdb4e02b5ae83acc95e4d33",
+            "surface-window-0fe3170f12deebdf40e72ac8"
+          ]
+        },
+        {
+          "findingId": "surface-finding-8bb959d9db7e9f7ab403cdc8",
+          "verdict": "generic-overlap",
+          "reasonCode": "compound-suffix",
+          "evidenceWindowIds": [
+            "surface-window-140247e811dee8286bd805cb",
+            "surface-window-af57c9e7218996aa71bb6ef5"
+          ]
+        },
+        {
+          "findingId": "surface-finding-9515d113a70f586661bc0b27",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-4d1fe592e69a8b1a9f987577",
+            "surface-window-c5347b1f4c5186b593ba4f25"
+          ]
+        },
+        {
+          "findingId": "surface-finding-a9ad62bd3c1a0380b998f98b",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-1da5f51c9980fe77ff4d7502",
+            "surface-window-7a5d6c11de202aaf22e60fd5"
+          ]
+        },
+        {
+          "findingId": "surface-finding-aaf44e6212b48aac9b86993f",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-201aa8c54d67192099245be7",
+            "surface-window-268fe02feb3630cff36165e6"
+          ]
+        },
+        {
+          "findingId": "surface-finding-ba9327964e5fd9f05bd75ee8",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-28411d50839ccd376aabf3a3",
+            "surface-window-e5e4746b044bab1fef48281d"
+          ]
+        },
+        {
+          "findingId": "surface-finding-bf534bf610696ef4cd1b33e4",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-156ffab04fd01baeefddb35c",
+            "surface-window-317f77caef0f60a80ed1157b"
+          ]
+        },
+        {
+          "findingId": "surface-finding-c1315f924a7e10c1bf7b0ec5",
+          "verdict": "generic-overlap",
+          "reasonCode": "contextual-role-not-identity",
+          "evidenceWindowIds": [
+            "surface-window-215e8fc84ba516edee26fb3c",
+            "surface-window-28db929b305481c7a1df26b5"
+          ]
+        },
+        {
+          "findingId": "surface-finding-f08cad4d181b1c598bdb5f39",
+          "verdict": "generic-overlap",
+          "reasonCode": "common-lexeme",
+          "evidenceWindowIds": [
+            "surface-window-1b75006e8c9706fec14d66d2",
+            "surface-window-92cfa4e14c37906d800ac245"
+          ]
+        },
+        {
+          "findingId": "surface-finding-fce54be8f74467de81b47128",
+          "verdict": "uncertain",
+          "reasonCode": "insufficient-context",
+          "evidenceWindowIds": [
+            "surface-window-01509860c8844a56cc61906f",
+            "surface-window-56d9a6ad4bcfa0f0ff2ea36a"
+          ]
+        },
+        {
+          "findingId": "surface-finding-fe2bbe2f5af64607fe592a45",
+          "verdict": "generic-overlap",
+          "reasonCode": "contextual-role-not-identity",
+          "evidenceWindowIds": [
+            "surface-window-215e8fc84ba516edee26fb3c",
+            "surface-window-28db929b305481c7a1df26b5"
+          ]
+        }
+      ],
+      "verdictCounts": {
+        "genericOverlap": 14,
+        "protectedIdentity": 0,
+        "uncertain": 2
+      },
+      "outcome": "owner-approved"
+    },
+    "ownerDecision": {
+      "request": {
+        "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/surface-review/owner-hil/requests/bab53bed675e56a64b640c96d62cff8bc5aeef794ff3d18dd49a1caa3149cc5a.json",
+        "sha256": "bab53bed675e56a64b640c96d62cff8bc5aeef794ff3d18dd49a1caa3149cc5a",
+        "sizeBytes": 30170
+      },
+      "decision": {
+        "path": "exports/genre-souls/male-modern-fantasy-ko/v1/manager-qa-runs/56acacd9b22c7658dd25aa6ff31105ce2369a4d454b2e56a0c12e56b6a16c0a3/structured-runs/ed951ea84584b7d29eb0dacf64da991bb6b0f40151b6add24eb433a76d406c1d/surface-review/owner-hil/decisions/bab53bed675e56a64b640c96d62cff8bc5aeef794ff3d18dd49a1caa3149cc5a.json",
+        "sha256": "418cc0ab9b5c6dd9c5b0133923a36afdce4144994c9afc6dd09f302c27587735",
+        "sizeBytes": 2693,
+        "decisionId": "surface-decision-3a5b1d1ee5206765fb52a20a",
+        "outcome": "approved",
+        "decidedByRole": "owner"
+      }
+    },
+    "authority": {
+      "scope": "reference-lab-analysis-surface-only",
+      "mayWriteInkOSCanon": false,
+      "mayPromoteSoul": false
+    }
+  }
+}
