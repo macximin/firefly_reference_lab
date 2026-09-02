@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "genre-soul-reference-routing-catalog/v1",
+  "state": "candidate",
+  "genre": "fantasy-ko",
+  "soulId": "male-fantasy-ko",
+  "version": "v1",
+  "profile": {
+    "path": "analyses/genre_souls/male-fantasy-ko/v1/genre-profile.json",
+    "sha256": "9f854c62e88e2b6f99e621d60c3c8a3661b98f2bc1beadc04e512b82190494c9"
+  },
+  "routes": [
+    {
+      "role": "spine",
+      "sourceId": "gdrive-1tvlx7aVmtCQfgCkO5rB5Ea1iy5-K_19b",
+      "selectionBasis": "commercial-anchor",
+      "rationale": "정보 해석, 선제 개입, 자산 축적, 세력 확장과 권한 상승이 가장 완결된 복리형 상업 엔진을 이룬다.",
+      "planned": true,
+      "retrievalActive": false
+    },
+    {
+      "role": "style",
+      "sourceId": "gdrive-1cKpe8b5G76V2EraDdWjPJ_70_6qfjFJH",
+      "selectionBasis": "surface-anchor",
+      "rationale": "판단을 자원 이동과 즉시 행동으로 전환하고 현물 지급과 공개 인정을 선명하게 붙이는 표면 운용에 적합하다.",
+      "planned": true,
+      "retrievalActive": false
+    },
+    {
+      "role": "supporting",
+      "sourceId": "gdrive-1fwf7btYmJFpKLM8I3YYrF9qbsmOCtAE1",
+      "selectionBasis": "genre-breadth",
+      "rationale": "규칙 분석, 맞춤 공략, 기술 확산과 조직 계승을 보강해 하위 소재와 성장 경로의 폭을 넓힌다.",
+      "planned": true,
+      "retrievalActive": false
+    }
+  ],
+  "authority": {
+    "scope": "reference-lab-advisory-only",
+    "mayWriteInkOSCanon": false,
+    "mayActivateRetrieval": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  },
+  "privateRunInputDigest": "2d804bba65cec1625562f7e92e52ffee0bc1ce03a590d85080e10c194f9a4f6f"
+}

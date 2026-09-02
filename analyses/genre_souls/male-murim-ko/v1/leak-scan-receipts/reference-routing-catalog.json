@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "tracked-projection-leak-scan/v1",
+  "scanner": {
+    "version": "genre-soul-surface-scanner/v1",
+    "exactTokenCount": 12,
+    "longCommonUtf8Bytes": 120
+  },
+  "artifact": {
+    "path": "inkos_handoffs/genre-souls/male-murim-ko/v1/reference-routing-catalog.json",
+    "sha256": "8bffceaf88ceef0a86bde0700823c937f9508dac697df4a27ebd64cd64861837",
+    "sizeBytes": 1705
+  },
+  "corpus": {
+    "privateRegistrySha256": "21dbb85ca19383c6ff7c6702e8ab1092f6d11290016496074f15a8e4fd31652b",
+    "availableSourceCount": 32,
+    "observedSourceSetSha256": "3e5fcbad8f76dcece6de219746744336b0d9cc552a1e906a80b34de1b4839ea3"
+  },
+  "matchCount": 0,
+  "matches": [],
+  "truncated": false,
+  "status": "pass",
+  "automaticRewrite": false,
+  "automaticReject": false
+}

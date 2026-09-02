@@ -1,0 +1,2229 @@
+{
+  "schemaVersion": "genre-soul-analysis-profile/v1",
+  "state": "candidate",
+  "genre": "modern-fantasy-ko",
+  "soulId": "male-modern-fantasy-ko",
+  "version": "v1",
+  "generatedAt": "2026-08-31T12:53:02.946Z",
+  "evidenceSet": {
+    "managerSelection": {
+      "path": "evidence/genre-souls/male-manager-selection.v1.json",
+      "sha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b",
+      "sizeBytes": 4845
+    },
+    "inventory": {
+      "path": "evidence/genre-souls/male-source-inventory.v1.json",
+      "sha256": "5e91d6071bf123ecacf169baa06bcef6e08f99a198bc7307cd8391277e4a17c3",
+      "sizeBytes": 353334
+    },
+    "registryReceipt": {
+      "path": "evidence/genre-souls/male-source-registry-receipt.v1.json",
+      "sha256": "89770cb1129dd6b0caf3a2ee01bfd4cbc7bc7b059e27f486abf36c5e31a10707",
+      "sizeBytes": 1001,
+      "privateRegistrySha256": "21dbb85ca19383c6ff7c6702e8ab1092f6d11290016496074f15a8e4fd31652b"
+    },
+    "sources": [
+      {
+        "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "selectionBasis": "commercial-anchor",
+        "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+        "sourceSizeBytes": 10220730,
+        "chapterCount": 751,
+        "trackedStudy": {
+          "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/work-studies/gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN.deep-read.json",
+          "sha256": "782e30b59b312d9a0e0c66e50a7900c95a310c40410157ba5382e9dd6e7d7e9f",
+          "sizeBytes": 20629
+        },
+        "privateBundle": {
+          "path": "exports/genre-souls/male-modern-fantasy-ko/v1/deep-read-runs/gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN/deep-read-receipt.json",
+          "sha256": "f96e2b8cd2a9c8ee7382b11cd58b479a00bce1d281c91eb5ebbe3f0103e9b6eb",
+          "sizeBytes": 4748
+        },
+        "trackedLeakReceipt": {
+          "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/leak-scan-receipts/gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN.deep-read.json",
+          "sha256": "0fd1bb4fe4f8b489e41e60a722b197682dbf43cebc6a072e2b651c3d03d87575",
+          "sizeBytes": 821
+        }
+      },
+      {
+        "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+        "selectionBasis": "genre-breadth",
+        "sourceSha256": "e00881820810cd27f1efbe72a0a514aa4a0a9b1a08a77a747444766a84892c7f",
+        "sourceSizeBytes": 4979490,
+        "chapterCount": 380,
+        "trackedStudy": {
+          "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/work-studies/gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM.deep-read.json",
+          "sha256": "1b7dfa386f57a8e37086393eca04c3133f10d2a1f2013535703ea867a1aea4b3",
+          "sizeBytes": 10703
+        },
+        "privateBundle": {
+          "path": "exports/genre-souls/male-modern-fantasy-ko/v1/deep-read-runs/gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM/deep-read-receipt.json",
+          "sha256": "ad6140f076b56e4d4d0145cf8a9d86dcb8ad8dddfb3d6b4fd82a5f6a96670bca",
+          "sizeBytes": 2815
+        },
+        "trackedLeakReceipt": {
+          "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/leak-scan-receipts/gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM.deep-read.json",
+          "sha256": "c124a77b43afaa195be1dbeb1fc3e62b83830f66a222b9e192acd09af69ca87b",
+          "sizeBytes": 821
+        }
+      },
+      {
+        "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "selectionBasis": "surface-anchor",
+        "sourceSha256": "09ca4bb08e88f7791e38bc33c393ee1732af32823d7ed39a1c7026f4b7e37908",
+        "sourceSizeBytes": 2782069,
+        "chapterCount": 219,
+        "trackedStudy": {
+          "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/work-studies/gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf.deep-read.json",
+          "sha256": "b592663633d9f833746d741c15cbbe9871a15bfbd2bd9b29206c9d899e8de303",
+          "sizeBytes": 5606
+        },
+        "privateBundle": {
+          "path": "exports/genre-souls/male-modern-fantasy-ko/v1/deep-read-runs/gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf/deep-read-receipt.json",
+          "sha256": "c8f61b1b27fa0278554ef07fc33f270366d1fc15bae47f6e10546d8cd866b135",
+          "sizeBytes": 1847
+        },
+        "trackedLeakReceipt": {
+          "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/leak-scan-receipts/gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf.deep-read.json",
+          "sha256": "6eb06c798c67fc02e23cf8716e48ca11426bad62afa86658df69a793e47cf7b5",
+          "sizeBytes": 820
+        }
+      }
+    ]
+  },
+  "synthesis": {
+    "privateInput": {
+      "schemaVersion": "private-genre-soul-profile-input/v1",
+      "path": "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs/918131bb1a70b643ae1822e1f46ddb1c17e0dad1c6464892d34476826ae211bc/genre/input.json",
+      "sha256": "f3ff24c7fe1312bd4928f9d0df4411a982af12cba7091dbd42ccabdc0fda110e",
+      "sizeBytes": 31355,
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "observationCount": 700,
+      "selectorCount": 4140
+    },
+    "run": {
+      "runId": "20260831_215018_7587a7",
+      "model": "gpt-5.6-sol",
+      "provider": "openai-codex",
+      "reasoningEffort": "high",
+      "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+      "traceReceiptSha256": "4912899d712b05eda7c9dbd930d7e43d58e6c27aaf5a71d65eb827cc174a9afb"
+    },
+    "contentContract": {
+      "id": "fiction-content-neutral-ko/v1",
+      "sha256": "c5b531577cbfbfb1dfc4cd2b5cb82d7ce796c6958e0bc00c3e180b0e5440e199"
+    },
+    "truncation": false
+  },
+  "patterns": [
+    {
+      "patternId": "pattern-d4a7d751438817ffa174b4ae",
+      "dimension": "worldConstraints",
+      "classification": "genre-common",
+      "guidance": "미래 정보와 자본도 지분, 부채, 계약, 현금흐름, 인허가, 공급망과 여론을 통과해야 소유권과 통제권으로 바뀌게 한다.",
+      "commercialFunction": "판타지 우위를 현대 제도의 비용과 절차로 검증해 거래의 설득력과 규모 상승을 확보한다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-05-66a1af02cbaa",
+          "segmentId": "s0001",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 28361,
+              "endByte": 42976
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 56646,
+              "endByte": 70776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 85259,
+              "endByte": 99415
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 99415,
+              "endByte": 112993
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 112993,
+              "endByte": 126511
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 126511,
+              "endByte": 139555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 180039,
+              "endByte": 193319
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 193319,
+              "endByte": 206201
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 259474,
+              "endByte": 272735
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 272735,
+              "endByte": 285811
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 285811,
+              "endByte": 299190
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 299190,
+              "endByte": 312385
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 312385,
+              "endByte": 325668
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 325668,
+              "endByte": 339108
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 339108,
+              "endByte": 352036
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-03-c890465b3f15",
+          "segmentId": "s0001",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 45173,
+              "endByte": 55363
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 55363,
+              "endByte": 64394
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 73617,
+              "endByte": 82680
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 82680,
+              "endByte": 91584
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 119964,
+              "endByte": 129642
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 167755,
+              "endByte": 177658
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-09-420adde5cd0f",
+          "segmentId": "s0001",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 231864,
+              "endByte": 244591
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 244591,
+              "endByte": 257972
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 257972,
+              "endByte": 268957
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 268957,
+              "endByte": 279961
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 279961,
+              "endByte": 292083
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 343008,
+              "endByte": 355131
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-9488f2e3f42abab7e2831291",
+      "dimension": "protagonistRepeatedVerbs",
+      "classification": "genre-common",
+      "guidance": "관찰하고 예측하고 검증한 뒤 선점, 영입, 협상, 계약, 인수, 배치와 재투자를 즉시 실행한다.",
+      "commercialFunction": "정보 우위를 설명이 아니라 사람, 자본, 조직과 시장을 움직이는 능동적 선택으로 증명한다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-03-f0c45a99ea88",
+          "segmentId": "s0001",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 14307,
+              "endByte": 28361
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 28361,
+              "endByte": 42976
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 42976,
+              "endByte": 56646
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 56646,
+              "endByte": 70776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 70776,
+              "endByte": 85259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 85259,
+              "endByte": 99415
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 112993,
+              "endByte": 126511
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 139555,
+              "endByte": 153309
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 153309,
+              "endByte": 166411
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 166411,
+              "endByte": 180039
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 180039,
+              "endByte": 193319
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 193319,
+              "endByte": 206201
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-05-03d33394ac87",
+          "segmentId": "s0001",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 167755,
+              "endByte": 177658
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 177658,
+              "endByte": 186765
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 186765,
+              "endByte": 196428
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 196428,
+              "endByte": 205889
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 215345,
+              "endByte": 224952
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 224952,
+              "endByte": 235790
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 235790,
+              "endByte": 248713
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 248713,
+              "endByte": 261748
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-05-04aa70a6a906",
+          "segmentId": "s0001",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 104010,
+              "endByte": 116502
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 128113,
+              "endByte": 140309
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 140309,
+              "endByte": 153778
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 153778,
+              "endByte": 165864
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 165864,
+              "endByte": 179096
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 206506,
+              "endByte": 220241
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 220241,
+              "endByte": 231864
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 231864,
+              "endByte": 244591
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 244591,
+              "endByte": 257972
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 257972,
+              "endByte": 268957
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 268957,
+              "endByte": 279961
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 279961,
+              "endByte": 292083
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-9855fe02b2d2e66c95bf5437",
+      "dimension": "pressureAndOpposition",
+      "classification": "conditional",
+      "guidance": "소재에 따라 자금, 지분, 계약, 기술, 행정, 노동, 여론과 국가 이해를 조합하고 저항자가 자기 목표와 실제 반격 자원을 사용하게 한다.",
+      "commercialFunction": "정답을 아는 것과 실행 성공을 분리해 계획 수정의 비용과 협상 역전의 가치를 높인다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0012-02-298957152977",
+          "segmentId": "s0012",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 3875590,
+              "endByte": 3889987
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3889987,
+              "endByte": 3904004
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3904004,
+              "endByte": 3918042
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3918042,
+              "endByte": 3931817
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3931817,
+              "endByte": 3945040
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0005-07-cafcb25e80e2",
+          "segmentId": "s0005",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1501747,
+              "endByte": 1514796
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1541135,
+              "endByte": 1554104
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1554104,
+              "endByte": 1567094
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1567094,
+              "endByte": 1580105
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1580105,
+              "endByte": 1592838
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1592838,
+              "endByte": 1606593
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1606593,
+              "endByte": 1620069
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1620069,
+              "endByte": 1633545
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1646680,
+              "endByte": 1659600
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1659600,
+              "endByte": 1673260
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1698942,
+              "endByte": 1711807
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1724671,
+              "endByte": 1737603
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1750426,
+              "endByte": 1763416
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0010-03-07a47443c29b",
+          "segmentId": "s0010",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 3169409,
+              "endByte": 3182068
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3182068,
+              "endByte": 3194439
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3194439,
+              "endByte": 3207627
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3220249,
+              "endByte": 3234025
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3234025,
+              "endByte": 3246830
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3259641,
+              "endByte": 3273055
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3273055,
+              "endByte": 3286010
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-e6e23ab6eb6d6af766682437",
+      "dimension": "rewardAndStatusCurrency",
+      "classification": "genre-common",
+      "guidance": "보상을 현금, 수익률, 지분, 기업, 계약, 기술, 직책과 제도 권한으로 계량 지급하고 주변 인물과 시장의 태도 변화로 재확인한다.",
+      "commercialFunction": "물질적 전리품, 공개 인정과 선택권 확대를 중첩해 준비와 저항을 선명한 성취감으로 환전한다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-04-57a103103aa3",
+          "segmentId": "s0001",
+          "kind": "payoff-witness",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 28361,
+              "endByte": 42976
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 42976,
+              "endByte": 56646
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 56646,
+              "endByte": 70776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 70776,
+              "endByte": 85259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 85259,
+              "endByte": 99415
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 99415,
+              "endByte": 112993
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-07-e53ba28c8fc0",
+          "segmentId": "s0001",
+          "kind": "payoff-witness",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 261748,
+              "endByte": 274531
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 274531,
+              "endByte": 287434
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 287434,
+              "endByte": 299752
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 299752,
+              "endByte": 312925
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 312925,
+              "endByte": 325991
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-06-0d04e4ef35bc",
+          "segmentId": "s0001",
+          "kind": "payoff-witness",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 165864,
+              "endByte": 179096
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 179096,
+              "endByte": 191957
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 191957,
+              "endByte": 206506
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-24e37e6291f47e5bcae529aa",
+      "dimension": "nextChapterExpectedAction",
+      "classification": "genre-common",
+      "guidance": "현재 거래를 지급으로 닫은 직후 새 대상, 미해결 권리, 반격, 실행 시한이나 더 큰 시장을 제시하고 다음 행동 동사를 지정한다.",
+      "commercialFunction": "완료된 보상의 만족을 보존하면서 획득물을 다음 화의 탄약과 위험으로 전환한다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-10-89bd2beac4c9",
+          "segmentId": "s0001",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 285811,
+              "endByte": 299190
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 299190,
+              "endByte": 312385
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 312385,
+              "endByte": 325668
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 325668,
+              "endByte": 339108
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 339108,
+              "endByte": 352036
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-04-9b15aec1447b",
+          "segmentId": "s0001",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 91584,
+              "endByte": 101298
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 101298,
+              "endByte": 110711
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 110711,
+              "endByte": 119964
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 119964,
+              "endByte": 129642
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-04-bc9e7000e0ff",
+          "segmentId": "s0001",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 51289,
+              "endByte": 64594
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 64594,
+              "endByte": 79244
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 79244,
+              "endByte": 91303
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 91303,
+              "endByte": 104010
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 104010,
+              "endByte": 116502
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 116502,
+              "endByte": 128113
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 128113,
+              "endByte": 140309
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-691b45efcd06962abc5dc328",
+      "dimension": "commercialEngines",
+      "classification": "genre-common",
+      "guidance": "미래 변곡점과 저평가된 자산, 인재와 권리를 선점하고 실행 자원을 결합해 계량 지급을 얻은 뒤 획득물을 다음 확장에 재투입한다.",
+      "commercialFunction": "서로 다른 현대 산업 소재를 복리형 성장 순환에 묶어 독식, 통제권 확대와 규모 상승의 도파민을 지속한다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-01-06ee92a0d643",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 14307
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 14307,
+              "endByte": 28361
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 28361,
+              "endByte": 42976
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 42976,
+              "endByte": 56646
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 56646,
+              "endByte": 70776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 70776,
+              "endByte": 85259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 85259,
+              "endByte": 99415
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 99415,
+              "endByte": 112993
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 112993,
+              "endByte": 126511
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 126511,
+              "endByte": 139555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 139555,
+              "endByte": 153309
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 153309,
+              "endByte": 166411
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 166411,
+              "endByte": 180039
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 180039,
+              "endByte": 193319
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 193319,
+              "endByte": 206201
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 206201,
+              "endByte": 219396
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 219396,
+              "endByte": 232311
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 232311,
+              "endByte": 245643
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 245643,
+              "endByte": 259474
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 259474,
+              "endByte": 272735
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 272735,
+              "endByte": 285811
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 285811,
+              "endByte": 299190
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 299190,
+              "endByte": 312385
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 312385,
+              "endByte": 325668
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 325668,
+              "endByte": 339108
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 339108,
+              "endByte": 352036
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-01-5203018e10b3",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 8938
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8938,
+              "endByte": 17925
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 17925,
+              "endByte": 26971
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 45173,
+              "endByte": 55363
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 55363,
+              "endByte": 64394
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-01-561d195282aa",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 13268
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 13268,
+              "endByte": 26474
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 26474,
+              "endByte": 38949
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 38949,
+              "endByte": 51289
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 51289,
+              "endByte": 64594
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 64594,
+              "endByte": 79244
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 79244,
+              "endByte": 91303
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 91303,
+              "endByte": 104010
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 104010,
+              "endByte": 116502
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-2a93f21c8888e23a3f2320c3",
+      "dimension": "emotionalCoherence",
+      "classification": "conditional",
+      "guidance": "모욕, 상실, 결핍, 생존이나 보호 욕망을 먼저 세우고 책임 있는 선택, 자원 투입, 결과 목격, 관계 변화와 보상의 순서로 회수한다.",
+      "commercialFunction": "공격적 거래와 권력 행사를 인물 욕망에 연결하고 재무적 승리에 복수, 신뢰, 충성, 독립이나 가족 회복의 무게를 더한다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-02-6e883ca1739c",
+          "segmentId": "s0001",
+          "kind": "emotional-coherence",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 14307
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 28361,
+              "endByte": 42976
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 42976,
+              "endByte": 56646
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 56646,
+              "endByte": 70776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 70776,
+              "endByte": 85259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 139555,
+              "endByte": 153309
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 166411,
+              "endByte": 180039
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 193319,
+              "endByte": 206201
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 232311,
+              "endByte": 245643
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 272735,
+              "endByte": 285811
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-02-b7cdf60f7d03",
+          "segmentId": "s0001",
+          "kind": "emotional-coherence",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 8938
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8938,
+              "endByte": 17925
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 17925,
+              "endByte": 26971
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 26971,
+              "endByte": 36018
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-03-1bcd007d7a3c",
+          "segmentId": "s0001",
+          "kind": "emotional-coherence",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 13268,
+              "endByte": 26474
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 26474,
+              "endByte": 38949
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 38949,
+              "endByte": 51289
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 51289,
+              "endByte": 64594
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 64594,
+              "endByte": 79244
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 79244,
+              "endByte": 91303
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 91303,
+              "endByte": 104010
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 104010,
+              "endByte": 116502
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 153778,
+              "endByte": 165864
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 206506,
+              "endByte": 220241
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 220241,
+              "endByte": 231864
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 257972,
+              "endByte": 268957
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-418130a6d8051f335d496bbc",
+      "dimension": "arcAndGrowth",
+      "classification": "genre-common",
+      "guidance": "개인 생존과 자산 확보에서 조직 지휘, 기업 생태계, 공급망, 정책과 국제 시장의 설계로 통제 범위와 책임을 확장한다.",
+      "commercialFunction": "재산 증가를 직책, 인정, 조직 운용, 규칙 제정과 세계 단위 선택권의 상승으로 바꿔 장편 성장 사다리를 만든다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0024-11-f47341eb3754",
+          "segmentId": "s0024",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 8418189,
+              "endByte": 8431787
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8431787,
+              "endByte": 8445562
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8445562,
+              "endByte": 8459444
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8459444,
+              "endByte": 8473000
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0006-08-6ac0eb58499c",
+          "segmentId": "s0006",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1980784,
+              "endByte": 1993514
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1993514,
+              "endByte": 2006924
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0014-10-03a041bf31d5",
+          "segmentId": "s0014",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 4858353,
+              "endByte": 4871134
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4871134,
+              "endByte": 4885565
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4898850,
+              "endByte": 4912757
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4912757,
+              "endByte": 4925779
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4925779,
+              "endByte": 4938511
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-ca6f128ba6faf2be8d898d1d",
+      "dimension": "failurePatterns",
+      "classification": "failure",
+      "guidance": "정보와 계산을 반복 설명하거나 성공을 조기에 확정하지 말고 병렬 사업선을 제한하며 유능한 반격, 계획 수정, 실제 비용, 중간 지급과 명확한 회수를 남긴다.",
+      "commercialFunction": "빠른 상승과 강한 지급을 유지하면서 자동 승리, 설명 피로, 목표 분산과 감탄 반복이 긴장과 승리 희소성을 약화하는 것을 막는다.",
+      "sourceIds": [
+        "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+        "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+        "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-12-17d2aa887b33",
+          "segmentId": "s0001",
+          "kind": "failure-pattern",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 28361,
+              "endByte": 42976
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 42976,
+              "endByte": 56646
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 56646,
+              "endByte": 70776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 70776,
+              "endByte": 85259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 85259,
+              "endByte": 99415
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 99415,
+              "endByte": 112993
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 126511,
+              "endByte": 139555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 232311,
+              "endByte": 245643
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 272735,
+              "endByte": 285811
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 312385,
+              "endByte": 325668
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 325668,
+              "endByte": 339108
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 339108,
+              "endByte": 352036
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-10-471d763de5de",
+          "segmentId": "s0001",
+          "kind": "failure-pattern",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 177658,
+              "endByte": 186765
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 196428,
+              "endByte": 205889
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 205889,
+              "endByte": 215345
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 224952,
+              "endByte": 235790
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 274531,
+              "endByte": 287434
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 287434,
+              "endByte": 299752
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-12-d95c0104eae9",
+          "segmentId": "s0001",
+          "kind": "failure-pattern",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 13268
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 51289,
+              "endByte": 64594
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 128113,
+              "endByte": 140309
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 153778,
+              "endByte": 165864
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 165864,
+              "endByte": 179096
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 206506,
+              "endByte": 220241
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 220241,
+              "endByte": 231864
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 244591,
+              "endByte": 257972
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 257972,
+              "endByte": 268957
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 268957,
+              "endByte": 279961
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 279961,
+              "endByte": 292083
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 292083,
+              "endByte": 304647
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 304647,
+              "endByte": 317768
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 317768,
+              "endByte": 330361
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 330361,
+              "endByte": 343008
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 343008,
+              "endByte": 355131
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "primaryCommercialEngines": [
+    {
+      "engineId": "engine-5618606319fb85c83a40c369",
+      "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+      "mechanism": {
+        "protagonistRepeatedVerb": "미래 변곡점을 예측하고 저평가된 인재·자산·권리를 선점한 뒤 자본·조직·계약·제도를 결합해 지배권으로 전환한다.",
+        "pressure": "부채, 유동성 위기, 공급 병목, 규제, 여론, 조직 관성, 경쟁 자본과 국가 이해관계가 실행 시점과 획득 조건을 압박한다.",
+        "activeChoice": "현재 손실과 공개 책임을 감수하고 상대의 욕망과 약점을 반영한 거래 구조를 먼저 설계해 위기를 확장 기회로 바꾼다.",
+        "resistance": "전문가·기업·금융기관·정치세력·정부가 자금, 법률, 허가, 정보, 여론, 물류와 대체 선택지를 동원해 실제 비용과 지연을 만든다.",
+        "payoff": "수익, 지분, 기업, 생산능력, 공급권, 시장점유율, 정책 특혜와 반복 수익 구조가 수치와 계약으로 지급된다.",
+        "recognition": "가족·조직·시장·언론·정부와 경쟁자가 성과를 목격하고 신뢰, 충성, 직책, 접근권과 규칙 설계 권한을 확대한다."
+      },
+      "signatureSha256": "5618606319fb85c83a40c369f818d10b73425938c1e64a1e8a578064462c9044",
+      "evidence": [
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0001-01-06ee92a0d643",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 14307
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 14307,
+              "endByte": 28361
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 28361,
+              "endByte": 42976
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 42976,
+              "endByte": 56646
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 56646,
+              "endByte": 70776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 70776,
+              "endByte": 85259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 85259,
+              "endByte": 99415
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 99415,
+              "endByte": 112993
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 112993,
+              "endByte": 126511
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 126511,
+              "endByte": 139555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 139555,
+              "endByte": 153309
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 153309,
+              "endByte": 166411
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 166411,
+              "endByte": 180039
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 180039,
+              "endByte": 193319
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 193319,
+              "endByte": 206201
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 206201,
+              "endByte": 219396
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 219396,
+              "endByte": 232311
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 232311,
+              "endByte": 245643
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 245643,
+              "endByte": 259474
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 259474,
+              "endByte": 272735
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 272735,
+              "endByte": 285811
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 285811,
+              "endByte": 299190
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 299190,
+              "endByte": 312385
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 312385,
+              "endByte": 325668
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 325668,
+              "endByte": 339108
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 339108,
+              "endByte": 352036
+            }
+          ],
+          "span": "early"
+        },
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0011-01-3ead5560e98d",
+          "segmentId": "s0011",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 3523616,
+              "endByte": 3536836
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3536836,
+              "endByte": 3550330
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3550330,
+              "endByte": 3563364
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3563364,
+              "endByte": 3576835
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3589791,
+              "endByte": 3603516
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3671289,
+              "endByte": 3685299
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3685299,
+              "endByte": 3698682
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3711698,
+              "endByte": 3725005
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3766229,
+              "endByte": 3779494
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3779494,
+              "endByte": 3792799
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3792799,
+              "endByte": 3806808
+            }
+          ],
+          "span": "middle"
+        },
+        {
+          "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+          "observationId": "obs-1BzfNJPOBwau-0024-01-8655d0a5e590",
+          "segmentId": "s0024",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 8125360,
+              "endByte": 8140006
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8153356,
+              "endByte": 8167480
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8181333,
+              "endByte": 8194770
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8194770,
+              "endByte": 8207681
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8207681,
+              "endByte": 8221389
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8221389,
+              "endByte": 8235776
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8235776,
+              "endByte": 8249166
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8249166,
+              "endByte": 8262669
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8262669,
+              "endByte": 8277728
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8390822,
+              "endByte": 8404439
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8404439,
+              "endByte": 8418189
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8418189,
+              "endByte": 8431787
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8431787,
+              "endByte": 8445562
+            }
+          ],
+          "span": "late"
+        }
+      ]
+    },
+    {
+      "engineId": "engine-24c41431db53e1e4b5689f4f",
+      "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+      "mechanism": {
+        "protagonistRepeatedVerb": "미래의 변곡점과 성장 자산을 예측하고 사람·자본·정보·계약을 배치해 선점과 통제권 확장으로 전환한다.",
+        "pressure": "법적 권한과 제도, 자금과 기한, 경쟁 자본과 공권력, 가족의 욕망과 안전 문제가 실행 비용을 지속적으로 높인다.",
+        "activeChoice": "주인공은 위기를 피하지 않고 거래 조건·법인 구조·인력·증거·여론을 직접 설계해 공격을 더 큰 진입 기회로 바꾼다.",
+        "resistance": "유능한 상대와 조력자는 자금·계약 권리·행정 절차·기술 반론·정치적 체면을 동원해 양보와 계획 수정을 요구한다.",
+        "payoff": "승리는 현금·지분·기업·직책·기술·개발권·조직과 제도화된 권한으로 지급되고 다음 확장의 자산이 된다.",
+        "recognition": "가족·실무자·시장·기관·권력자·경쟁자가 결과를 목격하고 호칭·협력·평판·의사결정권과 선택권을 상향한다."
+      },
+      "signatureSha256": "24c41431db53e1e4b5689f4ffe7158a762536a23dcf8f7cc01e9f9dbd9cc5958",
+      "evidence": [
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0001-01-561d195282aa",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 13268
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 13268,
+              "endByte": 26474
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 26474,
+              "endByte": 38949
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 38949,
+              "endByte": 51289
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 51289,
+              "endByte": 64594
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 64594,
+              "endByte": 79244
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 79244,
+              "endByte": 91303
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 91303,
+              "endByte": 104010
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 104010,
+              "endByte": 116502
+            }
+          ],
+          "span": "early"
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0006-01-5ca993a81401",
+          "segmentId": "s0006",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1753291,
+              "endByte": 1766481
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1778418,
+              "endByte": 1791218
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1881636,
+              "endByte": 1893791
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1893791,
+              "endByte": 1907341
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1907341,
+              "endByte": 1919161
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1919161,
+              "endByte": 1933827
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1984657,
+              "endByte": 1997703
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1997703,
+              "endByte": 2009907
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2021584,
+              "endByte": 2033856
+            }
+          ],
+          "span": "middle"
+        },
+        {
+          "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+          "observationId": "obs-1SRFbbNIAztK-0013-01-dc6ee428dfe1",
+          "segmentId": "s0013",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 4258947,
+              "endByte": 4272687
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4272687,
+              "endByte": 4286106
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4286106,
+              "endByte": 4299230
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4311792,
+              "endByte": 4324435
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4361713,
+              "endByte": 4375027
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4387676,
+              "endByte": 4400938
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4427253,
+              "endByte": 4440964
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4479662,
+              "endByte": 4492829
+            }
+          ],
+          "span": "late"
+        }
+      ]
+    },
+    {
+      "engineId": "engine-86d3e75d08329c31e5f40d71",
+      "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+      "mechanism": {
+        "protagonistRepeatedVerb": "미래 변곡점과 인물 욕망을 읽고 자본·지분·인사권을 선점한 뒤 자산과 조직을 연결한다.",
+        "pressure": "생존 위협, 승계 분쟁, 유동성 위기와 노동·금융·정치·경쟁 세력의 이해관계가 소유권과 평온을 압박한다.",
+        "activeChoice": "비핵심 자산을 처분해 현금을 만들고 위기를 거래판으로 바꾸며 인재 영입, 조건 교환, 지분 매집과 기업 인수를 선제 실행한다.",
+        "resistance": "유능한 상대가 자본·정보·절차·담합·파업·정책·입찰 경쟁으로 가격과 선택 비용을 높여 계획 수정과 추가 지불을 강요한다.",
+        "payoff": "현금, 지분율, 직위, 기업 소유권, 계약, 기술과 유통망이 수치로 지급되고 다음 거래의 지렛대가 된다.",
+        "recognition": "가까운 관계자의 후회에서 시작해 직원·투자자·경쟁자·정책 결정자·세계 시장의 경계와 의존으로 권한 확대가 공개 인증된다."
+      },
+      "signatureSha256": "86d3e75d08329c31e5f40d7120da9d06c8cadde94312900e5413a6dca559cab7",
+      "evidence": [
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0001-01-5203018e10b3",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 8938
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 8938,
+              "endByte": 17925
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 17925,
+              "endByte": 26971
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 45173,
+              "endByte": 55363
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 55363,
+              "endByte": 64394
+            }
+          ],
+          "span": "early"
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0005-01-690f581f7841",
+          "segmentId": "s0005",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1411173,
+              "endByte": 1424531
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1424531,
+              "endByte": 1437347
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1463340,
+              "endByte": 1475946
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1475946,
+              "endByte": 1488802
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1488802,
+              "endByte": 1501747
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1673260,
+              "endByte": 1686050
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1686050,
+              "endByte": 1698942
+            }
+          ],
+          "span": "middle"
+        },
+        {
+          "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+          "observationId": "obs-1IveOliU4R7F-0006-01-1a4d5081e3d8",
+          "segmentId": "s0006",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1878791,
+              "endByte": 1891385
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1891385,
+              "endByte": 1904181
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1929507,
+              "endByte": 1942369
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1942369,
+              "endByte": 1955058
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1993514,
+              "endByte": 2006924
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2045372,
+              "endByte": 2058544
+            }
+          ],
+          "span": "late"
+        }
+      ]
+    }
+  ],
+  "dimensions": {
+    "worldConstraints": [
+      "pattern-d4a7d751438817ffa174b4ae"
+    ],
+    "protagonistRepeatedVerbs": [
+      "pattern-9488f2e3f42abab7e2831291"
+    ],
+    "pressureAndOpposition": [
+      "pattern-9855fe02b2d2e66c95bf5437"
+    ],
+    "rewardAndStatusCurrency": [
+      "pattern-e6e23ab6eb6d6af766682437"
+    ],
+    "nextChapterExpectedAction": [
+      "pattern-24e37e6291f47e5bcae529aa"
+    ],
+    "commercialEngines": [
+      "pattern-691b45efcd06962abc5dc328"
+    ],
+    "emotionalCoherence": [
+      "pattern-2a93f21c8888e23a3f2320c3"
+    ],
+    "arcAndGrowth": [
+      "pattern-418130a6d8051f335d496bbc"
+    ],
+    "failurePatterns": [
+      "pattern-ca6f128ba6faf2be8d898d1d"
+    ]
+  },
+  "contentNeutrality": {
+    "automaticMoralGate": false,
+    "illegalityIsAutomaticFailure": false,
+    "userIntensityPreserved": true
+  },
+  "authority": {
+    "scope": "analysis-only",
+    "mayWriteInkOSCanon": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  }
+}

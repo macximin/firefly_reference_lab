@@ -15,6 +15,7 @@ import {
   readCompletedGenreSoulProfileRun,
   runGenreSoulProfile,
   selectWorkSampleSelectorIds,
+  validateSealedProjectionObservationCatalogEntry,
   validatePrivateGenreSynthesisResult,
   validatePrivateWorkPartResult,
   validatePrivateWorkSynthesisResult,
@@ -1381,7 +1382,7 @@ test("completion readback rejects mixed sealed deep-read attestations", async ()
   const evidence = makeEvidence();
   const reboundSourceId = evidence.bindings[0].sourceId;
   try {
-    const run = await runGenreSoulProfile({
+    await assert.rejects(runGenreSoulProfile({
       genre: "modern-fantasy-ko",
       testOnly: true,
       testOnlyRepositoryRoot: root,
@@ -1398,18 +1399,147 @@ test("completion readback rejects mixed sealed deep-read attestations", async ()
       },
       testOnlyExecutor: makeFakeExecutor({ calls: 0 }),
       testOnlyScanner: async (input) => passingScan(input),
+    }), /cannot mix legacy-unattested and current-attested/u);
+    const profilePath = "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json";
+    assert.equal(await pathExists(join(root, profilePath)), false);
+    const profileRunsRoot = join(root, "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs");
+    const runDirectories = await readdir(profileRunsRoot, { withFileTypes: true });
+    for (const runDirectory of runDirectories.filter((entry) => entry.isDirectory())) {
+      assert.equal(await pathExists(join(profileRunsRoot, runDirectory.name, "completed.json")), false);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("sealed projection observation catalogs reject membership drift and extra fields", () => {
+  const sourceId = "gdrive-mixed-band-contract";
+  const observationId = "obs-mixed-band-contract";
+  const observation = {
+    sourceId,
+    observationId,
+    segmentId: "s0002",
+    kind: "commercial-engine",
+    coverageBand: "middle",
+    selectors: [
+      { sourceId, observationId, coverageBand: "early" },
+      { sourceId, observationId, coverageBand: "middle" },
+    ],
+  };
+  const catalogObservation = {
+    observationId,
+    segmentId: "s0002",
+    kind: "commercial-engine",
+    coverageBand: "middle",
+    selectors: [{ coverageBand: "early" }, { coverageBand: "middle" }],
+  };
+  assert.equal(validateSealedProjectionObservationCatalogEntry({
+    catalogObservation,
+    observation,
+    sourceId,
+  }), true);
+  assert.throws(() => validateSealedProjectionObservationCatalogEntry({
+    catalogObservation: { ...catalogObservation, selectors: [{ coverageBand: "middle" }] },
+    observation,
+    sourceId,
+  }), /projection observation drifted/u);
+  assert.throws(() => validateSealedProjectionObservationCatalogEntry({
+    catalogObservation: { ...catalogObservation, rawSourceText: "forbidden" },
+    observation,
+    sourceId,
+  }), /keys must be exactly/u);
+  const encodedObservationId = `obs-${sourceId.slice(7, 19)}-0002-01-0123456789ab`;
+  const encodedSelectors = observation.selectors.map((selector) => ({
+    ...selector,
+    observationId: encodedObservationId,
+  }));
+  assert.equal(validateSealedProjectionObservationCatalogEntry({
+    catalogObservation: { ...catalogObservation, observationId: encodedObservationId },
+    observation: {
+      ...observation,
+      observationId: encodedObservationId,
+      segmentId: undefined,
+      selectors: encodedSelectors,
+    },
+    sourceId,
+  }), true);
+  assert.throws(() => validateSealedProjectionObservationCatalogEntry({
+    catalogObservation: {
+      ...catalogObservation,
+      observationId: encodedObservationId,
+      segmentId: "s0003",
+    },
+    observation: {
+      ...observation,
+      observationId: encodedObservationId,
+      segmentId: undefined,
+      selectors: encodedSelectors,
+    },
+    sourceId,
+  }), /projection observation drifted/u);
+});
+
+test("public completion readback rejects private pre-publication byte overrides", async () => {
+  await assert.rejects(readCompletedGenreSoulProfileRun({
+    repositoryRoot: ACTUAL_REPOSITORY_ROOT,
+    profilePath: "analyses/genre_souls/forbidden/v1/genre-profile.json",
+    profileBytes: Buffer.from("{}\n"),
+    profile: {},
+    completionBytesOverride: Buffer.from("{}\n"),
+    artifactBytesOverride: new Map(),
+  }), /options are not injectable: artifactBytesOverride, completionBytesOverride/u);
+});
+
+test("completion readback accepts an exact mixed selector-band observation catalog", async () => {
+  const root = await mkdtemp(join(tmpdir(), "genre-profile-mixed-selector-bands-"));
+  const evidence = makeEvidence();
+  const work = evidence.bindings.find((binding) => binding.sourceId === "gdrive-surface");
+  const observation = work.observations.find((candidate) => candidate.coverageBand === "middle");
+  const middleSelector = observation.selectors[0];
+  const earlyText = "MIXED_BAND_PRIVATE_SELECTOR";
+  observation.selectors.unshift({
+    ...middleSelector,
+    selectorId: `${middleSelector.selectorId}-early`,
+    startByte: middleSelector.startByte - 50,
+    endByte: middleSelector.startByte - 50 + Buffer.byteLength(earlyText),
+    sliceSha256: hash(earlyText),
+    coverageBand: "early",
+    testSourceText: earlyText,
+  });
+  evidence.observations = evidence.bindings.flatMap((binding) => binding.observations);
+  try {
+    const run = await runGenreSoulProfile({
+      genre: "modern-fantasy-ko",
+      testOnly: true,
+      testOnlyRepositoryRoot: root,
+      testOnlySoulText: TEST_SOUL_TEXT,
+      testOnlyEvidenceLoader: async () => evidence,
+      testOnlyRuntimeEvidenceLoader: async () => runtimeEvidence(),
+      testOnlyWorkPartitionInputBuilder: fakePartitionInput,
+      testOnlyExecutor: makeFakeExecutor({ calls: 0 }),
+      testOnlyScanner: async (input) => passingScan(input),
     });
+    const consolidationInputPath = run.completion.artifacts.find((artifact) => (
+      artifact.path.includes(`/works/${work.sourceId}/consolidation/`)
+      && artifact.path.endsWith("/input.json")
+    ))?.path;
+    assert.ok(consolidationInputPath);
+    const consolidationInput = JSON.parse(await readFile(join(root, consolidationInputPath), "utf8"));
+    const catalogObservation = consolidationInput.observationCatalog.find((candidate) => (
+      candidate.observationId === observation.observationId
+    ));
+    assert.deepEqual(catalogObservation.selectors, [
+      { coverageBand: "early" },
+      { coverageBand: "middle" },
+    ]);
     const profilePath = `analyses/genre_souls/${run.profile.soulId}/v1/genre-profile.json`;
-    await assert.rejects(
-      readCompletedGenreSoulProfileRun({
-        repositoryRoot: root,
-        profilePath,
-        profileBytes: await readFile(join(root, profilePath)),
-        profile: run.profile,
-        soulText: TEST_SOUL_TEXT,
-      }),
-      /cannot mix legacy-unattested and current-attested/u,
-    );
+    assert.equal((await readCompletedGenreSoulProfileRun({
+      repositoryRoot: root,
+      profilePath,
+      profileBytes: await readFile(join(root, profilePath)),
+      profile: run.profile,
+      soulText: TEST_SOUL_TEXT,
+    })).inputDigest, run.inputDigest);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -2180,18 +2310,21 @@ test("runtime bytes and canonical prompt-contract bytes change the top-level run
     const baseline = await run(roots[0], baselineRuntime);
     const runtimeChanged = await run(roots[1], changedRuntime);
     const projectContextChanged = await run(roots[2], changedProjectContextRuntime);
-    const promptChanged = await run(roots[3], baselineRuntime, (input) => {
+    await assert.rejects(run(roots[3], baselineRuntime, (input) => {
       const evidenceValue = buildProfilePromptContractEvidence(input);
       evidenceValue.contracts.genreSynthesis.sha256 = fixedSha("e");
       return evidenceValue;
-    });
+    }), /prompt contract drifted/u);
+    const [promptChangedDigest] = await readdir(join(
+      roots[3],
+      "exports/genre-souls/male-modern-fantasy-ko/v1/profile-runs",
+    ));
     assert.equal(baseline.status, "completed");
     assert.equal(runtimeChanged.status, "completed");
     assert.equal(projectContextChanged.status, "completed");
-    assert.equal(promptChanged.status, "completed");
     assert.notEqual(runtimeChanged.inputDigest, baseline.inputDigest);
     assert.notEqual(projectContextChanged.inputDigest, baseline.inputDigest);
-    assert.notEqual(promptChanged.inputDigest, baseline.inputDigest);
+    assert.notEqual(promptChangedDigest, baseline.inputDigest);
   } finally {
     await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true })));
   }

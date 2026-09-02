@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "genre-soul-reference-routing-catalog/v1",
+  "state": "candidate",
+  "genre": "modern-fantasy-ko",
+  "soulId": "male-modern-fantasy-ko",
+  "version": "v1",
+  "profile": {
+    "path": "analyses/genre_souls/male-modern-fantasy-ko/v1/genre-profile.json",
+    "sha256": "54ab91f1ac4ce5d59936190e4efa5663beaeabd2a1ed2e203b2b6f952dedb262"
+  },
+  "routes": [
+    {
+      "role": "spine",
+      "sourceId": "gdrive-1BzfNJPOBwauB9HxQq6_HZIDLllb46vJN",
+      "selectionBasis": "commercial-anchor",
+      "rationale": "복리형 자산 선점, 제도 돌파, 계량 지급과 통제권 확대의 상업 엔진이 가장 선명하다.",
+      "planned": true,
+      "retrievalActive": false
+    },
+    {
+      "role": "style",
+      "sourceId": "gdrive-1IveOliU4R7FSbNU6nAtAVSFp9cp4iUDf",
+      "selectionBasis": "surface-anchor",
+      "rationale": "빠른 판단과 거래 실행, 수치 지급, 태도 변화와 다음 행동 훅의 표면 결속이 강하다.",
+      "planned": true,
+      "retrievalActive": false
+    },
+    {
+      "role": "supporting",
+      "sourceId": "gdrive-1SRFbbNIAztKYRIQGzhDdhsEz6BjOOKLM",
+      "selectionBasis": "genre-breadth",
+      "rationale": "법인, 기술, 공급망, 정치와 외교까지 제도적 저항과 성장 범위를 넓히는 보조 근거가 풍부하다.",
+      "planned": true,
+      "retrievalActive": false
+    }
+  ],
+  "authority": {
+    "scope": "reference-lab-advisory-only",
+    "mayWriteInkOSCanon": false,
+    "mayActivateRetrieval": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  },
+  "privateRunInputDigest": "918131bb1a70b643ae1822e1f46ddb1c17e0dad1c6464892d34476826ae211bc"
+}

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "genre-soul-reference-routing-catalog/v1",
+  "state": "candidate",
+  "genre": "murim-ko",
+  "soulId": "male-murim-ko",
+  "version": "v1",
+  "profile": {
+    "path": "analyses/genre_souls/male-murim-ko/v1/genre-profile.json",
+    "sha256": "7b36b5ec9d37d2c88a98b23167a5bdab0667d7c85cea929e511c2b94eb882e1d"
+  },
+  "routes": [
+    {
+      "role": "spine",
+      "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+      "selectionBasis": "commercial-anchor",
+      "rationale": "조사와 판 설계, 유능한 대응, 공개 승리, 자산·권한 회수와 상위 전선 확장이 가장 완결된 상업 척추를 이룬다.",
+      "planned": true,
+      "retrievalActive": false
+    },
+    {
+      "role": "style",
+      "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+      "selectionBasis": "surface-anchor",
+      "rationale": "짧은 문단과 대사, 즉시 판정, 목격 반응이 빠른 모바일 표면과 선명한 지급 리듬을 제공한다.",
+      "planned": true,
+      "retrievalActive": false
+    },
+    {
+      "role": "supporting",
+      "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+      "selectionBasis": "genre-breadth",
+      "rationale": "전승 복원, 후계 육성, 공동체 재건과 질서 재편을 통해 문파 중심 무협의 장기 확장 폭을 보강한다.",
+      "planned": true,
+      "retrievalActive": false
+    }
+  ],
+  "authority": {
+    "scope": "reference-lab-advisory-only",
+    "mayWriteInkOSCanon": false,
+    "mayActivateRetrieval": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  },
+  "privateRunInputDigest": "7a49bedda13de355597efe6567d72943e89f73e8adb88e42098edf47a14eef62"
+}

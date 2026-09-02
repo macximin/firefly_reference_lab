@@ -2841,8 +2841,62 @@ async function validateSealedHermesGroup({
   return { receipt, result, trace, usage };
 }
 
-export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profilePath, profileBytes, profile, profileHome, soulText }) {
+export function validateSealedProjectionObservationCatalogEntry({ catalogObservation, observation, sourceId }) {
+  assertExactKeys(
+    catalogObservation,
+    ["observationId", "segmentId", "kind", "coverageBand", "selectors"],
+    "Profile work consolidation observation catalog entry",
+  );
+  const selectors = Array.isArray(observation?.selectors) ? observation.selectors : null;
+  const expectedSelectorCatalog = selectors === null
+    ? null
+    : [...new Set(selectors.map((selector) => selector.coverageBand))]
+      .sort(compareStrings)
+      .map((coverageBand) => ({ coverageBand }));
+  const observationIdPrefix = `obs-${String(sourceId).slice(7, 19)}-`;
+  const observationIdSuffix = typeof observation?.observationId === "string"
+    && observation.observationId.startsWith(observationIdPrefix)
+    ? observation.observationId.slice(observationIdPrefix.length)
+    : "";
+  const encodedSegment = /^([0-9]{4})-[0-9]{2}-[0-9a-f]{12}$/u.exec(observationIdSuffix);
+  const sealedSegmentId = observation?.segmentId === undefined
+    ? (encodedSegment === null ? null : `s${encodedSegment[1]}`)
+    : observation.segmentId;
+  if (
+    !observation
+    || observation.kind !== catalogObservation.kind
+    || observation.coverageBand !== catalogObservation.coverageBand
+    || (observation.sourceId !== undefined && observation.sourceId !== sourceId)
+    || sealedSegmentId !== catalogObservation.segmentId
+    || selectors === null
+    || selectors.length < 1
+    || selectors.some((selector) => (
+      selector.sourceId !== sourceId
+      || selector.observationId !== observation.observationId
+      || !COVERAGE_BANDS.includes(selector.coverageBand)
+    ))
+    || !isDeepStrictEqual(catalogObservation.selectors, expectedSelectorCatalog)
+  ) throw new Error(`Profile sealed projection observation drifted: ${sourceId}/${catalogObservation.observationId}`);
+  return true;
+}
+
+async function validateCompletedGenreSoulProfileRun({
+  repositoryRoot,
+  profilePath,
+  profileBytes,
+  profile,
+  profileHome,
+  soulText,
+  completionBytesOverride = null,
+  artifactBytesOverride = null,
+}) {
   const root = resolve(repositoryRoot);
+  if (completionBytesOverride !== null && !Buffer.isBuffer(completionBytesOverride)) {
+    throw new Error("Profile completion validation override must provide exact Buffer bytes.");
+  }
+  if (artifactBytesOverride !== null && !(artifactBytesOverride instanceof Map)) {
+    throw new Error("Profile completion artifact overrides must use an exact path-to-Buffer Map.");
+  }
   validateGenreProfileArtifact(profile);
   if (!Buffer.isBuffer(profileBytes)) throw new Error("Candidate genre profile bytes are required for completion readback.");
   if (profileBytes.compare(jsonBytes(profile)) !== 0) {
@@ -2853,11 +2907,16 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
   const { inputDigest, runRoot } = exactRunRelativePath(profile);
   const completedPath = `${runRoot}/completed.json`;
   const completedAbsolute = safeRelativePath(root, completedPath, "Profile completion pointer").absolute;
-  const completedInfo = await assertRealRepositoryPath(root, completedAbsolute, "Profile completion pointer", {
-    requireRegularFile: true,
-  });
-  if (!completedInfo) throw new Error("Candidate genre profile has no top-level completed.json seal; Manager QA is forbidden.");
-  const completionBytes = await readFile(completedAbsolute);
+  let completionBytes;
+  if (completionBytesOverride === null) {
+    const completedInfo = await assertRealRepositoryPath(root, completedAbsolute, "Profile completion pointer", {
+      requireRegularFile: true,
+    });
+    if (!completedInfo) throw new Error("Candidate genre profile has no top-level completed.json seal; Manager QA is forbidden.");
+    completionBytes = await readFile(completedAbsolute);
+  } else {
+    completionBytes = Buffer.from(completionBytesOverride);
+  }
   let completion;
   try {
     completion = JSON.parse(completionBytes.toString("utf8"));
@@ -2880,16 +2939,29 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
   for (const [index, artifact] of completion.artifacts.entries()) {
     assertArtifactEntry(artifact, `Profile completion artifacts[${index}]`);
     if (artifactBytes.has(artifact.path)) throw new Error("Profile completion pointer artifact paths must be unique.");
-    const absolute = safeRelativePath(root, artifact.path, `Profile completion artifacts[${index}].path`).absolute;
-    const info = await assertRealRepositoryPath(root, absolute, `Profile completion artifacts[${index}].path`, {
-      requireRegularFile: true,
-    });
-    if (!info) throw new Error(`Profile completion artifact is missing: ${artifact.path}`);
-    const bytes = await readFile(absolute);
+    const hasOverride = artifactBytesOverride?.has(artifact.path) === true;
+    let bytes;
+    if (hasOverride) {
+      const supplied = artifactBytesOverride.get(artifact.path);
+      if (!Buffer.isBuffer(supplied)) {
+        throw new Error(`Profile completion artifact override is not exact Buffer bytes: ${artifact.path}`);
+      }
+      bytes = Buffer.from(supplied);
+    } else {
+      const absolute = safeRelativePath(root, artifact.path, `Profile completion artifacts[${index}].path`).absolute;
+      const info = await assertRealRepositoryPath(root, absolute, `Profile completion artifacts[${index}].path`, {
+        requireRegularFile: true,
+      });
+      if (!info) throw new Error(`Profile completion artifact is missing: ${artifact.path}`);
+      bytes = await readFile(absolute);
+    }
     if (bytes.byteLength !== artifact.sizeBytes || sha256(bytes) !== artifact.sha256) {
       throw new Error(`Profile completion artifact drifted: ${artifact.path}`);
     }
     artifactBytes.set(artifact.path, bytes);
+  }
+  if (artifactBytesOverride !== null && [...artifactBytesOverride.keys()].some((path) => !artifactBytes.has(path))) {
+    throw new Error("Profile completion artifact overrides contain a path outside the sealed artifact set.");
   }
 
   const manifestPath = `${runRoot}/manifest.json`;
@@ -3194,20 +3266,11 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
     ) throw new Error(`Profile work sealed projection binding is incomplete or drifted: ${work.sourceId}`);
     const projectionObservations = consolidationInput.observationCatalog.map((catalogObservation) => {
       const observation = sealedObservationsById.get(catalogObservation.observationId);
-      if (
-        !observation
-        || observation.kind !== catalogObservation.kind
-        || observation.coverageBand !== catalogObservation.coverageBand
-        || (observation.sourceId !== undefined && observation.sourceId !== work.sourceId)
-        || (observation.segmentId !== undefined && observation.segmentId !== catalogObservation.segmentId)
-        || !Array.isArray(observation.selectors)
-        || observation.selectors.length < 1
-        || observation.selectors.some((selector) => (
-          selector.sourceId !== work.sourceId
-          || selector.observationId !== observation.observationId
-          || selector.coverageBand !== observation.coverageBand
-        ))
-      ) throw new Error(`Profile sealed projection observation drifted: ${work.sourceId}/${catalogObservation.observationId}`);
+      validateSealedProjectionObservationCatalogEntry({
+        catalogObservation,
+        observation,
+        sourceId: work.sourceId,
+      });
       return {
         ...observation,
         sourceId: work.sourceId,
@@ -3760,6 +3823,25 @@ export async function readCompletedGenreSoulProfileRun({ repositoryRoot, profile
     throw new Error("Profile completion pointer exact artifact set drifted from its manifest and accepted Hermes runs.");
   }
   return { inputDigest, runRoot, completion, manifest, routing };
+}
+
+export async function readCompletedGenreSoulProfileRun(options) {
+  if (!isObject(options)) throw new Error("Profile completion readback options are required.");
+  const allowedKeys = new Set([
+    "repositoryRoot", "profilePath", "profileBytes", "profile", "profileHome", "soulText",
+  ]);
+  const unsupportedKeys = Object.keys(options).filter((key) => !allowedKeys.has(key)).sort(compareStrings);
+  if (unsupportedKeys.length > 0) {
+    throw new Error(`Profile completion readback options are not injectable: ${unsupportedKeys.join(", ")}.`);
+  }
+  return validateCompletedGenreSoulProfileRun({
+    repositoryRoot: options.repositoryRoot,
+    profilePath: options.profilePath,
+    profileBytes: options.profileBytes,
+    profile: options.profile,
+    profileHome: options.profileHome,
+    soulText: options.soulText,
+  });
 }
 
 async function sealCompletedRun(repositoryRoot, completedPath, expected, tracked, hooks = {}) {
@@ -4780,18 +4862,6 @@ export async function runGenreSoulProfile(options) {
     ...candidates.map(({ path, bytes }) => ({ path, bytes })),
     ...candidates.map((candidate, index) => ({ path: `${receiptRoot}/${candidate.receiptName}`, bytes: jsonBytes(scanResults[index]) })),
   ];
-  const publishStatus = await publishProfileBundle(repositoryRoot, publishFiles, {
-    markerPath: artifacts.profilePath,
-    lockPath: `exports/genre-souls/${config.soulId}/v1/.profile-publish-lock`,
-    inputDigest,
-    ...(options.testOnly === true ? {
-      testOnly: true,
-      testOnlyRepositoryRoot: repositoryRoot,
-      ...(options.testOnlyPublishHooks === undefined ? {} : {
-        testOnlyHooks: options.testOnlyPublishHooks,
-      }),
-    } : {}),
-  });
   const privateFiles = [
     { path: `${relativeRunRoot}/manifest.json`, bytes: jsonBytes(manifest) },
     ...workPrivateFiles,
@@ -4809,6 +4879,28 @@ export async function runGenreSoulProfile(options) {
     artifacts: completionArtifacts([...privateFiles, ...publishFiles]),
     completed: true,
   };
+  await validateCompletedGenreSoulProfileRun({
+    repositoryRoot,
+    profilePath: artifacts.profilePath,
+    profileBytes: artifacts.profileBytes,
+    profile: artifacts.profile,
+    profileHome,
+    soulText,
+    completionBytesOverride: jsonBytes(completion),
+    artifactBytesOverride: new Map(publishFiles.map(({ path, bytes }) => [path, bytes])),
+  });
+  const publishStatus = await publishProfileBundle(repositoryRoot, publishFiles, {
+    markerPath: artifacts.profilePath,
+    lockPath: `exports/genre-souls/${config.soulId}/v1/.profile-publish-lock`,
+    inputDigest,
+    ...(options.testOnly === true ? {
+      testOnly: true,
+      testOnlyRepositoryRoot: repositoryRoot,
+      ...(options.testOnlyPublishHooks === undefined ? {} : {
+        testOnlyHooks: options.testOnlyPublishHooks,
+      }),
+    } : {}),
+  });
   const completionStatus = await sealCompletedRun(repositoryRoot, completedPath, completion, {
     profilePath: artifacts.profilePath,
     routingPath: artifacts.routingPath,
@@ -4821,6 +4913,14 @@ export async function runGenreSoulProfile(options) {
       sourceByBasis: new Map(bindings.map((binding) => [binding.selectionBasis, binding.sourceId])),
     },
   }, options.testOnlyCompletionHooks);
+  await readCompletedGenreSoulProfileRun({
+    repositoryRoot,
+    profilePath: artifacts.profilePath,
+    profileBytes: artifacts.profileBytes,
+    profile: artifacts.profile,
+    profileHome,
+    soulText,
+  });
   const reused = completionStatus === "reused"
     && publishStatus === "reused"
     && structuredRuns.every((run) => run.status === "reused");

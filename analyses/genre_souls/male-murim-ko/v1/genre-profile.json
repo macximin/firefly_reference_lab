@@ -1,0 +1,1535 @@
+{
+  "schemaVersion": "genre-soul-analysis-profile/v1",
+  "state": "candidate",
+  "genre": "murim-ko",
+  "soulId": "male-murim-ko",
+  "version": "v1",
+  "generatedAt": "2026-08-31T12:39:46.922Z",
+  "evidenceSet": {
+    "managerSelection": {
+      "path": "evidence/genre-souls/male-manager-selection.v1.json",
+      "sha256": "d427e7a25200144a5352b832aff2c1c6452ec145eb7954a8ddc83edd7171278b",
+      "sizeBytes": 4845
+    },
+    "inventory": {
+      "path": "evidence/genre-souls/male-source-inventory.v1.json",
+      "sha256": "5e91d6071bf123ecacf169baa06bcef6e08f99a198bc7307cd8391277e4a17c3",
+      "sizeBytes": 353334
+    },
+    "registryReceipt": {
+      "path": "evidence/genre-souls/male-source-registry-receipt.v1.json",
+      "sha256": "89770cb1129dd6b0caf3a2ee01bfd4cbc7bc7b059e27f486abf36c5e31a10707",
+      "sizeBytes": 1001,
+      "privateRegistrySha256": "21dbb85ca19383c6ff7c6702e8ab1092f6d11290016496074f15a8e4fd31652b"
+    },
+    "sources": [
+      {
+        "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "selectionBasis": "commercial-anchor",
+        "sourceSha256": "d07ed27d4a9c320906182ad8de5f48e1d6df35c8d5c3795812686d81db9f6646",
+        "sourceSizeBytes": 6782198,
+        "chapterCount": 425,
+        "trackedStudy": {
+          "path": "analyses/genre_souls/male-murim-ko/v1/work-studies/gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI.deep-read.json",
+          "sha256": "6b4f4713fc9cece6988b555e45a5522004ce183466ee01cfaeeab75eaf35401f",
+          "sizeBytes": 14309
+        },
+        "privateBundle": {
+          "path": "exports/genre-souls/male-murim-ko/v1/deep-read-runs/gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI/deep-read-receipt.json",
+          "sha256": "a9fcaf73be323e116718ee0719c26ce45c77161f3ac9e34e71658ff48bd3ebd7",
+          "sizeBytes": 3487
+        },
+        "trackedLeakReceipt": {
+          "path": "analyses/genre_souls/male-murim-ko/v1/leak-scan-receipts/gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI.deep-read.json",
+          "sha256": "1eb08511d0906a31d9a4e347264f3e54614b013b7c2add4cf5aa33abdf2b322b",
+          "sizeBytes": 812
+        }
+      },
+      {
+        "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "selectionBasis": "genre-breadth",
+        "sourceSha256": "371cf60079da9073423530723396edf8e37963f3ff6bf1f1078ed3b7ee4d40fe",
+        "sourceSizeBytes": 2336689,
+        "chapterCount": 152,
+        "trackedStudy": {
+          "path": "analyses/genre_souls/male-murim-ko/v1/work-studies/gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq.deep-read.json",
+          "sha256": "4453e2e9dd7102662da63fbb3dc9593a1802b3a557c65876d90b6f6b697e3a3a",
+          "sizeBytes": 4586
+        },
+        "privateBundle": {
+          "path": "exports/genre-souls/male-murim-ko/v1/deep-read-runs/gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq/deep-read-receipt.json",
+          "sha256": "6cab028514164b702200135a7253ff90851c0adefe2775362b58ec7fa5af184c",
+          "sizeBytes": 1690
+        },
+        "trackedLeakReceipt": {
+          "path": "analyses/genre_souls/male-murim-ko/v1/leak-scan-receipts/gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq.deep-read.json",
+          "sha256": "6a0cb4338d41bd0f67ba09132bcc6d6a8aa6f3cd751059270c231471290d8366",
+          "sizeBytes": 811
+        }
+      },
+      {
+        "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+        "selectionBasis": "surface-anchor",
+        "sourceSha256": "9f027e2d259c93a48d12251ee968cdd1e7b4d7bb8d3e0121da7626db200241a0",
+        "sourceSizeBytes": 5826988,
+        "chapterCount": 400,
+        "trackedStudy": {
+          "path": "analyses/genre_souls/male-murim-ko/v1/work-studies/gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI.deep-read.json",
+          "sha256": "24edd053dea99e83d210f1f2416af4fd0c695e8e485747f17272c6f556292951",
+          "sizeBytes": 10511
+        },
+        "privateBundle": {
+          "path": "exports/genre-souls/male-murim-ko/v1/deep-read-runs/gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI/deep-read-receipt.json",
+          "sha256": "42abd338ffe20090a5fd89e4535787762dee7ea14e9ef59e0abe7208c6b63323",
+          "sizeBytes": 3073
+        },
+        "trackedLeakReceipt": {
+          "path": "analyses/genre_souls/male-murim-ko/v1/leak-scan-receipts/gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI.deep-read.json",
+          "sha256": "038af7705c741ad9190639a6418bb932ebf4a14cac63f45081c88cc36b1254bb",
+          "sizeBytes": 812
+        }
+      }
+    ]
+  },
+  "synthesis": {
+    "privateInput": {
+      "schemaVersion": "private-genre-soul-profile-input/v1",
+      "path": "exports/genre-souls/male-murim-ko/v1/profile-runs/7a49bedda13de355597efe6567d72943e89f73e8adb88e42098edf47a14eef62/genre/input.json",
+      "sha256": "aed7b3fd2819a1aa1d91c016722f6cb5b4a00ed184aa31bb2c8b3d19c2212f5d",
+      "sizeBytes": 30718,
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "observationCount": 545,
+      "selectorCount": 2400
+    },
+    "run": {
+      "runId": "20260831_213711_e1b894",
+      "model": "gpt-5.6-sol",
+      "provider": "openai-codex",
+      "reasoningEffort": "high",
+      "configSha256": "04e65f12e121d7180c41583b43c6ed77b9d7562744c64a76dc5014460436cbe9",
+      "traceReceiptSha256": "b5664d745c3b9c623e0bb416ebb8c1277758a9601bb8910f4fcb5ec6397aab88"
+    },
+    "contentContract": {
+      "id": "fiction-content-neutral-ko/v1",
+      "sha256": "c5b531577cbfbfb1dfc4cd2b5cb82d7ce796c6958e0bc00c3e180b0e5440e199"
+    },
+    "truncation": false
+  },
+  "patterns": [
+    {
+      "patternId": "pattern-9c19f26ef670d627f8c126f7",
+      "dimension": "worldConstraints",
+      "classification": "genre-common",
+      "guidance": "문파·세가·권력기구의 위계, 명분, 전승 자격과 승인 절차를 이동·동원·공격·대표권의 실제 제약으로 작동시킨다.",
+      "commercialFunction": "세계 규칙의 돌파를 무력뿐 아니라 합법적 행동권과 세력 권한의 획득으로 환전한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0001-03-8dae4079ce0c",
+          "segmentId": "s0001",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 60045,
+              "endByte": 74325
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 74325,
+              "endByte": 87800
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 87800,
+              "endByte": 106161
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 200540,
+              "endByte": 215908
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 215908,
+              "endByte": 231396
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 231396,
+              "endByte": 245361
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 277224,
+              "endByte": 292402
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 292402,
+              "endByte": 308265
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 327157,
+              "endByte": 347987
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0001-03-8be7d605c2f2",
+          "segmentId": "s0001",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 97612,
+              "endByte": 111126
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 111126,
+              "endByte": 125878
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 227198,
+              "endByte": 241885
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 301982,
+              "endByte": 318018
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-01-369dbbe65e4d",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 14465
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 29322,
+              "endByte": 43492
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 43492,
+              "endByte": 57943
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 57943,
+              "endByte": 72446
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 130918,
+              "endByte": 145591
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-da313f592d97f5dd0dbf8b4a",
+      "dimension": "protagonistRepeatedVerbs",
+      "classification": "genre-common",
+      "guidance": "주인공은 감지·조사·판단·개입·배치·제압·회수·배분을 반복하며 실패하거나 조건이 바뀌면 수단을 즉시 전환한다.",
+      "commercialFunction": "사건의 해결 순서와 자원 전환을 주인공이 주도한다는 능동성과 유능함을 반복 판매한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0001-02-006ee9b6d74c",
+          "segmentId": "s0001",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 29640,
+              "endByte": 47041
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 60045,
+              "endByte": 74325
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 74325,
+              "endByte": 87800
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 87800,
+              "endByte": 106161
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 106161,
+              "endByte": 126732
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 144409,
+              "endByte": 159589
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 159589,
+              "endByte": 182205
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 182205,
+              "endByte": 200540
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 215908,
+              "endByte": 231396
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0001-04-cd7bc027185b",
+          "segmentId": "s0001",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 182080,
+              "endByte": 198981
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 198981,
+              "endByte": 212302
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 212302,
+              "endByte": 227198
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-02-0f92335a6f5d",
+          "segmentId": "s0001",
+          "kind": "protagonist-action",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 101622,
+              "endByte": 116174
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 160259,
+              "endByte": 174662
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 203459,
+              "endByte": 218323
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 247057,
+              "endByte": 261285
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-840ec0d163fa09fb3f4cba40",
+      "dimension": "pressureAndOpposition",
+      "classification": "genre-common",
+      "guidance": "적은 무력과 숫자에 더해 명분, 정보, 배신, 인질, 진법, 상성, 환경과 후퇴 대비를 결합하고 이전 패배에서 학습한다.",
+      "commercialFunction": "강한 주인공의 안정감을 보존하면서 목표 실패, 손실과 공략 비용의 불확실성을 유지한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0010-03-0e07590e8060",
+          "segmentId": "s0010",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 3241033,
+              "endByte": 3257754
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3257754,
+              "endByte": 3274555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3289271,
+              "endByte": 3305049
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3305049,
+              "endByte": 3322195
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3388332,
+              "endByte": 3404587
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3452255,
+              "endByte": 3467621
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3467621,
+              "endByte": 3482703
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0005-10-5bb2f155c1a5",
+          "segmentId": "s0005",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1715246,
+              "endByte": 1731766
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1731766,
+              "endByte": 1746390
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1746390,
+              "endByte": 1761618
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0008-02-8e5966b31bad",
+          "segmentId": "s0008",
+          "kind": "pressure-resistance",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 2493790,
+              "endByte": 2519743
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-4efbf4ad40fb47e294016112",
+      "dimension": "rewardAndStatusCurrency",
+      "classification": "genre-common",
+      "guidance": "승리마다 생존·복수와 함께 무공, 재화, 정보, 인재, 관계, 병력, 직위, 대표권이나 결정권을 가시적으로 지급한다.",
+      "commercialFunction": "강함을 재사용 가능한 자산, 공개 인정, 조직 전력과 다음 선택권의 누적으로 바꾼다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0010-04-e36a9bef1b28",
+          "segmentId": "s0010",
+          "kind": "payoff-witness",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 3241033,
+              "endByte": 3257754
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3257754,
+              "endByte": 3274555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3305049,
+              "endByte": 3322195
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3322195,
+              "endByte": 3338967
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3338967,
+              "endByte": 3355702
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0003-09-19b30bcff369",
+          "segmentId": "s0003",
+          "kind": "payoff-witness",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1020934,
+              "endByte": 1036460
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1036460,
+              "endByte": 1051069
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0008-04-ffbadfc9a82d",
+          "segmentId": "s0008",
+          "kind": "payoff-witness",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 2534298,
+              "endByte": 2549093
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-4d0217b8e7cb35b05b1c7fb7",
+      "dimension": "nextChapterExpectedAction",
+      "classification": "genre-common",
+      "guidance": "현재 지급을 닫은 직후 추적·구출·출전·결투·조사·체포처럼 다음 화에 실행될 동사와 대상 또는 기한을 명시한다.",
+      "commercialFunction": "완결감을 훼손하지 않고 다음 화에서 확인할 구체적 행동 질문을 예약한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0001-11-c3e5a11579b9",
+          "segmentId": "s0001",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 308265,
+              "endByte": 327157
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 327157,
+              "endByte": 347987
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0001-10-2aa386e1fad1",
+          "segmentId": "s0001",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 318018,
+              "endByte": 333851
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 333851,
+              "endByte": 348838
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-07-b94589112ffa",
+          "segmentId": "s0001",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 276343,
+              "endByte": 289425
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 303527,
+              "endByte": 317702
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 331900,
+              "endByte": 346050
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-2dfa72c81c60ca88ae4c7efc",
+      "dimension": "commercialEngines",
+      "classification": "genre-common",
+      "guidance": "위협 공개, 능동적 선택, 준비된 저항의 파훼, 공개 승리, 자산·권한 지급과 상위 전선 개방을 반복 순환시킨다.",
+      "commercialFunction": "빠른 사건 완결과 누적 성장 및 장기 갈등의 추진력을 하나의 보상선으로 결속한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0001-01-fe359076ea4a",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 13411
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 13411,
+              "endByte": 29640
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 29640,
+              "endByte": 47041
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 47041,
+              "endByte": 60045
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 106161,
+              "endByte": 126732
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 144409,
+              "endByte": 159589
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0001-01-73911dbcf43d",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 11172
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 11172,
+              "endByte": 25665
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 25665,
+              "endByte": 40015
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 40015,
+              "endByte": 53961
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-06-6ed0b3d0a37e",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 247057,
+              "endByte": 261285
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 261285,
+              "endByte": 276343
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 289425,
+              "endByte": 303527
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 317702,
+              "endByte": 331900
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 331900,
+              "endByte": 346050
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-388b07b9139e6bed3d97f3c7",
+      "dimension": "commercialEngines",
+      "classification": "source-specific",
+      "guidance": "문체 결속에는 짧은 문단, 대사 중심 진행, 즉시 판정과 목격 반응으로 위협·추론·역전·지급의 표면 속도를 높인다.",
+      "commercialFunction": "고밀도 설정과 다중 전선을 모바일 연재에 맞는 빠른 판독성과 즉각적 도파민으로 전달한다.",
+      "sourceIds": [
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-06-6ed0b3d0a37e",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 247057,
+              "endByte": 261285
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 261285,
+              "endByte": 276343
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 289425,
+              "endByte": 303527
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 317702,
+              "endByte": 331900
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 331900,
+              "endByte": 346050
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-ae946e836dc09c8a32c7b8ec",
+      "dimension": "commercialEngines",
+      "classification": "conditional",
+      "guidance": "수사·잠입·정치 비중이 높으면 추론, 역할 배치, 약점 검증과 증거 선점을 전투 파훼와 같은 보상 단계로 운용한다.",
+      "commercialFunction": "장면 유형을 교대하면서도 설계형 주인공의 유능함과 역전 속도를 보존한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0010-01-d9fbda0ba372",
+          "segmentId": "s0010",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 3173645,
+              "endByte": 3190998
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3190998,
+              "endByte": 3208476
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3208476,
+              "endByte": 3224495
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3241033,
+              "endByte": 3257754
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3257754,
+              "endByte": 3274555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3289271,
+              "endByte": 3305049
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3305049,
+              "endByte": 3322195
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 3338967,
+              "endByte": 3355702
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0008-01-de7143987754",
+          "segmentId": "s0008",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 2479900,
+              "endByte": 2519743
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-ac8eb8e9b84881f943f548f3",
+      "dimension": "emotionalCoherence",
+      "classification": "genre-common",
+      "guidance": "상실·모욕·결핍·소속 욕망을 먼저 체감시키고 자발적 선택, 목격 가능한 비용, 복수·인정·보호·관계 회수 순으로 잇는다.",
+      "commercialFunction": "강한 폭력과 권력 상승을 인물 욕망과 장면 인과로 납득시키고 지급에 감정적 잔향을 부여한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0001-04-39db211ea731",
+          "segmentId": "s0001",
+          "kind": "emotional-coherence",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 13411,
+              "endByte": 29640
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 47041,
+              "endByte": 60045
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 60045,
+              "endByte": 74325
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 74325,
+              "endByte": 87800
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 87800,
+              "endByte": 106161
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 106161,
+              "endByte": 126732
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0001-02-39c662520d46",
+          "segmentId": "s0001",
+          "kind": "emotional-coherence",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 11172
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 40015,
+              "endByte": 53961
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 53961,
+              "endByte": 68278
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 68278,
+              "endByte": 84053
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-05-28fc83b21582",
+          "segmentId": "s0001",
+          "kind": "emotional-coherence",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 57943,
+              "endByte": 72446
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 130918,
+              "endByte": 145591
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 145591,
+              "endByte": 160259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 247057,
+              "endByte": 261285
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-680fc30f8e556752dd97ba7f",
+      "dimension": "arcAndGrowth",
+      "classification": "genre-common",
+      "guidance": "개인 생존과 무공 증명에서 후계 육성, 조직 지휘, 세력 조정, 공적 권한과 질서 결정으로 책임과 선택 범위를 확대한다.",
+      "commercialFunction": "수치 성장의 반복을 넘어 사람, 영토, 권한과 삶의 선택권이 커지는 장기 상승을 가시화한다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0020-09-3be7e01a0517",
+          "segmentId": "s0020",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 6767639,
+              "endByte": 6782198
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0007-09-d1e80f3c208d",
+          "segmentId": "s0007",
+          "kind": "ending-promise",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 2292085,
+              "endByte": 2306310
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2306310,
+              "endByte": 2320536
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2320536,
+              "endByte": 2336689
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0014-07-67127e8dac2f",
+          "segmentId": "s0014",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 4720347,
+              "endByte": 4736162
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4736162,
+              "endByte": 4751636
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4751636,
+              "endByte": 4767384
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4767384,
+              "endByte": 4782926
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "pattern-426bf452998fe82b9931f390",
+      "dimension": "failurePatterns",
+      "classification": "failure",
+      "guidance": "반복 해설, 우연한 구원, 적의 상습적 과소평가, 무운용 수적 우세, 첫 타격 복종과 회수 없는 획득을 연속시키지 않는다.",
+      "commercialFunction": "빠른 대승과 즉시 인정을 보존하면서 저항의 위상 붕괴, 긴장 저하와 보상 누락을 막는다.",
+      "sourceIds": [
+        "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+        "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+        "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI"
+      ],
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0001-10-c8d2628b0705",
+          "segmentId": "s0001",
+          "kind": "failure-pattern",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 106161,
+              "endByte": 126732
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 159589,
+              "endByte": 182205
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 215908,
+              "endByte": 231396
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 262053,
+              "endByte": 277224
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 292402,
+              "endByte": 308265
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 327157,
+              "endByte": 347987
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0005-13-944d24b3a1ec",
+          "segmentId": "s0005",
+          "kind": "failure-pattern",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1594804,
+              "endByte": 1609066
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1639851,
+              "endByte": 1654179
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1683862,
+              "endByte": 1700039
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1700039,
+              "endByte": 1715246
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1746390,
+              "endByte": 1761618
+            }
+          ]
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-09-3515b854c2fb",
+          "segmentId": "s0001",
+          "kind": "failure-pattern",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 145591,
+              "endByte": 160259
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 174662,
+              "endByte": 189010
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 247057,
+              "endByte": 261285
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 289425,
+              "endByte": 303527
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 303527,
+              "endByte": 317702
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "primaryCommercialEngines": [
+    {
+      "engineId": "engine-c00214f20bdc90ccd0bb95d5",
+      "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+      "mechanism": {
+        "protagonistRepeatedVerb": "징후를 조사하고 규칙을 해석하고 판을 설계하며 적의 수단을 역이용한 뒤 자원과 권한을 회수한다.",
+        "pressure": "개인의 원한과 보호 책임이 문파·세가·연합체·권력기관의 정치, 정보전, 암살, 인질, 진법, 대군과 다중 전선으로 확대된다.",
+        "activeChoice": "주인공은 목표와 책임선을 정하고 잠입, 협상, 유인, 위임, 선제공격 또는 정면 돌파 중 후속 선택권을 가장 크게 남기는 수단을 고른다.",
+        "resistance": "적은 주인공의 전력과 습관을 분석하고 제도적 방패, 내부 배신, 환경 제약, 자원 소모, 제한시간과 다단계 생존책으로 대응한다.",
+        "payoff": "승리는 복수와 구출뿐 아니라 무공, 증거, 재화, 정보, 인재, 거점, 동맹, 지휘권과 다음 전선의 공격권으로 결산된다.",
+        "recognition": "패자와 목격자와 조직이 결과를 공개 인정하고 별호, 직위, 신뢰, 복속, 협상권과 생활 선택권을 부여해 다음 행동의 규모를 키운다."
+      },
+      "signatureSha256": "c00214f20bdc90ccd0bb95d5f2fcb7aaa4bde2cd001b6ad1fb21629af17418be",
+      "evidence": [
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0001-01-fe359076ea4a",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 13411
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 13411,
+              "endByte": 29640
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 29640,
+              "endByte": 47041
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 47041,
+              "endByte": 60045
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 106161,
+              "endByte": 126732
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 144409,
+              "endByte": 159589
+            }
+          ],
+          "span": "early"
+        },
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0008-01-c467152c0663",
+          "segmentId": "s0008",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 2462633,
+              "endByte": 2477481
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2477481,
+              "endByte": 2493248
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2493248,
+              "endByte": 2508568
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2558361,
+              "endByte": 2576072
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2576072,
+              "endByte": 2593939
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2593939,
+              "endByte": 2610772
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2689008,
+              "endByte": 2704648
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2704648,
+              "endByte": 2719121
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2784198,
+              "endByte": 2800375
+            }
+          ],
+          "span": "middle"
+        },
+        {
+          "sourceId": "gdrive-1B5jgTxwxyabDX4N-u-hchbZCP8GS3NfI",
+          "observationId": "obs-1B5jgTxwxyab-0020-01-74c931800d01",
+          "segmentId": "s0020",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 6726767,
+              "endByte": 6740380
+            }
+          ],
+          "span": "late"
+        }
+      ]
+    },
+    {
+      "engineId": "engine-682d5d6f76258690d04552bf",
+      "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+      "mechanism": {
+        "protagonistRepeatedVerb": "잃어버린 전승과 권한을 복구한다.",
+        "pressure": "붕괴한 문파의 빈곤과 전승 단절, 대표권 분쟁, 외부 침탈과 상위 세력의 위협이 공동체 생존을 압박한다.",
+        "activeChoice": "주인공은 비전을 복원하고 후계자를 훈련하며 원수를 추적하고 위험에서 얻은 자원을 조직의 전력으로 전환한다.",
+        "resistance": "적은 무력뿐 아니라 명분, 위계, 병력, 진법, 암살, 정치, 상성 수단과 초월적 권능을 겹쳐 대응한다.",
+        "payoff": "승리마다 무공, 자원, 인재, 동맹, 직책, 대표권과 다음 세계로 진입할 선택권이 누적된다.",
+        "recognition": "동료와 권위자와 군중이 승리를 목격하고 적대 세력이 굴복하거나 협력을 청하면서 개인과 조직의 위상이 함께 상승한다."
+      },
+      "signatureSha256": "682d5d6f76258690d04552bf9c27d56ac2887efe0637f29123bd2fa9c98bac22",
+      "evidence": [
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0001-01-73911dbcf43d",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 11172
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 11172,
+              "endByte": 25665
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 25665,
+              "endByte": 40015
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 40015,
+              "endByte": 53961
+            }
+          ],
+          "span": "early"
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0004-01-cbc2ff895544",
+          "segmentId": "s0004",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 1066152,
+              "endByte": 1082307
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1160211,
+              "endByte": 1175847
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1270520,
+              "endByte": 1286041
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1349796,
+              "endByte": 1364925
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 1364925,
+              "endByte": 1379391
+            }
+          ],
+          "span": "middle"
+        },
+        {
+          "sourceId": "gdrive-1T4OGOvaC_VF83tDj31m5vqloM6ERHKLq",
+          "observationId": "obs-1T4OGOvaC_VF-0007-01-913f0dd770fd",
+          "segmentId": "s0007",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 2110721,
+              "endByte": 2125895
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2125895,
+              "endByte": 2142555
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2142555,
+              "endByte": 2158123
+            }
+          ],
+          "span": "late"
+        }
+      ]
+    },
+    {
+      "engineId": "engine-bf0727ecad0f5ada0dc8223e",
+      "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+      "mechanism": {
+        "protagonistRepeatedVerb": "감지하고 조사하고 개입하며 사람·정보·무공·증거·권한을 자기편 자산으로 전환한다.",
+        "pressure": "대립 세력의 위계와 명분, 침투·인질·배신·암살·군세·상위 강자가 승리 직후마다 다중 압박을 갱신한다.",
+        "activeChoice": "주인공은 보호 책임과 자기 기준에 따라 구조 우선순위, 역할 배치, 공격 시점, 교섭 조건과 증거 공개 순서를 직접 결정한다.",
+        "resistance": "적은 정보 선점, 조작된 명분, 진법, 특수능력, 약물, 화력, 내부 배신과 후퇴 대비를 결합해 실제 실패와 손실을 강요한다.",
+        "payoff": "약점 간파와 전술 역전 뒤 강적 격파, 구조, 복수, 증거, 전리품, 병력, 직위와 질서 재편권을 연쇄 지급한다.",
+        "recognition": "동료·문도·군중·수뇌·통치자의 공개 목격과 승인으로 무력이 평판·복종·공식 권한·선택권으로 환전된다."
+      },
+      "signatureSha256": "bf0727ecad0f5ada0dc8223ebb92ad98b898ba261b5d6d3858aeaf4e1a6b548d",
+      "evidence": [
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0001-01-369dbbe65e4d",
+          "segmentId": "s0001",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 0,
+              "endByte": 14465
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 29322,
+              "endByte": 43492
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 43492,
+              "endByte": 57943
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 57943,
+              "endByte": 72446
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 130918,
+              "endByte": 145591
+            }
+          ],
+          "span": "early"
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0007-06-09506684340d",
+          "segmentId": "s0007",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 2218706,
+              "endByte": 2232439
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2232439,
+              "endByte": 2244930
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2244930,
+              "endByte": 2259397
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2259397,
+              "endByte": 2272790
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2341472,
+              "endByte": 2355173
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2355173,
+              "endByte": 2369338
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2369338,
+              "endByte": 2382651
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 2382651,
+              "endByte": 2397628
+            }
+          ],
+          "span": "middle"
+        },
+        {
+          "sourceId": "gdrive-1fmc_c6WhPri_u7pH8OAwBuxDZnheUomI",
+          "observationId": "obs-1fmc_c6WhPri-0015-01-cc117786e7d0",
+          "segmentId": "s0015",
+          "kind": "commercial-engine",
+          "selectors": [
+            {
+              "type": "utf8-byte",
+              "startByte": 4953592,
+              "endByte": 4969005
+            },
+            {
+              "type": "utf8-byte",
+              "startByte": 4969005,
+              "endByte": 4985106
+            }
+          ],
+          "span": "late"
+        }
+      ]
+    }
+  ],
+  "dimensions": {
+    "worldConstraints": [
+      "pattern-9c19f26ef670d627f8c126f7"
+    ],
+    "protagonistRepeatedVerbs": [
+      "pattern-da313f592d97f5dd0dbf8b4a"
+    ],
+    "pressureAndOpposition": [
+      "pattern-840ec0d163fa09fb3f4cba40"
+    ],
+    "rewardAndStatusCurrency": [
+      "pattern-4efbf4ad40fb47e294016112"
+    ],
+    "nextChapterExpectedAction": [
+      "pattern-4d0217b8e7cb35b05b1c7fb7"
+    ],
+    "commercialEngines": [
+      "pattern-2dfa72c81c60ca88ae4c7efc",
+      "pattern-388b07b9139e6bed3d97f3c7",
+      "pattern-ae946e836dc09c8a32c7b8ec"
+    ],
+    "emotionalCoherence": [
+      "pattern-ac8eb8e9b84881f943f548f3"
+    ],
+    "arcAndGrowth": [
+      "pattern-680fc30f8e556752dd97ba7f"
+    ],
+    "failurePatterns": [
+      "pattern-426bf452998fe82b9931f390"
+    ]
+  },
+  "contentNeutrality": {
+    "automaticMoralGate": false,
+    "illegalityIsAutomaticFailure": false,
+    "userIntensityPreserved": true
+  },
+  "authority": {
+    "scope": "analysis-only",
+    "mayWriteInkOSCanon": false,
+    "mayPromoteSoul": false,
+    "ownerDecisionRequired": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "tracked-projection-leak-scan/v1",
+  "scanner": {
+    "version": "genre-soul-surface-scanner/v1",
+    "exactTokenCount": 12,
+    "longCommonUtf8Bytes": 120
+  },
+  "artifact": {
+    "path": "inkos_handoffs/genre-souls/male-fantasy-ko/v1/reference-routing-catalog.json",
+    "sha256": "2a75ba892966d5690e8c9e524dc88626070da835354eac6c0cedcaebdffd4f51",
+    "sizeBytes": 1712
+  },
+  "corpus": {
+    "privateRegistrySha256": "21dbb85ca19383c6ff7c6702e8ab1092f6d11290016496074f15a8e4fd31652b",
+    "availableSourceCount": 32,
+    "observedSourceSetSha256": "3e5fcbad8f76dcece6de219746744336b0d9cc552a1e906a80b34de1b4839ea3"
+  },
+  "matchCount": 0,
+  "matches": [],
+  "truncated": false,
+  "status": "pass",
+  "automaticRewrite": false,
+  "automaticReject": false
+}
