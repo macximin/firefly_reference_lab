@@ -702,6 +702,10 @@ test("in-memory exact-input transcript measurement matches file evidence for ord
     () => measureHermesExactInputTranscript([Buffer.from([0xc3, 0x28])]),
     /must be valid UTF-8/u,
   );
+  assert.equal(
+    measureHermesExactInputTranscript([Buffer.alloc(4_500_000, 0x61)]).totalBytes,
+    4_500_000,
+  );
   assert.throws(
     () => measureHermesExactInputTranscript([Buffer.alloc(4_500_001, 0x61)]),
     /exceeds the reader source boundary/u,

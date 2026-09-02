@@ -17,6 +17,8 @@ import { isDeepStrictEqual } from "node:util";
 
 import {
   BLIND_PAIR_AUTHORITY,
+  buildBlindCandidateEvidenceSpans,
+  buildBlindPairEvaluatorInput,
   buildBlindReviewReceiptFromRawEvidence,
   hashBlindEvaluationArtifact,
   validateBlindPairEvaluationInput,
@@ -38,7 +40,7 @@ import { scanTrackedProjectionBytes } from "./genre-soul-study-contract.mjs";
 const DEFAULT_REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PRIVATE_INPUT_SCHEMA = "private-firefly-blind-pair-host-input/v2";
 const EVALUATOR_INPUT_SCHEMA = "private-firefly-blind-pair-evaluator-input/v2";
-const OUTPUT_RESERVE_TOKENS = 12_288;
+export const BLIND_PAIR_EVALUATOR_OUTPUT_RESERVE_TOKENS = 12_288;
 const GENRE_CONFIG = Object.freeze({
   "modern-fantasy-ko": "male-modern-fantasy-ko",
   "fantasy-ko": "male-fantasy-ko",
@@ -277,58 +279,17 @@ function validateReviewPacketCandidates(packet, input) {
       body: candidate.body,
       sha256: bodySha256,
       byteLength: bodyBytes.byteLength,
-      evidenceSpans: buildCandidateEvidenceSpans(candidate.body),
+      evidenceSpans: buildBlindCandidateEvidenceSpans(candidate.body),
     };
   });
   if (candidates[0].sha256 === candidates[1].sha256) throw new Error("Blind review candidates must differ.");
   return candidates;
 }
 
-function buildCandidateEvidenceSpans(body) {
-  const spans = [];
-  for (const match of body.matchAll(/[^\r\n]+/gu)) {
-    const raw = match[0];
-    const leading = raw.match(/^\s*/u)?.[0].length ?? 0;
-    const trailing = raw.match(/\s*$/u)?.[0].length ?? 0;
-    const startCodeUnit = (match.index ?? 0) + leading;
-    const endCodeUnit = (match.index ?? 0) + raw.length - trailing;
-    if (endCodeUnit <= startCodeUnit) continue;
-    const startByte = Buffer.byteLength(body.slice(0, startCodeUnit), "utf8");
-    const slice = Buffer.from(body.slice(startCodeUnit, endCodeUnit), "utf8");
-    spans.push({
-      coordinateKind: "utf8-byte",
-      startByte,
-      endByte: startByte + slice.byteLength,
-      sliceSha256: sha256(slice),
-    });
-  }
-  if (spans.length < 1) throw new Error("Blind review candidate requires at least one non-whitespace evidence span.");
-  return spans;
-}
-
 function buildPrivateHostInput(input) {
   return {
     schemaVersion: PRIVATE_INPUT_SCHEMA,
     sealedInput: input,
-  };
-}
-
-function buildEvaluatorInput(input, candidates) {
-  return {
-    schemaVersion: EVALUATOR_INPUT_SCHEMA,
-    genre: input.genre,
-    pairId: input.pairId,
-    round: input.round,
-    blindRunId: input.blindRunId,
-    pairedGenerationReceiptSha256: input.pairedGenerationReceiptSha256,
-    reviewerRuntime: {
-      configSha256: input.reviewer.configSha256,
-      soulSha256: input.reviewer.soulSha256,
-    },
-    commonContext: input.commonContext,
-    contentContract: input.contentContract,
-    candidates,
-    authority: BLIND_PAIR_AUTHORITY,
   };
 }
 
@@ -673,9 +634,8 @@ export async function runBlindPairEvaluation(options) {
   const surfaceScanPaths = candidates.map((candidate) => join(privateRoot, `surface-scan-${candidate.id}.json`));
   const structuredRunRoot = join(privateRoot, "hermes-run");
   const privateInput = buildPrivateHostInput(input);
-  const evaluatorInput = buildEvaluatorInput(input, candidates);
+  const { value: evaluatorInput, bytes: evaluatorInputBytes } = buildBlindPairEvaluatorInput(input, candidates);
   const privateInputBytes = jsonBytes(privateInput);
-  const evaluatorInputBytes = jsonBytes(evaluatorInput);
   const inputPublication = await publishNoClobber(repositoryRoot, privateInputPath, privateInputBytes, "Blind evaluator private host input");
   const evaluatorInputPublication = await publishNoClobber(repositoryRoot, evaluatorInputPath, evaluatorInputBytes, "Blind evaluator exact-read input");
   const surfaceScans = await Promise.all(candidates.map((candidate) => scanBlindCandidateSurface({
@@ -712,7 +672,7 @@ export async function runBlindPairEvaluation(options) {
     inputDigest,
     expectedPluginPlanningEvidence: pluginPlanningEvidence,
     expectedAuthAdapterPlanningEvidence: authAdapterPlanningEvidence,
-    outputReserveTokens: OUTPUT_RESERVE_TOKENS,
+    outputReserveTokens: BLIND_PAIR_EVALUATOR_OUTPUT_RESERVE_TOKENS,
     validateResult: (result) => validateBlindPairEvaluationResult(result, input, candidates),
     progress: options.progress ?? (() => {}),
     projectCwd: repositoryRoot,

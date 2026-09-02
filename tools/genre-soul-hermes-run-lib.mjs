@@ -67,7 +67,7 @@ export const HERMES_EXACT_INPUT_AUTH_PROJECTION_CONTRACT = "hermes-global-auth-s
 const READ_AUTH_ADAPTER_PLANNING_EVIDENCE_SCHEMA = "hermes-auth-store-adapter-planning-evidence/v1";
 const READ_MANIFEST_SCHEMA = "firefly-hermes-read-manifest/v1";
 const READ_RESULT_SCHEMA = "firefly-hermes-read-result/v2";
-const READ_SOURCE_MAX_BYTES = 4_500_000;
+export const HERMES_READ_SOURCE_MAX_BYTES = 4_500_000;
 const READ_CHUNK_ENCODED_CONTENT_MAX_CHARS = 75_000;
 const READ_CHUNK_RESULT_MAX_CHARS = 80_000;
 const READ_CURSOR_PATTERN = /^cursor-[a-f0-9]{64}$/u;
@@ -103,7 +103,7 @@ function exactUtf8Text(bytes, label) {
 
 function validateCanonicalProfileConfig(configBytes, profileId) {
   const configText = exactUtf8Text(configBytes, `Hermes profile config ${profileId}`);
-  const expected = [
+  const legacy = [
     "model:",
     "  provider: openai-codex",
     "  default: gpt-5.6-sol",
@@ -111,7 +111,33 @@ function validateCanonicalProfileConfig(configBytes, profileId) {
     "  reasoning_effort: high",
     "",
   ].join("\n");
-  if (configText !== expected) {
+  const activeLines = configText.split("\n")
+    .filter((line) => line.trim() !== "" && !line.trimStart().startsWith("#"))
+    .map((line) => line === "  coding_context: false" ? "  coding_context: off" : line);
+  const currentBase = [
+    "model:",
+    "  provider: openai-codex",
+    "  default: gpt-5.6-sol",
+    "  openai_runtime: auto",
+    "agent:",
+    "  reasoning_effort: high",
+    "  coding_context: off",
+    "platform_toolsets:",
+    "  cli: []",
+  ];
+  const currentEvaluator = [
+    ...currentBase.slice(0, 7),
+    "  verify_on_stop: false",
+    ...currentBase.slice(7),
+    "display:",
+    "  tool_progress: all",
+    "plugins:",
+    "  enabled: []",
+    "_config_version: 33",
+  ];
+  const matchesCurrent = JSON.stringify(activeLines) === JSON.stringify(currentBase)
+    || JSON.stringify(activeLines) === JSON.stringify(currentEvaluator);
+  if (configText !== legacy && !matchesCurrent) {
     throw new Error(`Hermes profile is not gpt-5.6-sol/openai-codex/high canonical config: ${profileId}`);
   }
   return configText;
@@ -1235,7 +1261,7 @@ export function measureHermesExactInputTranscript(inputBuffers) {
     if (!Buffer.isBuffer(bytes)) {
       throw new Error(`Hermes exact-input transcript source must be a Buffer: ${inputId}`);
     }
-    if (bytes.byteLength > READ_SOURCE_MAX_BYTES) {
+    if (bytes.byteLength > HERMES_READ_SOURCE_MAX_BYTES) {
       throw new Error(`Hermes exact-input source exceeds the reader source boundary: ${inputId}`);
     }
     const content = bytes.toString("utf8");
@@ -1313,6 +1339,55 @@ export function planHermesStructuredContextBudget({
     preflightBudgetTokens,
     contextLimit,
     fits: preflightBudgetTokens < contextLimit,
+  };
+}
+
+export async function preflightHermesStructuredContextBudget({
+  profileHome,
+  profileId,
+  projectCwd,
+  prompt,
+  inputBuffers,
+  outputReserveTokens,
+} = {}) {
+  if (typeof profileHome !== "string" || profileHome.length < 1 || typeof profileId !== "string" || profileId.length < 1) {
+    throw new Error("Hermes structured context preflight requires a profile home and profile ID.");
+  }
+  if (typeof projectCwd !== "string" || projectCwd.length < 1) {
+    throw new Error("Hermes structured context preflight requires a project working directory.");
+  }
+  const absoluteProfileHome = resolve(profileHome);
+  const absoluteProjectCwd = resolve(projectCwd);
+  const executionEnvironment = buildHermesExecutionEnvironment({
+    profileHome: absoluteProfileHome,
+    projectCwd: absoluteProjectCwd,
+  });
+  const measurement = measureHermesExactInputTranscript(inputBuffers);
+  const [runtime, pluginPlanningEvidence] = await Promise.all([
+    loadHermesRuntimeEvidence(absoluteProfileHome, profileId, {
+      projectCwd: absoluteProjectCwd,
+      executionEnvironment,
+    }),
+    loadHermesExactInputPluginPlanningEvidence(),
+  ]);
+  const budget = planHermesStructuredContextBudget({
+    profilePromptContextBytes: runtime.profilePromptContextBytes,
+    projectPromptContextBytes: runtime.projectPromptContextBytes,
+    pluginContextBytes: pluginPlanningEvidence.totalBytes,
+    prompt,
+    readTranscriptProxyBytes: measurement.readTranscriptProxyBytes,
+    outputReserveTokens,
+    contextLimit: runtime.contextLimit,
+  });
+  if (!budget.fits) {
+    throw new Error(`Hermes structured preflight context boundary failed: ${budget.preflightBudgetTokens} >= ${budget.contextLimit}`);
+  }
+  return {
+    ...budget,
+    exactInputTotalBytes: measurement.totalBytes,
+    exactInputTranscriptProxyBytes: measurement.readTranscriptProxyBytes,
+    runtimeIdentitySha256: runtime.hermesRuntimeIdentitySha256,
+    pluginPlanningSha256: pluginPlanningEvidence.sha256,
   };
 }
 
@@ -2545,7 +2620,7 @@ function canonicalReadExecutionPolicy() {
     readProtocol: "sequential-cursor-chunks-v2",
     resultSchema: READ_RESULT_SCHEMA,
     cursorProtocol: "firefly-hermes-read-cursor/v1",
-    maxSourceBytes: READ_SOURCE_MAX_BYTES,
+    maxSourceBytes: HERMES_READ_SOURCE_MAX_BYTES,
     maxEncodedContentChars: READ_CHUNK_ENCODED_CONTENT_MAX_CHARS,
     maxResultChars: READ_CHUNK_RESULT_MAX_CHARS,
     preflightAccounting: "deterministic-chunk-transcript",
@@ -2676,7 +2751,7 @@ function canonicalHistoricalReadExecutionPolicyV2() {
     readProtocol: "sequential-cursor-chunks-v2",
     resultSchema: READ_RESULT_SCHEMA,
     cursorProtocol: "firefly-hermes-read-cursor/v1",
-    maxSourceBytes: READ_SOURCE_MAX_BYTES,
+    maxSourceBytes: HERMES_READ_SOURCE_MAX_BYTES,
     maxEncodedContentChars: READ_CHUNK_ENCODED_CONTENT_MAX_CHARS,
     maxResultChars: READ_CHUNK_RESULT_MAX_CHARS,
     preflightAccounting: "deterministic-chunk-transcript",

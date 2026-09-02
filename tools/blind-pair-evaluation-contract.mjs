@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { HERMES_READ_SOURCE_MAX_BYTES } from "./genre-soul-hermes-run-lib.mjs";
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,239}$/u;
@@ -12,6 +13,7 @@ const BLIND_EVALUATOR_PROFILE_ID = "inkos_blind_evaluator";
 // profile ID.
 export const INKOS_BLIND_EVALUATOR_CONFIG_SHA256 = "4124e16bc40d28732d1dd02f9f2e8b78127a202313e1ace21021f16fca809f46";
 export const INKOS_BLIND_EVALUATOR_SOUL_SHA256 = "5c4cca60c9971312682f7b71cac5d4d61b6f9e2c42d19af99c8fe6daedacd94b";
+export const BLIND_EVALUATOR_EXACT_INPUT_MAX_BYTES = HERMES_READ_SOURCE_MAX_BYTES;
 const GENRES = new Set(["modern-fantasy-ko", "fantasy-ko", "murim-ko"]);
 const CANDIDATE_IDS = Object.freeze(["candidate-A", "candidate-B"]);
 const COMMERCIAL_FIELDS = Object.freeze([
@@ -349,6 +351,63 @@ function normalizeCandidateContexts(input, candidateContexts) {
     ));
     return normalized;
   });
+}
+
+export function buildBlindCandidateEvidenceSpans(body) {
+  if (typeof body !== "string" || body.trim() === "") {
+    throw new Error("Blind review candidate requires a non-whitespace body.");
+  }
+  const spans = [];
+  for (const match of body.matchAll(/[^\r\n]+/gu)) {
+    const raw = match[0];
+    const leading = raw.match(/^\s*/u)?.[0].length ?? 0;
+    const trailing = raw.match(/\s*$/u)?.[0].length ?? 0;
+    const startCodeUnit = (match.index ?? 0) + leading;
+    const endCodeUnit = (match.index ?? 0) + raw.length - trailing;
+    if (endCodeUnit <= startCodeUnit) continue;
+    const startByte = Buffer.byteLength(body.slice(0, startCodeUnit), "utf8");
+    const slice = Buffer.from(body.slice(startCodeUnit, endCodeUnit), "utf8");
+    spans.push({
+      coordinateKind: "utf8-byte",
+      startByte,
+      endByte: startByte + slice.byteLength,
+      sliceSha256: rawSha256(slice),
+    });
+  }
+  if (spans.length < 1) throw new Error("Blind review candidate requires at least one non-whitespace evidence span.");
+  return spans;
+}
+
+export function buildBlindPairEvaluatorInput(input, candidateContexts) {
+  validateBlindPairEvaluationInput(input);
+  const contexts = normalizeCandidateContexts(input, candidateContexts);
+  const value = {
+    schemaVersion: "private-firefly-blind-pair-evaluator-input/v2",
+    genre: input.genre,
+    pairId: input.pairId,
+    round: input.round,
+    blindRunId: input.blindRunId,
+    pairedGenerationReceiptSha256: input.pairedGenerationReceiptSha256,
+    reviewerRuntime: {
+      configSha256: input.reviewer.configSha256,
+      soulSha256: input.reviewer.soulSha256,
+    },
+    commonContext: input.commonContext,
+    contentContract: input.contentContract,
+    candidates: contexts.map(({ id, body, sha256, evidenceSpans }) => ({
+      id,
+      body,
+      sha256,
+      byteLength: Buffer.byteLength(body, "utf8"),
+      evidenceSpans,
+    })),
+    authority: BLIND_PAIR_AUTHORITY,
+  };
+  const bytes = canonicalBytes(value);
+  if (bytes.byteLength > BLIND_EVALUATOR_EXACT_INPUT_MAX_BYTES) {
+    throw new Error(`Blind evaluator exact-read input exceeds ${BLIND_EVALUATOR_EXACT_INPUT_MAX_BYTES} bytes.`);
+  }
+  return { value, bytes };
 }
 
 function validateCandidateSpan(span, context, label, { requireCatalog = true } = {}) {
