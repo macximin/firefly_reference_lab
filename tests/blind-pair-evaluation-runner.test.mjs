@@ -8,22 +8,31 @@ import test from "node:test";
 
 import {
   BLIND_PAIR_AUTHORITY,
+  INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
+  INKOS_BLIND_EVALUATOR_SOUL_SHA256,
   hashBlindEvaluationArtifact,
   scoreBlindCommercialEvaluation,
 } from "../tools/blind-pair-evaluation-contract.mjs";
 import {
+  buildBlindPairEvaluatorPrompt,
+  buildBlindSurfaceScanReceipt,
+  runBlindPairEvaluation,
+} from "../tools/blind-pair-evaluation-runner.mjs";
+import {
   FICTION_CONTENT_CONTRACT_ID,
   FICTION_CONTENT_CONTRACT_SHA256,
 } from "../tools/genre-soul-hermes-run-lib.mjs";
-import {
-  buildBlindPairEvaluatorPrompt,
-  runBlindPairEvaluation,
-} from "../tools/blind-pair-evaluation-runner.mjs";
+import { buildGenreSoulSourceRegistry } from "../tools/genre-soul-source-registry.mjs";
 
 const REPOSITORY_ROOT = resolve(new URL("..", import.meta.url).pathname);
 const rawSha = (value) => createHash("sha256").update(value).digest("hex");
 const sealedSha = (value) => hashBlindEvaluationArtifact({ value });
 const jsonBytes = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`, "utf8");
+const opaqueId = (prefix, value) => `${prefix}-${rawSha(value).slice(0, 24)}`;
+const EXACT_TWELVE = "하나 둘 셋 넷 다섯 여섯 일곱 여덟 아홉 열 열하나 열둘";
+const REVIEWER_CONFIG_SHA256 = INKOS_BLIND_EVALUATOR_CONFIG_SHA256;
+const REVIEWER_SOUL_SHA256 = INKOS_BLIND_EVALUATOR_SOUL_SHA256;
+const COMMON_CONTEXT_TEXT = "공통 Book brief와 캐논, 현재 Arc·Rail은 두 후보에 동일하게 적용된다.";
 
 function commercialEvaluation(score) {
   return {
@@ -38,22 +47,36 @@ function commercialEvaluation(score) {
   };
 }
 
-function genreIdentity() {
+function genreIdentity(span) {
   return {
-    worldConstraintEvidence: ["세계 제약이 행동을 제한한다."],
-    repeatableVerbEvidence: ["주인공이 반복 가능한 선택을 실행한다."],
-    oppositionFormEvidence: ["유능한 상대가 같은 목표를 다르게 막는다."],
-    rewardStatusCurrencyEvidence: ["보상과 지위 변화가 눈에 보인다."],
-    nextEpisodeActionEvidence: ["다음 회차에 실행할 행동이 남는다."],
+    worldConstraintEvidence: [span],
+    repeatableVerbEvidence: [span],
+    oppositionFormEvidence: [span],
+    rewardStatusCurrencyEvidence: [span],
+    nextEpisodeActionEvidence: [span],
     pass: true,
   };
 }
 
-function evaluatorResult(input) {
+function evaluatorResult(input, evaluatorInput) {
   const a = commercialEvaluation(87);
   const b = commercialEvaluation(92);
+  const candidate = (index, commercial, emotionalScore) => {
+    const sealed = evaluatorInput.candidates[index];
+    const evidence = sealed.evidenceSpans[0];
+    return {
+      candidateSha256: sealed.sha256,
+      commercialEvaluation: commercial,
+      commercialScore: scoreBlindCommercialEvaluation(commercial),
+      emotionalCoherence: { score: emotionalScore, evidence: [evidence] },
+      contentNeutrality: { passed: true, violations: [] },
+      canonContradictions: [],
+      canonLeaks: [],
+      genreIdentity: genreIdentity(evidence),
+    };
+  };
   return {
-    schemaVersion: "firefly-blind-pair-evaluator-result/v1",
+    schemaVersion: "firefly-blind-pair-evaluator-result/v2",
     pairId: input.pairId,
     round: input.round,
     blindRunId: input.blindRunId,
@@ -61,34 +84,59 @@ function evaluatorResult(input) {
     winner: "candidate-B",
     rankingReason: "후보 B가 가시적 지급과 다음 행동 약속에서 더 강하게 작동한다.",
     evaluations: {
-      "candidate-A": {
-        commercialEvaluation: a,
-        commercialScore: scoreBlindCommercialEvaluation(a),
-        emotionalCoherenceNote: "압박 뒤 선택과 감정 반응이 이어진다.",
-        contentNeutrality: { passed: true, violations: [] },
-        genreIdentity: genreIdentity(),
-      },
-      "candidate-B": {
-        commercialEvaluation: b,
-        commercialScore: scoreBlindCommercialEvaluation(b),
-        emotionalCoherenceNote: "선택 뒤 보상과 다음 행동이 선명하게 이어진다.",
-        contentNeutrality: { passed: true, violations: [] },
-        genreIdentity: genreIdentity(),
-      },
+      "candidate-A": candidate(0, a, 84),
+      "candidate-B": candidate(1, b, 91),
     },
-    hardContradictions: [],
-    canonLeaks: [],
     humanDecision: "pending",
     authority: BLIND_PAIR_AUTHORITY,
   };
 }
 
+async function buildSurfaceCorpus(root) {
+  const sourceTitle = "참고작_필명_합본.txt";
+  const sourceText = `ⓚ참고작 1화\n그 장면에는 ${EXACT_TWELVE} 순서가 그대로 있었다.\n`;
+  const sourcePath = `private_sources/korean_webnovel_corpus/필명/${sourceTitle}`;
+  const snapshotPath = join(root, "exports/source-registry/snapshot.json");
+  await mkdir(dirname(snapshotPath), { recursive: true });
+  await mkdir(dirname(join(root, sourcePath)), { recursive: true });
+  await writeFile(join(root, sourcePath), sourceText);
+  await writeFile(snapshotPath, `${JSON.stringify({
+    schemaVersion: "drive-folder-metadata-snapshot/v1",
+    capturedAt: "2026-09-02T00:00:00.000Z",
+    source: { provider: "google-drive", rootFolderId: "root", rootTitle: "원고들_코퍼스", parentChain: [] },
+    scope: {
+      audience: "male-oriented",
+      directFileCount: 1,
+      excludedFolders: [{
+        folderId: "female", title: "여성향", reason: "female-oriented-corpus-out-of-v1-scope", observedDirectFileCount: 1,
+      }],
+    },
+    files: [{
+      providerFileId: "source-one",
+      title: sourceTitle,
+      mimeType: "text/plain",
+      sizeBytes: Buffer.byteLength(sourceText),
+      modifiedAt: "2026-09-01T00:00:00.000Z",
+    }],
+  }, null, 2)}\n`);
+  await buildGenreSoulSourceRegistry({
+    repositoryRoot: root,
+    snapshotPath,
+    privateRegistryPath: join(root, "exports/source-registry/male-source-registry.v1.json"),
+    inventoryPath: join(root, "evidence/genre-souls/male-source-inventory.v1.json"),
+    receiptPath: join(root, "evidence/genre-souls/male-source-registry-receipt.v1.json"),
+    expectedDirectFiles: 1,
+    expectedExcludedFemaleFiles: 1,
+  });
+}
+
 async function fixture(t, { pairId = "modern-pair-01" } = {}) {
   const root = await mkdtemp(join(tmpdir(), "blind-pair-runner-"));
   t.after(() => rm(root, { recursive: true, force: true }));
+  await buildSurfaceCorpus(root);
   const bodies = [
     "후보 A는 첫 압박을 견디고 계약서를 뒤집었다.",
-    "후보 B는 첫 압박 직후 자산을 확보하고 다음 거래를 선언했다.",
+    `후보 B는 ${EXACT_TWELVE} 뒤 자산을 확보했다.`,
   ];
   const packet = {
     schemaVersion: "private-test-review-packet/v1",
@@ -104,21 +152,28 @@ async function fixture(t, { pairId = "modern-pair-01" } = {}) {
     })),
   };
   const reviewPacketBytes = jsonBytes(packet);
-  const reviewPacketRelativePath = `exports/incoming/${pairId}.json`;
+  const pairSeed = pairId;
+  const opaquePairId = opaqueId("bp", `pair-${pairSeed}`);
+  const reviewPacketRelativePath = `exports/incoming/${opaquePairId}.json`;
   const reviewPacketPath = join(root, reviewPacketRelativePath);
   await mkdir(dirname(reviewPacketPath), { recursive: true });
   await writeFile(reviewPacketPath, reviewPacketBytes);
   const input = {
-    schemaVersion: "firefly-blind-pair-evaluation-input/v1",
+    schemaVersion: "firefly-blind-pair-evaluation-input/v2",
     genre: "modern-fantasy-ko",
-    pairId,
+    pairId: opaquePairId,
     round: 1,
-    blindRunId: `blind-run-${pairId}`,
-    blindSessionId: `blind-session-${pairId}`,
+    blindRunId: opaqueId("br", `run-${pairSeed}`),
+    blindSessionId: opaqueId("br", `session-${pairSeed}`),
     reviewPacket: {
       path: reviewPacketRelativePath,
       sha256: rawSha(reviewPacketBytes),
       byteLength: reviewPacketBytes.byteLength,
+    },
+    commonContext: {
+      text: COMMON_CONTEXT_TEXT,
+      sha256: rawSha(COMMON_CONTEXT_TEXT),
+      byteLength: Buffer.byteLength(COMMON_CONTEXT_TEXT),
     },
     commonInputReceiptSha256: sealedSha(`common-${pairId}`),
     pairedGenerationReceiptSha256: sealedSha(`generation-${pairId}`),
@@ -138,6 +193,8 @@ async function fixture(t, { pairId = "modern-pair-01" } = {}) {
       provider: "openai-codex",
       model: "gpt-5.6-sol",
       reasoning: "high",
+      configSha256: REVIEWER_CONFIG_SHA256,
+      soulSha256: REVIEWER_SOUL_SHA256,
     },
     contentContract: {
       id: FICTION_CONTENT_CONTRACT_ID,
@@ -146,10 +203,10 @@ async function fixture(t, { pairId = "modern-pair-01" } = {}) {
     },
     authority: BLIND_PAIR_AUTHORITY,
   };
-  return { root, input, bodies };
+  return { root, input, bodies, pairSeed };
 }
 
-function stubExecutor(input, observations = {}) {
+function stubExecutor(input, observations = {}, mutateResult = (value) => value, mutateReceipt = (value) => value) {
   return async (options) => {
     observations.options = options;
     assert.equal(options.role, "blind-pair-commercial-evaluator");
@@ -163,32 +220,31 @@ function stubExecutor(input, observations = {}) {
     assert.equal("producerEvidence" in evaluatorInput, false);
     assert.doesNotMatch(JSON.stringify(evaluatorInput), /producer-neutral|producer-soul|inkos_neutral_baseline|inkos_male_modern_fantasy/u);
     assert.doesNotMatch(options.prompt, /producer-neutral|producer-soul|inkos_neutral_baseline|inkos_male_modern_fantasy|genre-soul/u);
-    const result = evaluatorResult(input);
-    assert.equal(await options.validateResult(result), true);
+    const result = mutateResult(evaluatorResult(input, evaluatorInput));
+    await options.validateResult(result);
     const evaluatorSha = rawSha(evaluatorInputBytes);
-    return {
-      status: "completed",
-      result,
-      receipt: {
-        role: options.role,
-        runId: `review-run-${input.pairId}`,
-        profileId: options.profileId,
-        model: "gpt-5.6-sol",
-        provider: "openai-codex",
-        reasoningEffort: "high",
-        inputDigest: options.inputDigest,
-        inputSha256: rawSha(jsonBytes([{ path: options.expectedReadPaths[0], sha256: evaluatorSha }])),
-        resultSha256: hashBlindEvaluationArtifact(result),
-        expectedReadCount: 1,
-        exactReadCount: 1,
-        exactReadSha256s: [evaluatorSha],
-        completedAt: "2026-09-02T03:00:00.000Z",
-      },
+    const receipt = {
+      role: options.role,
+      runId: `review-run-${input.pairId}`,
+      profileId: options.profileId,
+      profileConfigSha256: input.reviewer.configSha256,
+      soulSha256: input.reviewer.soulSha256,
+      model: "gpt-5.6-sol",
+      provider: "openai-codex",
+      reasoningEffort: "high",
+      inputDigest: options.inputDigest,
+      inputSha256: rawSha(jsonBytes([{ path: options.expectedReadPaths[0], sha256: evaluatorSha }])),
+      resultSha256: hashBlindEvaluationArtifact(result),
+      expectedReadCount: 1,
+      exactReadCount: 1,
+      exactReadSha256s: [evaluatorSha],
+      completedAt: "2026-09-02T03:00:00.000Z",
     };
+    return { status: "completed", result, receipt: mutateReceipt(receipt) };
   };
 }
 
-test("runs an actor/profile-distinct exact-read review and publishes one bodyless receipt", async (t) => {
+test("runs exact blind review, validates Korean spans, performs real surface scans, and publishes bodyless receipts", async (t) => {
   const { root, input, bodies } = await fixture(t);
   const observations = {};
   const options = {
@@ -203,20 +259,51 @@ test("runs an actor/profile-distinct exact-read review and publishes one bodyles
 
   assert.equal(first.status, "written");
   assert.equal(second.status, "reused");
+  assert.equal(first.receipt.schemaVersion, "firefly-blind-review-receipt/v2");
   assert.equal(first.receipt.outcome.winner, "candidate-B");
   assert.equal(first.receipt.outcome.humanDecision, "pending");
   assert.equal(first.receipt.authority.mayWriteInkOSCanon, false);
   assert.equal(first.receipt.authority.mayPromoteSoul, false);
-  assert.equal(first.receiptPath, "analyses/genre_souls/male-modern-fantasy-ko/v1/blind-reviews/modern-pair-01.json");
+  assert.equal(first.receipt.candidateBindings["candidate-A"].surfaceScanStatus, "completed-no-match");
+  assert.equal(first.receipt.candidateBindings["candidate-A"].surfaceMatchCount, 0);
+  assert.equal(first.receipt.candidateBindings["candidate-B"].surfaceScanStatus, "completed-with-matches");
+  assert.ok(first.receipt.candidateBindings["candidate-B"].surfaceMatchCount > 0);
+  assert.equal(first.receipt.storyyardProjection.manuscriptApply, false);
+  assert.equal(first.receipt.storyyardProjection.canonLeakPolicy, "block-on-nonzero");
+  assert.equal(first.receipt.commonContextSha256, input.commonContext.sha256);
+  assert.equal(first.receipt.commonContextByteLength, input.commonContext.byteLength);
+  assert.equal(first.receipt.reviewer.configSha256, input.reviewer.configSha256);
+  assert.equal(first.receipt.reviewer.soulSha256, input.reviewer.soulSha256);
+  assert.deepEqual(first.publications.surfaceScans, ["written", "written"]);
+  assert.deepEqual(second.publications.surfaceScans, ["reused", "reused"]);
+
   const exactInput = JSON.parse(await readFile(join(root, first.evaluatorInputPath), "utf8"));
   assert.deepEqual(exactInput.candidates.map((candidate) => Object.keys(candidate).sort()), [
-    ["body", "byteLength", "id", "sha256"],
-    ["body", "byteLength", "id", "sha256"],
+    ["body", "byteLength", "evidenceSpans", "id", "sha256"],
+    ["body", "byteLength", "evidenceSpans", "id", "sha256"],
   ]);
   assert.equal(JSON.stringify(exactInput).includes("labelMap"), false);
   assert.equal(JSON.stringify(exactInput).includes("hiddenLane"), false);
+  assert.equal(exactInput.schemaVersion, "private-firefly-blind-pair-evaluator-input/v2");
+  assert.deepEqual(exactInput.reviewerRuntime, {
+    configSha256: input.reviewer.configSha256,
+    soulSha256: input.reviewer.soulSha256,
+  });
+  assert.deepEqual(exactInput.commonContext, input.commonContext);
+  assert.ok(exactInput.commonContext.byteLength > 0);
+  assert.match(observations.options.prompt, /typed span object copied byte-for-byte/u);
+  assert.match(observations.options.prompt, /commonContext/u);
+
+  const surfaceA = JSON.parse(await readFile(join(root, first.surfaceScanPaths[0]), "utf8"));
+  const surfaceB = JSON.parse(await readFile(join(root, first.surfaceScanPaths[1]), "utf8"));
+  assert.equal(surfaceA.status, "completed-no-match");
+  assert.equal(surfaceB.status, "completed-with-matches");
+  assert.ok(surfaceB.matches.every((match) => match.candidate.candidateContentSha256 === input.candidates[1].sha256));
+  assert.ok(surfaceB.matches.every((match) => match.classification === "pending"));
+  assert.ok(surfaceB.matches.every((match) => !("rawText" in match.source)));
+
   const privateHost = JSON.parse(await readFile(join(root, first.privateInputPath), "utf8"));
-  assert.equal(privateHost.schemaVersion, "private-firefly-blind-pair-host-input/v1");
+  assert.equal(privateHost.schemaVersion, "private-firefly-blind-pair-host-input/v2");
   assert.deepEqual(privateHost.sealedInput.producerActors, input.producerActors);
   const trackedBytes = await readFile(join(root, first.receiptPath));
   const tracked = JSON.parse(trackedBytes.toString("utf8"));
@@ -224,116 +311,242 @@ test("runs an actor/profile-distinct exact-read review and publishes one bodyles
   assert.equal("candidates" in tracked, false);
   assert.equal("producerActors" in tracked, false);
   for (const body of bodies) assert.equal(trackedBytes.includes(Buffer.from(body)), false);
-  assert.deepEqual(observations.options.expectedReadPaths, [join(root, first.evaluatorInputPath)]);
-  assert.notEqual(observations.options.expectedReadPaths[0], join(root, first.privateInputPath));
+  assert.match(tracked.evaluatorBinding.evaluatorInputSha256, /^[0-9a-f]{64}$/u);
+  assert.match(tracked.evaluatorBinding.evaluatorResultSha256, /^[0-9a-f]{64}$/u);
+  assert.match(tracked.evaluatorBinding.hostReceiptSha256, /^[0-9a-f]{64}$/u);
+  assert.equal(tracked.evaluatorBinding.evaluatorInputSha256, rawSha(await readFile(join(root, first.evaluatorInputPath))));
+  assert.equal(tracked.evaluatorBinding.evaluatorResultSha256, rawSha(await readFile(join(root, first.privateResultPath))));
+  assert.equal(tracked.evaluatorBinding.hostReceiptSha256, rawSha(jsonBytes(first.run.receipt)));
 });
 
-test("rejects reviewer profile collapse and every production-shaped executor injection", async (t) => {
-  const { root, input } = await fixture(t, { pairId: "boundary-pair-01" });
-  const executor = stubExecutor(input);
-  await assert.rejects(
-    runBlindPairEvaluation({ input, testOnlyExecutor: executor }),
-    /requires testOnly=true/u,
-  );
-  await assert.rejects(
-    runBlindPairEvaluation({ input, testOnly: true, testOnlyExecutor: executor }),
-    /explicit testOnlyRepositoryRoot/u,
-  );
-  await assert.rejects(
-    runBlindPairEvaluation({ input, executor }),
-    /production executor is not injectable/u,
-  );
-  await assert.rejects(
-    runBlindPairEvaluation({
+test("host rejects invalid evaluator spans and tampered result or host receipt hashes", async (t) => {
+  const invalidCases = [
+    {
+      pairId: "bad-boundary-01",
+      mutate: (result) => {
+        result.evaluations["candidate-A"].emotionalCoherence.evidence[0].startByte = 1;
+        return result;
+      },
+      pattern: /UTF-8 boundaries|slice SHA-256|not copied/u,
+    },
+    {
+      pairId: "bad-range-01",
+      mutate: (result) => {
+        result.evaluations["candidate-B"].genreIdentity.worldConstraintEvidence[0].endByte = 999_999;
+        return result;
+      },
+      pattern: /out of range/u,
+    },
+    {
+      pairId: "untyped-01",
+      mutate: (result) => {
+        result.evaluations["candidate-A"].canonLeaks = [{ code: "canon-leak", evidence: "원문 인명" }];
+        return result;
+      },
+      pattern: /typed exact spans/u,
+    },
+  ];
+  for (const entry of invalidCases) {
+    const { root, input } = await fixture(t, { pairId: entry.pairId });
+    await assert.rejects(runBlindPairEvaluation({
       input,
       testOnly: true,
-      testOnlyRepositoryRoot: REPOSITORY_ROOT,
-      testOnlyExecutor: executor,
-    }),
-    /outside the canonical Reference Lab root/u,
-  );
-  const collapsed = structuredClone(input);
-  collapsed.reviewer.profileId = collapsed.producerActors[0].profileId;
-  await assert.rejects(
-    runBlindPairEvaluation({
-      input: collapsed,
-      testOnly: true,
       testOnlyRepositoryRoot: root,
-      testOnlyExecutor: stubExecutor(collapsed),
-    }),
-    /profile must be distinct/u,
-  );
+      testOnlyExecutor: stubExecutor(input, {}, entry.mutate),
+    }), entry.pattern);
+  }
+
+  const hostFixture = await fixture(t, { pairId: "host-tamper-01" });
+  await assert.rejects(runBlindPairEvaluation({
+    input: hostFixture.input,
+    testOnly: true,
+    testOnlyRepositoryRoot: hostFixture.root,
+    testOnlyExecutor: stubExecutor(hostFixture.input, {}, (value) => value, (receipt) => ({
+      ...receipt,
+      resultSha256: "0".repeat(64),
+    })),
+  }), /receipt drifted/u);
+
+  for (const field of ["profileConfigSha256", "soulSha256"]) {
+    const digestFixture = await fixture(t, { pairId: `host-${field}` });
+    await assert.rejects(runBlindPairEvaluation({
+      input: digestFixture.input,
+      testOnly: true,
+      testOnlyRepositoryRoot: digestFixture.root,
+      testOnlyExecutor: stubExecutor(digestFixture.input, {}, (value) => value, (receipt) => ({
+        ...receipt,
+        [field]: sealedSha(`arbitrary-${field}`),
+      })),
+    }), /receipt drifted/u);
+  }
 });
 
-test("rejects a symlink test root, packet drift, and candidate-body drift before execution", async (t) => {
-  const { root, input } = await fixture(t, { pairId: "drift-pair-01" });
+test("surface receipt builder rejects a fake empty scan, truncation, and unsupported match evidence", () => {
+  const candidate = {
+    id: "candidate-A",
+    body: "후보 본문",
+    sha256: rawSha("후보 본문"),
+    byteLength: Buffer.byteLength("후보 본문"),
+    evidenceSpans: [],
+  };
+  const base = {
+    schemaVersion: "tracked-projection-leak-scan/v1",
+    scanner: { version: "genre-soul-surface-scanner/v1", exactTokenCount: 12, longCommonUtf8Bytes: 120 },
+    artifact: { path: "analyses/genre_souls/test.txt", sha256: candidate.sha256, sizeBytes: candidate.byteLength },
+    corpus: { privateRegistrySha256: sealedSha("registry"), availableSourceCount: 1, observedSourceSetSha256: sealedSha("observed") },
+    matchCount: 0,
+    matches: [],
+    truncated: false,
+    status: "pass",
+    automaticRewrite: false,
+    automaticReject: false,
+  };
+  const sources = new Map([["gdrive-source", sealedSha("source")]]);
+  const built = buildBlindSurfaceScanReceipt({ rawScan: base, candidate, sourceSha256ById: sources });
+  assert.equal(built.receipt.status, "completed-no-match");
+
+  assert.throws(() => buildBlindSurfaceScanReceipt({
+    rawScan: { ...base, matchCount: 1 }, candidate, sourceSha256ById: sources,
+  }), /match count is invalid/u);
+  assert.throws(() => buildBlindSurfaceScanReceipt({
+    rawScan: { ...base, truncated: true }, candidate, sourceSha256ById: sources,
+  }), /truncated/u);
+  assert.throws(() => buildBlindSurfaceScanReceipt({
+    rawScan: {
+      ...base,
+      matchCount: 1,
+      status: "quarantine",
+      matches: [{
+        matchId: "raw", method: "semantic-guess/v1", sourceId: "gdrive-source",
+        sourceSelector: { startByte: 0, endByte: 1, sliceSha256: sealedSha("slice") },
+        artifactSelector: { startByte: 0, endByte: 1, sliceSha256: sealedSha("slice") },
+        classification: "pending",
+      }],
+    },
+    candidate,
+    sourceSha256ById: sources,
+  }), /unsupported/u);
+});
+
+test("rejects profile collapse, production-shaped injection, symlink roots, packet drift, and body drift", async (t) => {
+  const { root, input } = await fixture(t, { pairId: "boundary-pair-01" });
+  const executor = stubExecutor(input);
+  await assert.rejects(runBlindPairEvaluation({ input, testOnlyExecutor: executor }), /requires testOnly=true/u);
+  await assert.rejects(runBlindPairEvaluation({ input, testOnly: true, testOnlyExecutor: executor }), /explicit testOnlyRepositoryRoot/u);
+  await assert.rejects(runBlindPairEvaluation({ input, executor }), /production executor is not injectable/u);
+  await assert.rejects(runBlindPairEvaluation({
+    input, testOnly: true, testOnlyRepositoryRoot: REPOSITORY_ROOT, testOnlyExecutor: executor,
+  }), /outside the canonical Reference Lab root/u);
+
+  const collapsed = structuredClone(input);
+  collapsed.reviewer.profileId = collapsed.producerActors[0].profileId;
+  await assert.rejects(runBlindPairEvaluation({
+    input: collapsed, testOnly: true, testOnlyRepositoryRoot: root, testOnlyExecutor: stubExecutor(collapsed),
+  }), /must be inkos_blind_evaluator/u);
+
   const alias = `${root}-alias`;
   symlinkSync(root, alias);
   t.after(() => rm(alias, { force: true }));
-  await assert.rejects(
-    runBlindPairEvaluation({
-      input,
-      testOnly: true,
-      testOnlyRepositoryRoot: alias,
-      testOnlyExecutor: stubExecutor(input),
-    }),
-    /physical non-symlink/u,
-  );
+  await assert.rejects(runBlindPairEvaluation({
+    input, testOnly: true, testOnlyRepositoryRoot: alias, testOnlyExecutor: executor,
+  }), /physical non-symlink/u);
 
   const packetDrift = structuredClone(input);
   packetDrift.reviewPacket.sha256 = "0".repeat(64);
-  await assert.rejects(
-    runBlindPairEvaluation({
-      input: packetDrift,
-      testOnly: true,
-      testOnlyRepositoryRoot: root,
-      testOnlyExecutor: stubExecutor(packetDrift),
-    }),
-    /artifact binding drifted/u,
-  );
+  await assert.rejects(runBlindPairEvaluation({
+    input: packetDrift, testOnly: true, testOnlyRepositoryRoot: root, testOnlyExecutor: stubExecutor(packetDrift),
+  }), /artifact binding drifted/u);
 
   const bodyDrift = structuredClone(input);
   bodyDrift.candidates[0].sha256 = sealedSha("wrong-body");
-  await assert.rejects(
-    runBlindPairEvaluation({
-      input: bodyDrift,
-      testOnly: true,
-      testOnlyRepositoryRoot: root,
-      testOnlyExecutor: stubExecutor(bodyDrift),
-    }),
-    /body binding drifted/u,
-  );
+  await assert.rejects(runBlindPairEvaluation({
+    input: bodyDrift, testOnly: true, testOnlyRepositoryRoot: root, testOnlyExecutor: stubExecutor(bodyDrift),
+  }), /body binding drifted/u);
+
+  const semanticPair = structuredClone(input);
+  semanticPair.pairId = "bp-modern-fantasy-pair";
+  await assert.rejects(runBlindPairEvaluation({
+    input: semanticPair, testOnly: true, testOnlyRepositoryRoot: root, testOnlyExecutor: stubExecutor(semanticPair),
+  }), /must be opaque/u);
+
+  const contextDrift = structuredClone(input);
+  contextDrift.commonContext.text += " 변조";
+  await assert.rejects(runBlindPairEvaluation({
+    input: contextDrift, testOnly: true, testOnlyRepositoryRoot: root, testOnlyExecutor: stubExecutor(contextDrift),
+  }), /commonContext text\/bytes\/hash binding drifted/u);
 });
 
-test("refuses to overwrite a conflicting tracked blind receipt", async (t) => {
+test("refuses to overwrite a conflicting tracked receipt and leaves the original bytes intact", async (t) => {
   const { root, input } = await fixture(t, { pairId: "occupied-pair-01" });
-  const occupied = join(root, "analyses/genre_souls/male-modern-fantasy-ko/v1/blind-reviews/occupied-pair-01.json");
+  const occupied = join(root, `analyses/genre_souls/male-modern-fantasy-ko/v1/blind-reviews/${input.pairId}.json`);
   await mkdir(dirname(occupied), { recursive: true });
   await writeFile(occupied, "{\"occupied\":true}\n");
-  await assert.rejects(
-    runBlindPairEvaluation({
-      input,
-      testOnly: true,
-      testOnlyRepositoryRoot: root,
-      testOnlyExecutor: stubExecutor(input),
-    }),
-    /already exists with different bytes/u,
-  );
+  await assert.rejects(runBlindPairEvaluation({
+    input,
+    testOnly: true,
+    testOnlyRepositoryRoot: root,
+    testOnlyExecutor: stubExecutor(input),
+  }), /already exists with different bytes/u);
   assert.equal(await readFile(occupied, "utf8"), "{\"occupied\":true}\n");
 });
 
-test("prompt exposes only the two opaque candidate labels and keeps human authority pending", () => {
+test("refuses to overwrite a conflicting private surface-scan receipt", async (t) => {
+  const { root, input } = await fixture(t, { pairId: "occupied-surface-01" });
+  const occupied = join(
+    root,
+    `exports/genre-souls/male-modern-fantasy-ko/v1/blind-reviews/${input.pairId}/surface-scan-candidate-A.json`,
+  );
+  await mkdir(dirname(occupied), { recursive: true });
+  await writeFile(occupied, "{\"occupiedSurface\":true}\n");
+  await assert.rejects(runBlindPairEvaluation({
+    input,
+    testOnly: true,
+    testOnlyRepositoryRoot: root,
+    testOnlyExecutor: stubExecutor(input),
+  }), /already exists with different bytes/u);
+  assert.equal(await readFile(occupied, "utf8"), "{\"occupiedSurface\":true}\n");
+});
+
+test("prompt exposes only opaque A/B bodies, exact typed schema, and pending advisory authority", async (t) => {
+  const { root, input, pairSeed } = await fixture(t, { pairId: "prompt-pair-01" });
+  const packet = JSON.parse(await readFile(join(root, input.reviewPacket.path), "utf8"));
+  const candidates = packet.candidates.map((candidate, index) => ({
+    id: candidate.id,
+    body: candidate.body,
+    sha256: input.candidates[index].sha256,
+    byteLength: input.candidates[index].byteLength,
+    evidenceSpans: [{
+      coordinateKind: "utf8-byte",
+      startByte: 0,
+      endByte: Buffer.byteLength(candidate.body),
+      sliceSha256: rawSha(candidate.body),
+    }],
+  }));
   const projected = {
-    schemaVersion: "private-firefly-blind-pair-evaluator-input/v1",
+    schemaVersion: "private-firefly-blind-pair-evaluator-input/v2",
     genre: "murim-ko",
-    pairId: "murim-pair-01",
+    pairId: opaqueId("bp", "murim-pair-01"),
     round: 2,
-    blindRunId: "blind-run-murim-01",
+    blindRunId: opaqueId("br", "blind-run-murim-01"),
     pairedGenerationReceiptSha256: "a".repeat(64),
+    reviewerRuntime: {
+      configSha256: input.reviewer.configSha256,
+      soulSha256: input.reviewer.soulSha256,
+    },
+    commonContext: input.commonContext,
+    contentContract: input.contentContract,
+    candidates,
+    authority: BLIND_PAIR_AUTHORITY,
   };
   const prompt = buildBlindPairEvaluatorPrompt(projected);
-  assert.match(prompt, /candidate-A/);
-  assert.match(prompt, /candidate-B/);
+  assert.match(prompt, /candidate-A/u);
+  assert.match(prompt, /candidate-B/u);
+  assert.match(prompt, /firefly-blind-pair-evaluator-result\/v2/u);
   assert.match(prompt, /humanDecision.*pending/su);
+  assert.match(prompt, /typed span object copied byte-for-byte/u);
+  assert.match(prompt, /commonContext/u);
+  assert.match(prompt, new RegExp(projected.pairId, "u"));
+  assert.match(prompt, new RegExp(projected.blindRunId, "u"));
+  assert.doesNotMatch(prompt, new RegExp(pairSeed, "u"));
   assert.doesNotMatch(prompt, /producer|genre-soul|labelMap|hiddenLane|"lane"/u);
 });

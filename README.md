@@ -201,9 +201,46 @@ manager QA를 통과할 수 없다. Reference Lab의 eligibility는 HQ owner 결
 `tools/blind-pair-evaluation-runner.mjs`는 InkOS가 무작위화한 `candidate-A/B`
 두 본문만 별도 `gpt-5.6-sol/high` 평가자에게 exact-read로 전달한다. 생성 lane,
 생성자 profile, label mapping은 평가 입력과 prompt에서 제외한다. 원고·상세 평가는
-ignored `exports/`에만 보존하고, Git에는 상업 점수·장르 정체성·content-neutral
-요약과 `humanDecision=pending`만 담은 bodyless 영수증을 no-clobber로 게시한다.
-이 영수증은 분석 근거이며 InkOS canon 작성이나 Soul 승급 권한이 없다.
+ignored `exports/`에만 보존한다. 평가자의 v2 결과는 후보 SHA에 결속한 상업 점수,
+감정적 정합성 점수, content-neutral 위반, hard canon contradiction·canon leak,
+장르 정체성 근거를 기록하며 모든 근거는 같은 후보의 사전 봉인된 UTF-8 byte span을
+그대로 사용한다. host는 실제 본문 byte 경계·slice SHA를 다시 검증하고 evaluator
+input/result/host receipt 세 해시를 하나의 결속으로 남긴다.
+
+평가자 profile은 정확히 `inkos_blind_evaluator`이며 고정 감사 digest
+`configSha256=4124e16bc40d28732d1dd02f9f2e8b78127a202313e1ace21021f16fca809f46`,
+`soulSha256=5c4cca60c9971312682f7b71cac5d4d61b6f9e2c42d19af99c8fe6daedacd94b`를 Hermes
+readback과 byte-for-byte 대조한다. 임의의 로컬 profile 상태를 기대값으로 승격하지
+않는다. `assembleBlindPairEvaluationInputFromInkOSTransfer`는 InkOS
+`inkos-blind-pair-evaluation-transfer/v1`의 exact `candidate-A/B`
+`id/body/sha256/byteLength`, non-empty `commonContext`, opaque IDs와 canonical self-hash를
+검증한 뒤 bodyless RefLab v2 input을 조립한다. 이 boundary는 lane·WorkOrder·producer
+profile 등 private label-assignment mapping을 입력으로 받지 않는다. 평가자에게 보이는 pair/run ID는 각각
+`bp-<24 hex>`, `br-<24 hex>` 형식의 opaque ID뿐이다. shared Book brief·canon·현재
+Arc/Rail projection은 lane-neutral `commonContext`의 비어 있지 않은 원문 bytes,
+byte length, SHA-256으로 입력에 결속한다. 평가자는 이 공통 문맥을 실제로 확인한 뒤에만
+`referenceEngineRetention`, canon contradiction, canon leak의 빈 배열을 무발견으로
+기록할 수 있다. tracked receipt에는 공통 문맥 본문 대신 hash와 byte length만 남긴다.
+
+각 후보는 평가와 별개로 검증된 private 원문 registry 전체에 대해 실제 12-token·
+120-byte surface scan을 수행한다. scan이 끝난 zero-match와 match-present를 서로 다른
+상태로 기록하고, truncation이나 가짜 빈 결과는 완료로 인정하지 않는다. match selector는
+후보·원문 SHA와 양쪽 UTF-8 byte span에 결속되며 자동 재작성·자동 거절은 항상 false다.
+Git에는 이 결속·점수·count와 `humanDecision=pending`만 담은 bodyless v2 영수증을
+no-clobber로 게시한다. Storyyard에는 `promotion-evaluation`,
+`select|tie|invalid`, advisory, `manuscriptApply=false`로만 투영할 수 있다. 이 영수증은
+분석 근거이며 InkOS canon 작성이나 Soul 승급 권한이 없다.
+
+`tools/blind-pair-storyyard-projection.mjs`는 InkOS가 제공한 source/work/artifact,
+canary isolation, generation evidence를 임의로 보충하지 않고 현재 Storyyard
+`firefly_review_packet/v2`의 `evaluationBindingSha256`, 32,768-byte source selector
+상한, packet identity 규칙에 맞춘 in-memory 호환 projection만 만든다. evaluator의
+`canonLeaks`가 하나라도 있으면 Storyyard schema에서 누락시키지 않고
+`block-on-nonzero`로 materialization을 중단한다. 이 helper는 게시·canon 반영 권한이
+없다. 실제 import/배포 전에는 sibling Storyyard의
+`app/firefly-review-contract.ts` validator를 동일 packet bytes에 다시 실행하는 것이
+필수 cross-repo gate다. Storyyard 또는 InkOS 계약이 바뀌면 이 fixture PASS만으로
+호환을 주장하지 않는다.
 
 ## 폴더
 
