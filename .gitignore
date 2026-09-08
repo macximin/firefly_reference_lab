@@ -2,6 +2,7 @@
 private_sources/
 reference_inputs/
 exports/
+analyses/**/private-excerpts/
 *.epub
 *.mobi
 *.azw3

@@ -12,9 +12,9 @@
     "goldStatus": "manager-qa-15-of-15-pass"
   },
   "privateInputs": {
-    "storyIndexSha256": "821df0df9eb2f42dae8fac003f857c72bdcdf23cfc40c821fd19895540232043",
+    "storyIndexSha256": "097c2f99760ac9495a8894dfec1ec039c547f91be4ab5de780dd00fbdfe99ca9",
     "styleExamplesSha256": "6895542335651ff5df31fe54197e5080bb5935161819347b876e37d7d97b6e9b",
-    "privateIndexSha256": "22afd55be29e71ba3499ce46858e7e4102bc2521826b4fd9f0da4cb19a454551"
+    "privateIndexSha256": "f71a1a498695211f198c9dc886016ac9a88284538de4483d6cd868cc25ad896c"
   },
   "storyRetrieval": {
     "indexedChapterCount": 751,

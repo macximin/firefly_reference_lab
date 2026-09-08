@@ -2,16 +2,16 @@
   "version": 1,
   "kind": "reference-transformation-pack-receipt",
   "packId": "doksik-chaebol3-ko-v1",
-  "packSha256": "ff8365b632fd85519f4dc5e1f51e1d36b3aaba8015de23427b0bb4dee954d57d",
+  "packSha256": "4e77659d6e079f78c07b0fec1bbe69d350c181db7ae003603f3d49cdb081daa0",
   "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
   "sourcePath": "private_sources/korean_webnovel_corpus/서오/독식하는 재벌 3세_서오_합본.txt",
   "analysisPath": "analyses/doksik-chaebol3",
   "chapterCount": 751,
   "naturalArcCount": 131,
   "storyIndexCount": 751,
-  "storyIndexSha256": "821df0df9eb2f42dae8fac003f857c72bdcdf23cfc40c821fd19895540232043",
+  "storyIndexSha256": "097c2f99760ac9495a8894dfec1ec039c547f91be4ab5de780dd00fbdfe99ca9",
   "styleExampleCount": 15,
   "styleExamplesSha256": "6895542335651ff5df31fe54197e5080bb5935161819347b876e37d7d97b6e9b",
-  "privateIndexSha256": "22afd55be29e71ba3499ce46858e7e4102bc2521826b4fd9f0da4cb19a454551",
-  "generatedAt": "2026-08-25T16:49:27.393Z"
+  "privateIndexSha256": "f71a1a498695211f198c9dc886016ac9a88284538de4483d6cd868cc25ad896c",
+  "generatedAt": "2026-09-05T12:43:00.463Z"
 }

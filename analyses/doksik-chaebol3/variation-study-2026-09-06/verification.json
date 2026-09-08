@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "eventsSha256": "c3cc63414aa976880f7101be8c0c8629506ed3d148461557eadfe8baa544d272",
+  "manifestSha256": "4b1227c2d105d5a0aa7715ac4646d49ca1649f3e275b19ced6e7d21fdf8829d0",
+  "comparisonSha256": "16d738bf803b4817965a0ebf74a82d6b35fc1cc6db41857916327d284f588b55",
+  "sourceFileCount": 3,
+  "eventCount": 7,
+  "sumSourceSliceBytes": 252686,
+  "scope": "Hashes, metadata binding, exact line/byte ranges, source and private excerpt readback only. Not proof of semantic completeness, historical accuracy or whole-work analysis.",
+  "events": [
+    {
+      "eventId": "main-doksik-opening-and-team",
+      "exactSourceAndExcerpt": true,
+      "sourceSliceBytes": 28361
+    },
+    {
+      "eventId": "main-doksik-first-investment-and-return",
+      "exactSourceAndExcerpt": true,
+      "sourceSliceBytes": 28285
+    },
+    {
+      "eventId": "donor-goldspoon-lottery-capital",
+      "exactSourceAndExcerpt": true,
+      "sourceSliceBytes": 33186
+    },
+    {
+      "eventId": "donor-goldspoon-fee-and-pound-position",
+      "exactSourceAndExcerpt": true,
+      "sourceSliceBytes": 60880
+    },
+    {
+      "eventId": "donor-goldspoon-win-to-next-asset",
+      "exactSourceAndExcerpt": true,
+      "sourceSliceBytes": 43486
+    },
+    {
+      "eventId": "donor-salary-idle-patents-to-prototype",
+      "exactSourceAndExcerpt": true,
+      "sourceSliceBytes": 30051
+    },
+    {
+      "eventId": "donor-salary-patent-sale-personal-cash",
+      "exactSourceAndExcerpt": true,
+      "sourceSliceBytes": 28437
+    }
+  ]
+}

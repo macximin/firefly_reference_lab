@@ -1,0 +1,159 @@
+{
+  "kind": "local-source-correction-and-reconstruction-receipt",
+  "date": "2026-09-05",
+  "workSlug": "doksik-chaebol3",
+  "authority": "Manager-delegated local corrections for source-first canary; no full-work reapproval",
+  "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+  "sourceUnchanged": true,
+  "directReadSequences": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    52,
+    53
+  ],
+  "directReadLineRanges": [
+    [
+      1,
+      2167
+    ],
+    [
+      9579,
+      9940
+    ]
+  ],
+  "wholeWorkReRead": false,
+  "independentReviewStatus": "passed-within-parent-reviewed-scope",
+  "sourceReconstructionPath": "analyses/doksik-chaebol3/source_first_reconstruction_2026-09-05.md",
+  "privateInputManifestPath": "exports/reference-packs/doksik-chaebol3-ko-v1/source-first-20260905/input-manifest.json",
+  "privateInputManifestSha256": "f192e9bc15023b5c1ba476eb7af7bfb0dc0bf0d86882f36279611f6ec1b9901a",
+  "contextInputs": [
+    {
+      "path": "analyses/doksik-chaebol3/source_first_reconstruction_2026-09-05.md",
+      "sha256": "4b5d5dde10ce23b7b0442477ba3e6dfa8f37f6f0e17ef4353515e597216894fe",
+      "bytes": 19390,
+      "role": "source-reconstruction-and-whole-work-analysis-summary"
+    },
+    {
+      "path": "exports/reference-packs/doksik-chaebol3-ko-v1/source-first-20260905/source-excerpts.txt",
+      "sha256": "6185b4febf52bb89c8a4ec1be58ee7fe2c6a7278ef44293506356c6444dfdcc0",
+      "bytes": 168340,
+      "role": "directly-read-raw-source"
+    }
+  ],
+  "contextBytes": 187730,
+  "before": {
+    "analyses/doksik-chaebol3/chapter_map.csv": "3e6ade1b048df571a4bd327f4c699751eabbe4e403761b4b17f1e54610dd5167",
+    "analyses/doksik-chaebol3/arc_map.csv": "570bc330e5e0597636ee41a31ffd8df3ac1801c8a8f9c7a3af74edaa80f17167",
+    "analyses/doksik-chaebol3/project_bible.md": "7f9e87f885fc3c5e01ae9c4db40c7aa1fd033a0aa574fb502ab0fc6fd0181572",
+    "analyses/doksik-chaebol3/project_pitch.md": "ef7f0ba740951076597f4fe92b71af5284f185305ba773c2608ca0d424ec17de",
+    "analyses/doksik-chaebol3/arc_atlas.md": "90f1eb72082f2853bf23f96a644eb7fa78ac0d90f536c04f0aec817091140c4f",
+    "inkos_handoffs/doksik-chaebol3-transformation-pack/v1/reference-pack.json": "ff8365b632fd85519f4dc5e1f51e1d36b3aaba8015de23427b0bb4dee954d57d",
+    "inkos_handoffs/doksik-chaebol3-transformation-pack/v1/receipt.json": "aab6769483aca674ce33f77042fa2dd8d9bd88ac5bd351fc4ca757a25c23a51d"
+  },
+  "after": {
+    "analyses/doksik-chaebol3/chapter_map.csv": "923567f63c814b2e9a456d76e253b5b9d2bff92333738173e95b0825f6b0cc98",
+    "analyses/doksik-chaebol3/arc_map.csv": "7a22da9d8b9debae15174c865023f99badbbbcee5c765ddc9b0a216b671f2acc",
+    "analyses/doksik-chaebol3/project_bible.md": "f6fdeffec577597db1ce7331ef2421498b5ed4f620c27846e438d49cf62cbf57",
+    "analyses/doksik-chaebol3/project_pitch.md": "b63a07d2f03d47494694276418a56f95a3ff9876e0567afb210f7d930bd438bc",
+    "analyses/doksik-chaebol3/arc_atlas.md": "2ead5ff80aee7576348f2d585e24a9a1ba0b6f08b4eea0c3e9aea7fbf6fed3f5",
+    "analyses/doksik-chaebol3/source_first_reconstruction_2026-09-05.md": "4b5d5dde10ce23b7b0442477ba3e6dfa8f37f6f0e17ef4353515e597216894fe"
+  },
+  "packReceipt": {
+    "version": 1,
+    "kind": "reference-transformation-pack-receipt",
+    "packId": "doksik-chaebol3-ko-v1",
+    "packSha256": "4e77659d6e079f78c07b0fec1bbe69d350c181db7ae003603f3d49cdb081daa0",
+    "sourceSha256": "66f3e7df3123343c14a7134108dc59940511f40372493a549cba8ae709df4b45",
+    "sourcePath": "private_sources/korean_webnovel_corpus/서오/독식하는 재벌 3세_서오_합본.txt",
+    "analysisPath": "analyses/doksik-chaebol3",
+    "chapterCount": 751,
+    "naturalArcCount": 131,
+    "storyIndexCount": 751,
+    "storyIndexSha256": "097c2f99760ac9495a8894dfec1ec039c547f91be4ab5de780dd00fbdfe99ca9",
+    "styleExampleCount": 15,
+    "styleExamplesSha256": "6895542335651ff5df31fe54197e5080bb5935161819347b876e37d7d97b6e9b",
+    "privateIndexSha256": "f71a1a498695211f198c9dc886016ac9a88284538de4483d6cd868cc25ad896c",
+    "generatedAt": "2026-09-05T12:43:00.463Z"
+  },
+  "validation": {
+    "packTests": {
+      "command": "node --test tests/build-corpus-reference-pack.test.mjs",
+      "passed": 4,
+      "failed": 0
+    },
+    "analysisValidator": {
+      "command": "node tools/validate-five-work-analyses.mjs doksik-chaebol3 --strict --require-pitch",
+      "errors": 0,
+      "warnings": 0
+    },
+    "gitDiffCheck": true,
+    "changedChapterRows": [
+      1,
+      9,
+      52,
+      53
+    ],
+    "changedNarrativeArcRows": [
+      "DCA-N01",
+      "DCA-N03",
+      "DCA-N04"
+    ],
+    "allLineRangesArcIdsAndBoundariesPreserved": true
+  },
+  "localCorrections": [
+    "1화: 이미 있던 조손 애정과 별개의 입학 선물을 신규 애정 획득/공로 보상과 구별",
+    "1~3화: 기존 용돈과 부모 유산을 합친 첫 투자금 220억 원 복원",
+    "9화: 직원 독자 투자 성과보수 20~30%와 김민재 주도 투자 1% 구별",
+    "52화: 출시 재고 30만 대와 한국 주문량 구별, 사장 추천 뒤 지분 요구 명시",
+    "53화: 칭찬·직함·전권 위임에 만족하지 않는 지분 추가 요구와 이전 결정·사장 임명 명시",
+    "전체 설명: 순수 개인 쾌락만을 원한다고 왜곡하지 않고 가족·그룹 보존의 실제 목적과 자기 수익·소유 확보의 태도 분리"
+  ],
+  "excluded": [
+    "raw source edits",
+    "new fictional candidates",
+    "model runs",
+    "Book creation",
+    "Storyyard publication",
+    "commit",
+    "push",
+    "full-corpus reread or quality recertification"
+  ],
+  "independentReview": {
+    "reviewer": "parent-agent /root",
+    "recordedAt": "2026-09-05T12:46:58.941735+00:00",
+    "status": "passed-within-reviewed-scope",
+    "reviewedDocument": "analyses/doksik-chaebol3/source_first_reconstruction_2026-09-05.md",
+    "reviewedDocumentExtent": "full reconstruction document",
+    "reviewedSourceLineRanges": [
+      [
+        105,
+        126
+      ],
+      [
+        1950,
+        2021
+      ],
+      [
+        9756,
+        9822
+      ]
+    ],
+    "agreedFindings": [
+      "Do not reconstruct the protagonist as lacking his grandfather's love",
+      "Family and group preservation are actual source motives",
+      "His own SAVE ownership and money take priority in the reviewed business choices",
+      "He demands shares in addition to the presidency and obtains the announced transfer decision"
+    ],
+    "wholeWorkReview": false,
+    "humanCandidateSelection": false,
+    "bookPromotion": false
+  }
+}
