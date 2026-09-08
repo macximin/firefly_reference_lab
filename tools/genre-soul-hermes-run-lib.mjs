@@ -22,7 +22,10 @@ import { basename, delimiter, dirname, isAbsolute, join, relative, resolve, sep 
 import { isDeepStrictEqual } from "node:util";
 import { fileURLToPath } from "node:url";
 
+// Retained for historical source-study evidence. Live runs derive their model
+// from the attested profile bytes and bind it through CLI, trace, and receipt.
 export const HERMES_STRUCTURED_MODEL = "gpt-5.6-sol";
+const HERMES_SUPPORTED_MODELS = new Set([HERMES_STRUCTURED_MODEL, "gpt-6-astra"]);
 export const HERMES_STRUCTURED_PROVIDER = "openai-codex";
 export const HERMES_STRUCTURED_REASONING = "high";
 export const HERMES_READ_ONLY_TOOLSET = "firefly-source-read";
@@ -103,6 +106,12 @@ function exactUtf8Text(bytes, label) {
 
 function validateCanonicalProfileConfig(configBytes, profileId) {
   const configText = exactUtf8Text(configBytes, `Hermes profile config ${profileId}`);
+  const model = configText.match(/^  default: (\S+)$/mu)?.[1];
+  if (!HERMES_SUPPORTED_MODELS.has(model)) throw new Error(`Hermes canonical config model is unsupported: ${profileId}`);
+  const reasoningEffort = configText.match(/^  reasoning_effort: (\S+)$/mu)?.[1];
+  if (reasoningEffort !== "high" && !(model === "gpt-6-astra" && reasoningEffort === "medium")) {
+    throw new Error(`Hermes canonical config reasoning is unsupported for its model: ${profileId}`);
+  }
   const legacy = [
     "model:",
     "  provider: openai-codex",
@@ -117,10 +126,10 @@ function validateCanonicalProfileConfig(configBytes, profileId) {
   const currentBase = [
     "model:",
     "  provider: openai-codex",
-    "  default: gpt-5.6-sol",
+    `  default: ${model}`,
     "  openai_runtime: auto",
     "agent:",
-    "  reasoning_effort: high",
+    `  reasoning_effort: ${reasoningEffort}`,
     "  coding_context: off",
     "platform_toolsets:",
     "  cli: []",
@@ -138,22 +147,24 @@ function validateCanonicalProfileConfig(configBytes, profileId) {
   const matchesCurrent = JSON.stringify(activeLines) === JSON.stringify(currentBase)
     || JSON.stringify(activeLines) === JSON.stringify(currentEvaluator);
   if (configText !== legacy && !matchesCurrent) {
-    throw new Error(`Hermes profile is not gpt-5.6-sol/openai-codex/high canonical config: ${profileId}`);
+    throw new Error(`Hermes profile is not supported Sol/Astra/openai-codex/high canonical config: ${profileId}`);
   }
-  return configText;
+  return { configText, model, reasoningEffort };
 }
 
-function parseContextLimitEntry(contextLimitEntryBytes) {
+function parseContextLimitEntry(contextLimitEntryBytes, model = HERMES_STRUCTURED_MODEL) {
   const contextEntry = exactUtf8Text(contextLimitEntryBytes, "Hermes context limit entry");
-  const contextMatch = /^gpt-5\.6-sol@https:\/\/chatgpt\.com\/backend-api\/codex: ([1-9]\d*)$/u.exec(contextEntry);
-  const contextLimit = Number(contextMatch?.[1]);
-  if (!Number.isSafeInteger(contextLimit) || contextLimit < 100_000) {
+  const contextMatch = /^(gpt-5\.6-sol|gpt-6-astra)@https:\/\/chatgpt\.com\/backend-api\/codex: ([1-9]\d*)$/u.exec(contextEntry);
+  const contextLimit = Number(contextMatch?.[2]);
+  if (!HERMES_SUPPORTED_MODELS.has(model) || contextMatch?.[1] !== model
+    || !Number.isSafeInteger(contextLimit) || contextLimit < 100_000) {
     throw new Error("Hermes context limit readback is invalid.");
   }
   return { contextEntry, contextLimit };
 }
 
-export function extractHermesContextLimitEntry(contextCacheBytes) {
+export function extractHermesContextLimitEntry(contextCacheBytes, model = HERMES_STRUCTURED_MODEL) {
+  if (!HERMES_SUPPORTED_MODELS.has(model)) throw new Error("Hermes context cache model is unsupported.");
   if (!Buffer.isBuffer(contextCacheBytes)) throw new Error("Hermes context cache must be a byte buffer.");
   const text = exactUtf8Text(contextCacheBytes, "Hermes context cache");
   const activeLines = text.split("\n")
@@ -167,11 +178,11 @@ export function extractHermesContextLimitEntry(contextCacheBytes) {
     }
   }
   const target = activeLines.slice(1).filter((line) => (
-    /^  gpt-5\.6-sol@https:\/\/chatgpt\.com\/backend-api\/codex: [1-9]\d*$/u.test(line)
+    line.startsWith(`  ${model}@https://chatgpt.com/backend-api/codex: `)
   ));
-  if (target.length !== 1) throw new Error("Hermes context cache must contain exactly one gpt-5.6-sol Codex entry.");
+  if (target.length !== 1) throw new Error(`Hermes context cache must contain exactly one ${model} Codex entry.`);
   const entryBytes = Buffer.from(target[0].slice(2));
-  parseContextLimitEntry(entryBytes);
+  parseContextLimitEntry(entryBytes, model);
   return entryBytes;
 }
 
@@ -391,7 +402,7 @@ async function regularFileIdentity(path, label) {
   };
 }
 
-async function hashRelativeFileSet(root, relativePaths, label) {
+async function hashRelativeFileSet(root, relativePaths, label, { bindInternalWebBinLinks = false } = {}) {
   const entries = [];
   let totalBytes = 0;
   for (const relativePath of [...new Set(relativePaths)].sort()) {
@@ -400,6 +411,33 @@ async function hashRelativeFileSet(root, relativePaths, label) {
     const info = await lstatOrNull(absolute);
     if (!info) continue;
     if (info.isSymbolicLink()) {
+      // npm creates these entry points inside the installed web dependency tree.
+      // Fingerprint both link and target; never skip them or follow arbitrary links.
+      if (bindInternalWebBinLinks && /^web\/node_modules\/\.bin\/[^/]+$/u.test(relativePath)) {
+        const linkTarget = await readlink(absolute);
+        const target = resolve(dirname(absolute), linkTarget);
+        const dependencyRoot = resolve(root, "web/node_modules");
+        const targetInfo = await lstatOrNull(target);
+        if (isAbsolute(linkTarget) || !inside(dependencyRoot, target)
+          || !targetInfo?.isFile() || targetInfo.isSymbolicLink()
+          || await realpath(target) !== target) {
+          throw new Error(`${label} web CLI link must target a direct internal regular file: ${relativePath}`);
+        }
+        const bytes = await readFile(target);
+        if (await readlink(absolute) !== linkTarget
+          || await realpath(target) !== target
+          || !(await lstat(target)).isFile()
+          || !(await readFile(target)).equals(bytes)) {
+          throw new Error(`${label} web CLI link or target changed during fingerprinting: ${relativePath}`);
+        }
+        totalBytes += bytes.byteLength;
+        if (totalBytes > MAX_FINGERPRINT_BYTES) throw new Error(`${label} exceeds its deterministic fingerprint byte limit.`);
+        entries.push({
+          path: relativePath, type: "symbolic-link", linkTarget,
+          resolvedPath: relative(root, target), sizeBytes: bytes.byteLength, sha256: sha256(bytes),
+        });
+        continue;
+      }
       throw new Error(`${label} contains a symbolic link: ${relativePath} -> ${await readlink(absolute)}`);
     }
     if (!info.isFile()) throw new Error(`${label} contains a non-file entry: ${relativePath}`);
@@ -855,7 +893,7 @@ async function loadHermesImplementationFileSet(installDirectory) {
     if (entry.isFile() && /\.(?:json|lock|md|py|toml|ya?ml)$/u.test(entry.name)) relativePaths.push(entry.name);
     else if (entry.isSymbolicLink()) relativePaths.push(entry.name);
   }
-  return hashRelativeFileSet(installDirectory, relativePaths, "Hermes loaded implementation");
+  return hashRelativeFileSet(installDirectory, relativePaths, "Hermes loaded implementation", { bindInternalWebBinLinks: true });
 }
 
 async function loadHermesDependencyEvidence(installDirectory, hermesVersionSha256) {
@@ -907,18 +945,23 @@ async function loadHermesDependencyEvidence(installDirectory, hermesVersionSha25
     };
   }
   const sitePackageRoots = [];
+  const physicalLibraryRoots = new Set();
   for (const libraryRoot of [join(venvRoot, "lib"), join(venvRoot, "Lib")]) {
     const libraryInfo = await lstatOrNull(libraryRoot);
     if (!libraryInfo) continue;
     if (!libraryInfo.isDirectory() || libraryInfo.isSymbolicLink()) throw new Error("Hermes venv library root must be a real directory.");
-    const candidates = await readdir(libraryRoot, { withFileTypes: true });
+    // On case-insensitive filesystems lib and Lib name the same directory.
+    const physicalLibraryRoot = await realpath(libraryRoot);
+    if (physicalLibraryRoots.has(physicalLibraryRoot)) continue;
+    physicalLibraryRoots.add(physicalLibraryRoot);
+    const candidates = await readdir(physicalLibraryRoot, { withFileTypes: true });
     for (const candidate of candidates) {
       if (candidate.isDirectory() && /^python\d+(?:\.\d+)*$/u.test(candidate.name)) {
-        const sitePackages = join(libraryRoot, candidate.name, "site-packages");
+        const sitePackages = join(physicalLibraryRoot, candidate.name, "site-packages");
         if (await exists(sitePackages)) sitePackageRoots.push(relative(installDirectory, sitePackages));
       }
     }
-    const directSitePackages = join(libraryRoot, "site-packages");
+    const directSitePackages = join(physicalLibraryRoot, "site-packages");
     if (await exists(directSitePackages)) sitePackageRoots.push(relative(installDirectory, directSitePackages));
   }
   const sitePackagePaths = [];
@@ -1059,14 +1102,16 @@ export function validateHermesProfileRuntime({
   if (!Buffer.isBuffer(configBytes) || !Buffer.isBuffer(soulBytes) || !Buffer.isBuffer(contextLimitEntryBytes)) {
     throw new Error("Hermes runtime evidence must be byte buffers.");
   }
-  const configText = validateCanonicalProfileConfig(configBytes, profileId);
+  const { configText, model, reasoningEffort } = validateCanonicalProfileConfig(configBytes, profileId);
   const soulText = exactUtf8Text(soulBytes, `Hermes SOUL ${profileId}`);
   const declaredProfile = soulText.match(/^- Profile ID:\s*`([^`]+)`\s*$/mu)?.[1];
   if (declaredProfile !== profileId) throw new Error(`Hermes SOUL profile identity drifted: ${profileId}`);
   const contentNeutralSection = extractContentNeutralSection(soulText);
-  const { contextLimit } = parseContextLimitEntry(contextLimitEntryBytes);
+  const { contextLimit } = parseContextLimitEntry(contextLimitEntryBytes, model);
   return {
     profileId,
+    model,
+    reasoningEffort,
     configText,
     soulText,
     contextLimit,
@@ -1659,12 +1704,14 @@ export function validateHermesStructuredTrace({
   contextLimit,
   inputEvidenceBytes,
   outputReserveTokens,
+  model = HERMES_STRUCTURED_MODEL,
 }) {
+  if (!HERMES_SUPPORTED_MODELS.has(model)) throw new Error("Hermes structured trace expected model is unsupported.");
   if (!trace || !usage || !Array.isArray(trace.messages)) throw new Error("Hermes structured trace or usage is missing.");
   if (
     usage.completed !== true
     || usage.failed !== false
-    || usage.model !== HERMES_STRUCTURED_MODEL
+    || usage.model !== model
     || usage.provider !== HERMES_STRUCTURED_PROVIDER
     || typeof usage.session_id !== "string"
     || usage.session_id.length < 1
@@ -1677,7 +1724,7 @@ export function validateHermesStructuredTrace({
   }
   if (
     trace.id !== usage.session_id
-    || trace.model !== HERMES_STRUCTURED_MODEL
+    || trace.model !== model
     || trace.billing_provider !== HERMES_STRUCTURED_PROVIDER
     || trace.profile_name !== profileId
     || trace.end_reason !== "agent_close"
@@ -1822,11 +1869,12 @@ export function validateHermesStructuredReceipt(receipt, expected = {}) {
     || receipt.runId.length < 1
     || typeof receipt.profileId !== "string"
     || receipt.profileId.length < 1
-    || receipt.model !== HERMES_STRUCTURED_MODEL
+    || !HERMES_SUPPORTED_MODELS.has(receipt.model)
     || receipt.provider !== HERMES_STRUCTURED_PROVIDER
     || receipt.readCapabilityTool !== HERMES_READ_ONLY_TOOL
     || receipt.readCapabilityToolset !== HERMES_READ_ONLY_TOOLSET
-    || receipt.reasoningEffort !== HERMES_STRUCTURED_REASONING
+    || (receipt.reasoningEffort !== HERMES_STRUCTURED_REASONING
+      && !(receipt.model === "gpt-6-astra" && receipt.reasoningEffort === "medium"))
     || receipt.runtimeAttestation !== CURRENT_RUNTIME_ATTESTATION
     || receipt.contentNeutralContractId !== FICTION_CONTENT_CONTRACT_ID
     || receipt.contentNeutralContractSha256 !== FICTION_CONTENT_CONTRACT_SHA256
@@ -2198,7 +2246,8 @@ export async function loadHermesRuntimeEvidence(profileHome, profileId, options 
     || profileContext.sha256 !== second[3].sha256
     || projectContext.sha256 !== second[4].sha256
   ) throw new Error("Hermes prompt/config/project context changed during runtime attestation.");
-  const contextLimitEntryBytes = extractHermesContextLimitEntry(contextCacheBytes);
+  const { model } = validateCanonicalProfileConfig(configBytes, profileId);
+  const contextLimitEntryBytes = extractHermesContextLimitEntry(contextCacheBytes, model);
   const validatedProfile = validateHermesProfileRuntime({ profileId, configBytes, soulBytes, contextLimitEntryBytes });
   const hermesProfileContextSha256 = profileContext.sha256;
   const hermesProjectContextSha256 = projectContext.sha256;
@@ -2729,7 +2778,7 @@ function canonicalReadCapability(value) {
     value.cliPolicy.entrypoint !== "attested-delegated-executable"
     || !isDeepStrictEqual(value.cliPolicy.flags, ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"])
     || !isDeepStrictEqual(value.cliPolicy.toolsets, [HERMES_READ_ONLY_TOOLSET])
-    || value.cliPolicy.model !== HERMES_STRUCTURED_MODEL
+    || !HERMES_SUPPORTED_MODELS.has(value.cliPolicy.model)
     || value.cliPolicy.provider !== HERMES_STRUCTURED_PROVIDER
   ) throw new Error("Hermes exact-input CLI policy drifted.");
   if (!isDeepStrictEqual(value.executionPolicy, canonicalReadExecutionPolicy())) {
@@ -2928,9 +2977,9 @@ export async function prepareHermesExactInputReadCapability({
   const manifestBytes = jsonBytes(buildHermesExactInputReadManifest(inputEvidence.files));
   const manifestPath = join(capabilityRoot, "input-manifest.json");
   const contextCacheBytes = Buffer.from(
-    `context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: ${runtime.contextLimit}\n`,
+    `context_lengths:\n  ${runtime.model}@https://chatgpt.com/backend-api/codex: ${runtime.contextLimit}\n`,
   );
-  if (sha256(extractHermesContextLimitEntry(contextCacheBytes)) !== runtime.contextLimitEntrySha256) {
+  if (sha256(extractHermesContextLimitEntry(contextCacheBytes, runtime.model)) !== runtime.contextLimitEntrySha256) {
     throw new Error("Hermes exact-input context cache drifted from the source runtime.");
   }
   const pluginFiles = await loadReadPluginFiles();
@@ -2999,7 +3048,7 @@ export async function prepareHermesExactInputReadCapability({
     cliPolicy: {
       entrypoint: "attested-delegated-executable",
       flags: ["--oneshot", "--usage-file", "--pass-session-id", "--toolsets", "--model", "--provider"],
-      model: HERMES_STRUCTURED_MODEL,
+      model: runtime.model,
       provider: HERMES_STRUCTURED_PROVIDER,
       toolsets: [HERMES_READ_ONLY_TOOLSET],
     },
@@ -3482,6 +3531,7 @@ async function buildValidatedReceipt(input, artifacts) {
     contextLimit: input.runtime.contextLimit,
     inputEvidenceBytes: input.inputEvidence.totalBytes,
     outputReserveTokens: input.outputReserveTokens,
+    model: input.runtime.model,
   });
   const exactReadback = await validateHermesExactInputTrace({
     trace: artifacts.trace,
@@ -3495,7 +3545,7 @@ async function buildValidatedReceipt(input, artifacts) {
     role: input.role,
     runId: artifacts.usage.session_id,
     profileId: input.profileId,
-    model: HERMES_STRUCTURED_MODEL,
+    model: input.runtime.model,
     provider: HERMES_STRUCTURED_PROVIDER,
     readCapabilitySha256: input.readCapability.sha256,
     readCapabilityTool: HERMES_READ_ONLY_TOOL,
@@ -3503,7 +3553,7 @@ async function buildValidatedReceipt(input, artifacts) {
     readExecutionEnvironmentSha256: input.readCapability.capability.executionEnvironmentSha256,
     readExecutionRuntimeIdentitySha256: input.readCapability.capability.executionRuntimeIdentitySha256,
     readManifestSha256: input.readCapability.capability.manifest.sha256,
-    reasoningEffort: HERMES_STRUCTURED_REASONING,
+    reasoningEffort: input.runtime.reasoningEffort,
     runtimeAttestation: input.runtime.runtimeAttestation,
     promptSha256: sha256(Buffer.from(input.prompt)),
     inputDigest: input.inputDigest,
@@ -3555,6 +3605,8 @@ function expectedReceiptFields(input, receipt) {
   return {
     role: input.role,
     profileId: input.profileId,
+    model: input.runtime.model,
+    reasoningEffort: input.runtime.reasoningEffort,
     runtimeAttestation: input.runtime.runtimeAttestation,
     promptSha256: sha256(Buffer.from(input.prompt)),
     inputDigest: input.inputDigest,
@@ -3957,6 +4009,7 @@ export async function runHermesStructuredAttempt({
   runRoot,
   profileHome,
   profileId,
+  expectedProfileRuntime,
   prompt,
   expectedReadPaths,
   inputDigest,
@@ -3976,6 +4029,13 @@ export async function runHermesStructuredAttempt({
   if (outputReserveTokens < 1) throw new Error("Hermes structured output reserve tokens must be positive.");
   if (typeof validateResult !== "function") throw new Error("Hermes structured result validator is required.");
   if (typeof progress !== "function") throw new Error("Hermes structured progress callback must be a function.");
+  if (expectedProfileRuntime !== undefined) {
+    assertExactObjectKeys(expectedProfileRuntime, ["model", "profileConfigSha256", "soulSha256"], "Hermes expected profile runtime");
+    if (!HERMES_SUPPORTED_MODELS.has(expectedProfileRuntime.model)) throw new Error("Hermes expected profile model is unsupported.");
+    assertSha256(expectedProfileRuntime.profileConfigSha256, "Hermes expected profile config digest");
+    assertSha256(expectedProfileRuntime.soulSha256, "Hermes expected profile Soul digest");
+    expectedProfileRuntime = { ...expectedProfileRuntime };
+  }
   const sealedPluginPlanningEvidence = expectedPluginPlanningEvidence === undefined
     ? undefined
     : JSON.parse(jsonBytes(validateHermesExactInputPluginPlanningEvidence(expectedPluginPlanningEvidence)).toString("utf8"));
@@ -4030,6 +4090,9 @@ export async function runHermesStructuredAttempt({
       loadHermesExactInputEvidence(absoluteExpectedReadPaths, inputDigest),
       loadHermesAuthStoreBoundary(absoluteProfileHome, profileId),
     ]);
+    for (const [key, value] of Object.entries(expectedProfileRuntime ?? {})) {
+      if (input.runtime[key] !== value) throw new Error(`Hermes attested profile differs from the sealed reviewer runtime: ${key}`);
+    }
     input.readCapability = await prepareHermesExactInputReadCapability({
       runRoot: input.runRoot,
       profileId: input.profileId,
@@ -4129,7 +4192,7 @@ export async function runHermesStructuredAttempt({
         "--toolsets",
         HERMES_READ_ONLY_TOOLSET,
         "--model",
-        HERMES_STRUCTURED_MODEL,
+        input.runtime.model,
         "--provider",
         HERMES_STRUCTURED_PROVIDER,
       ], {

@@ -6,11 +6,15 @@ import {
   BLIND_PAIR_AUTHORITY,
   INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
   INKOS_BLIND_EVALUATOR_SOUL_SHA256,
+  HISTORICAL_ASTRA_HIGH_EVALUATOR_CONFIG_SHA256,
+  LEGACY_INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
+  LEGACY_INKOS_BLIND_EVALUATOR_SOUL_SHA256,
   assembleBlindPairEvaluationInputFromInkOSTransfer,
   buildBlindReviewReceiptFromRawEvidence,
   hashBlindEvaluationArtifact,
   scoreBlindCommercialEvaluation,
   validateBlindPairEvaluationInput,
+  validateBlindEvaluatorRuntime,
   validateBlindPairEvaluationResult,
   validateBlindSurfaceScanReceipt,
 } from "../tools/blind-pair-evaluation-contract.mjs";
@@ -87,7 +91,7 @@ function input(candidateContexts = contexts()) {
       { lane: "soul", actorId: "producer-soul-01", profileId: "inkos_male_modern_fantasy", terminalReceiptSha256: sha("soul-terminal") },
     ],
     reviewer: {
-      actorId: "reviewer-01", profileId: "inkos_blind_evaluator", provider: "openai-codex", model: "gpt-5.6-sol", reasoning: "high",
+      actorId: "reviewer-01", profileId: "inkos_blind_evaluator", provider: "openai-codex", model: "gpt-6-astra", reasoning: "medium",
       configSha256: REVIEWER_CONFIG_SHA256, soulSha256: REVIEWER_SOUL_SHA256,
     },
     contentContract: { id: "fiction-content-neutral-ko/v1", sha256: sha("content"), intensityDirectiveSha256: sha("intensity") },
@@ -192,8 +196,8 @@ function rawEvidence(sealedInput, evaluatorResult, candidateContexts, overrides 
     profileConfigSha256: sealedInput.reviewer.configSha256,
     soulSha256: sealedInput.reviewer.soulSha256,
     provider: "openai-codex",
-    model: "gpt-5.6-sol",
-    reasoningEffort: "high",
+    model: sealedInput.reviewer.model,
+    reasoningEffort: sealedInput.reviewer.reasoning,
     inputDigest: hashBlindEvaluationArtifact(sealedInput),
     inputSha256: rawSha(jsonBytes([{ path: "/sealed/evaluator-input.json", sha256: evaluatorInputSha256 }])),
     expectedReadCount: 1,
@@ -272,6 +276,7 @@ test("assembles an InkOS v1 transfer into the bodyless RefLab v2 input without i
   assert.deepEqual(assembled.candidates, transfer.candidates.map(({ id, sha256, byteLength }) => ({ id, sha256, byteLength })));
   assert.equal(assembled.reviewer.configSha256, INKOS_BLIND_EVALUATOR_CONFIG_SHA256);
   assert.equal(assembled.reviewer.soulSha256, INKOS_BLIND_EVALUATOR_SOUL_SHA256);
+  assert.equal(assembled.reviewer.model, "gpt-6-astra");
   assert.equal(JSON.stringify(assembled).includes("neutralWorkOrderId"), false);
   assert.equal(JSON.stringify(assembled).includes("candidateToLane"), false);
 
@@ -486,6 +491,67 @@ test("fails closed on actor collapse, semantic IDs, arbitrary reviewer identity/
   const contextDrift = input(candidateContexts);
   contextDrift.commonContext.text += " 변조";
   assert.throws(() => validateBlindPairEvaluationInput(contextDrift), /commonContext text\/bytes\/hash binding drifted/u);
+});
+
+test("binds current Astra medium and historical high evidence to exact runtime tuples", () => {
+  const current = input();
+  assert.equal(validateBlindPairEvaluationInput(current), true);
+  assert.equal(validateBlindEvaluatorRuntime(current.reviewer, { currentOnly: true }), true);
+  const legacy = structuredClone(current);
+  Object.assign(legacy.reviewer, {
+    model: "gpt-5.6-sol",
+    reasoning: "high",
+    configSha256: LEGACY_INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
+    soulSha256: LEGACY_INKOS_BLIND_EVALUATOR_SOUL_SHA256,
+  });
+  assert.equal(validateBlindPairEvaluationInput(legacy), true);
+  const candidateContexts = contexts();
+  const evaluatorResult = result(candidateContexts);
+  const legacyReceipt = buildBlindReviewReceiptFromRawEvidence({
+    input: legacy, result: evaluatorResult, candidateContexts,
+    ...rawEvidence(legacy, evaluatorResult, candidateContexts),
+    surfaceScans: candidateContexts.map(noMatchSurfaceReceipt),
+  });
+  assert.equal(legacyReceipt.reviewer.model, "gpt-5.6-sol");
+  assert.equal(legacyReceipt.reviewer.configSha256, LEGACY_INKOS_BLIND_EVALUATOR_CONFIG_SHA256);
+  assert.equal(legacyReceipt.reviewer.soulSha256, LEGACY_INKOS_BLIND_EVALUATOR_SOUL_SHA256);
+  assert.throws(() => buildBlindReviewReceiptFromRawEvidence({
+    input: legacy, result: evaluatorResult, candidateContexts,
+    ...rawEvidence(legacy, evaluatorResult, candidateContexts, { hostReceipt: { model: "gpt-6-astra" } }),
+    surfaceScans: candidateContexts.map(noMatchSurfaceReceipt),
+  }), /binding drifted/u);
+  assert.throws(() => validateBlindEvaluatorRuntime(legacy.reviewer, { currentOnly: true }), /fixed audited/u);
+  const historicalAstra = structuredClone(current);
+  Object.assign(historicalAstra.reviewer, {
+    reasoning: "high", configSha256: HISTORICAL_ASTRA_HIGH_EVALUATOR_CONFIG_SHA256,
+  });
+  assert.equal(validateBlindPairEvaluationInput(historicalAstra), true);
+  assert.throws(() => validateBlindEvaluatorRuntime(historicalAstra.reviewer, { currentOnly: true }), /fixed audited/u);
+  const historicalAstraReceipt = buildBlindReviewReceiptFromRawEvidence({
+    input: historicalAstra, result: evaluatorResult, candidateContexts,
+    ...rawEvidence(historicalAstra, evaluatorResult, candidateContexts),
+    surfaceScans: candidateContexts.map(noMatchSurfaceReceipt),
+  });
+  assert.equal(historicalAstraReceipt.reviewer.reasoning, "high");
+  assert.equal(historicalAstraReceipt.reviewer.configSha256, HISTORICAL_ASTRA_HIGH_EVALUATOR_CONFIG_SHA256);
+  for (const base of [current, historicalAstra]) {
+    for (const key of ["reasoning", "configSha256"]) {
+      const mixed = structuredClone(base);
+      mixed.reviewer[key] = (base === current ? historicalAstra : current).reviewer[key];
+      assert.throws(() => validateBlindPairEvaluationInput(mixed), /fixed audited/u);
+    }
+  }
+  for (const base of [current, legacy]) {
+    const other = base === current ? legacy : current;
+    for (const key of ["model", "reasoning", "configSha256", "soulSha256"]) {
+      const mixed = structuredClone(base);
+      mixed.reviewer[key] = other.reviewer[key];
+      assert.throws(() => validateBlindPairEvaluationInput(mixed), /fixed audited/u);
+    }
+  }
+  const invalidModel = structuredClone(current);
+  invalidModel.reviewer.model = "gpt-5.6-terra";
+  assert.throws(() => validateBlindPairEvaluationInput(invalidModel), /fixed audited/u);
 });
 
 test("fails closed on score/result drift and recomputes all three raw evidence hashes", () => {

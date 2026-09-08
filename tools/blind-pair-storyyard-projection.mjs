@@ -146,7 +146,7 @@ function validateEnvelope(envelope, input, evaluatorResultSha256, expectedConten
   }
   exactKeys(envelope.comparison.runtime, ["kernel", "piWorker", "retrieval", "fts", "model", "reasoning"], "Storyyard projection runtime");
   if (JSON.stringify(envelope.comparison.runtime) !== JSON.stringify({
-    kernel: "enforce", piWorker: "off", retrieval: "legacy", fts: "off", model: "gpt-5.6-sol", reasoning: "high",
+    kernel: "enforce", piWorker: "off", retrieval: "legacy", fts: "off", model: input.reviewer.model, reasoning: input.reviewer.reasoning,
   })) throw new Error("Storyyard projection runtime must remain the locked evaluation baseline.");
 
   exactKeys(envelope.candidatePreparedAt, BLIND_PAIR_CANDIDATE_IDS, "Storyyard projection candidatePreparedAt");

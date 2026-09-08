@@ -10,6 +10,8 @@ import {
   BLIND_PAIR_AUTHORITY,
   INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
   INKOS_BLIND_EVALUATOR_SOUL_SHA256,
+  LEGACY_INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
+  LEGACY_INKOS_BLIND_EVALUATOR_SOUL_SHA256,
   hashBlindEvaluationArtifact,
   scoreBlindCommercialEvaluation,
 } from "../tools/blind-pair-evaluation-contract.mjs";
@@ -232,8 +234,8 @@ async function fixture(t, { pairId = "modern-pair-01" } = {}) {
       actorId: "reviewer-blind-01",
       profileId: "inkos_blind_evaluator",
       provider: "openai-codex",
-      model: "gpt-5.6-sol",
-      reasoning: "high",
+      model: "gpt-6-astra",
+      reasoning: "medium",
       configSha256: REVIEWER_CONFIG_SHA256,
       soulSha256: REVIEWER_SOUL_SHA256,
     },
@@ -252,6 +254,11 @@ function stubExecutor(input, observations = {}, mutateResult = (value) => value,
     observations.options = options;
     assert.equal(options.role, "blind-pair-commercial-evaluator");
     assert.equal(options.profileId, input.reviewer.profileId);
+    assert.deepEqual(options.expectedProfileRuntime, {
+      model: input.reviewer.model,
+      profileConfigSha256: input.reviewer.configSha256,
+      soulSha256: input.reviewer.soulSha256,
+    });
     assert.equal(options.expectedReadPaths.length, 1);
     const evaluatorInputBytes = await readFile(options.expectedReadPaths[0]);
     const evaluatorInput = JSON.parse(evaluatorInputBytes.toString("utf8"));
@@ -270,9 +277,9 @@ function stubExecutor(input, observations = {}, mutateResult = (value) => value,
       profileId: options.profileId,
       profileConfigSha256: input.reviewer.configSha256,
       soulSha256: input.reviewer.soulSha256,
-      model: "gpt-5.6-sol",
+      model: "gpt-6-astra",
       provider: "openai-codex",
-      reasoningEffort: "high",
+      reasoningEffort: input.reviewer.reasoning,
       inputDigest: options.inputDigest,
       inputSha256: rawSha(jsonBytes([{ path: options.expectedReadPaths[0], sha256: evaluatorSha }])),
       resultSha256: hashBlindEvaluationArtifact(result),
@@ -408,7 +415,7 @@ test("host rejects invalid evaluator spans and tampered result or host receipt h
     })),
   }), /receipt drifted/u);
 
-  for (const field of ["profileConfigSha256", "soulSha256"]) {
+  for (const field of ["profileConfigSha256", "soulSha256", "model", "reasoningEffort"]) {
     const digestFixture = await fixture(t, { pairId: `host-${field}` });
     await assert.rejects(runBlindPairEvaluation({
       input: digestFixture.input,
@@ -416,10 +423,26 @@ test("host rejects invalid evaluator spans and tampered result or host receipt h
       testOnlyRepositoryRoot: digestFixture.root,
       testOnlyExecutor: stubExecutor(digestFixture.input, {}, (value) => value, (receipt) => ({
         ...receipt,
-        [field]: sealedSha(`arbitrary-${field}`),
+        [field]: field === "model" ? "gpt-5.6-sol" : field === "reasoningEffort" ? "high" : sealedSha(`arbitrary-${field}`),
       })),
     }), /receipt drifted/u);
   }
+});
+
+test("new evaluator execution rejects the historical Sol tuple before invoking Hermes", async (t) => {
+  const { root, input } = await fixture(t, { pairId: "legacy-runtime" });
+  Object.assign(input.reviewer, {
+    model: "gpt-5.6-sol",
+    reasoning: "high",
+    configSha256: LEGACY_INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
+    soulSha256: LEGACY_INKOS_BLIND_EVALUATOR_SOUL_SHA256,
+  });
+  let invoked = false;
+  await assert.rejects(runBlindPairEvaluation({
+    input, testOnly: true, testOnlyRepositoryRoot: root,
+    testOnlyExecutor: async () => { invoked = true; throw new Error("must not execute"); },
+  }), /fixed audited/u);
+  assert.equal(invoked, false);
 });
 
 test("surface receipt builder rejects a fake empty scan, truncation, and unsupported match evidence", () => {

@@ -71,7 +71,7 @@ function fixture() {
     ],
     reviewer: {
       actorId: "reviewer-blind", profileId: "inkos_blind_evaluator", provider: "openai-codex",
-      model: "gpt-5.6-sol", reasoning: "high", configSha256: INKOS_BLIND_EVALUATOR_CONFIG_SHA256, soulSha256: INKOS_BLIND_EVALUATOR_SOUL_SHA256,
+      model: "gpt-6-astra", reasoning: "medium", configSha256: INKOS_BLIND_EVALUATOR_CONFIG_SHA256, soulSha256: INKOS_BLIND_EVALUATOR_SOUL_SHA256,
     },
     contentContract: {
       id: "fiction-content-neutral-ko/v1", sha256: sealedSha("content-contract"), intensityDirectiveSha256: sealedSha("intensity"),
@@ -217,7 +217,7 @@ function buildReceipt(input, result, candidateContexts, surfaceScans) {
   const hostReceipt = {
     role: "blind-pair-commercial-evaluator", runId: "reviewer-run-01", profileId: input.reviewer.profileId,
     profileConfigSha256: input.reviewer.configSha256, soulSha256: input.reviewer.soulSha256,
-    provider: "openai-codex", model: "gpt-5.6-sol", reasoningEffort: "high",
+    provider: "openai-codex", model: "gpt-6-astra", reasoningEffort: input.reviewer.reasoning,
     inputDigest: hashBlindEvaluationArtifact(input),
     inputSha256: rawSha(jsonBytes([{ path: "/sealed/evaluator-input.json", sha256: evaluatorInputSha256 }])),
     expectedReadCount: 1, exactReadCount: 1, exactReadSha256s: [evaluatorInputSha256],
@@ -255,7 +255,7 @@ function envelope(input, result, reviewReceipt, transfer) {
       canaryIsolation: structuredClone(transfer.canaryIsolation),
       candidateLabelsShuffled: true,
       generatorMetadataExcluded: true,
-      runtime: { kernel: "enforce", piWorker: "off", retrieval: "legacy", fts: "off", model: "gpt-5.6-sol", reasoning: "high" },
+      runtime: { kernel: "enforce", piWorker: "off", retrieval: "legacy", fts: "off", model: "gpt-6-astra", reasoning: "medium" },
     },
     candidatePreparedAt: { "candidate-A": transfer.generatedAt, "candidate-B": transfer.generatedAt },
     sealedGenerationEvidence: {
@@ -348,6 +348,14 @@ test("fails closed on Storyyard runtime, content-neutral, transfer, genre, and U
   const runtimeDrift = structuredClone(state.envelope);
   runtimeDrift.comparison.runtimeReceiptSha256 = sealedSha("wrong-runtime-receipt");
   assert.throws(() => rebuild(runtimeDrift), /exact evaluator result SHA-256/u);
+
+  const modelDrift = structuredClone(state.envelope);
+  modelDrift.comparison.runtime.model = "gpt-5.6-sol";
+  assert.throws(() => rebuild(modelDrift), /locked evaluation baseline/u);
+
+  const reasoningDrift = structuredClone(state.envelope);
+  reasoningDrift.comparison.runtime.reasoning = "high";
+  assert.throws(() => rebuild(reasoningDrift), /locked evaluation baseline/u);
 
   const neutralityDrift = structuredClone(state.envelope);
   neutralityDrift.sealedGenerationEvidence.contentNeutralReceiptSha256s = [

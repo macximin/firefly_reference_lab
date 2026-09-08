@@ -22,6 +22,7 @@ import {
   buildBlindReviewReceiptFromRawEvidence,
   hashBlindEvaluationArtifact,
   validateBlindPairEvaluationInput,
+  validateBlindEvaluatorRuntime,
   validateBlindPairEvaluationResult,
   validateBlindSurfaceScanReceipt,
   validateInkOSBlindPairEvaluationTransfer,
@@ -29,9 +30,7 @@ import {
 import {
   FICTION_CONTENT_CONTRACT_ID,
   FICTION_CONTENT_CONTRACT_SHA256,
-  HERMES_STRUCTURED_MODEL,
   HERMES_STRUCTURED_PROVIDER,
-  HERMES_STRUCTURED_REASONING,
   loadHermesAuthAdapterPlanningEvidence,
   loadHermesExactInputPluginPlanningEvidence,
   runHermesStructuredAttempt,
@@ -398,9 +397,9 @@ function assertStructuredRun(run, expected) {
     || receipt.profileId !== expected.input.reviewer.profileId
     || receipt.profileConfigSha256 !== expected.input.reviewer.configSha256
     || receipt.soulSha256 !== expected.input.reviewer.soulSha256
-    || receipt.model !== HERMES_STRUCTURED_MODEL
+    || receipt.model !== expected.input.reviewer.model
     || receipt.provider !== HERMES_STRUCTURED_PROVIDER
-    || receipt.reasoningEffort !== HERMES_STRUCTURED_REASONING
+    || receipt.reasoningEffort !== expected.input.reviewer.reasoning
     || receipt.inputDigest !== expected.inputDigest
     || receipt.inputSha256 !== expectedHarnessInputSha256(expected.evaluatorInputPath, expected.evaluatorInputBytes)
     || receipt.resultSha256 !== hashBlindEvaluationArtifact(run.result)
@@ -625,6 +624,7 @@ export async function runBlindPairEvaluation(options) {
     : DEFAULT_REPOSITORY_ROOT;
   const input = options.input;
   validateBlindPairEvaluationInput(input);
+  validateBlindEvaluatorRuntime(input.reviewer, { currentOnly: true });
   assertReviewerSeparation(input);
   if (
     input.contentContract.id !== FICTION_CONTENT_CONTRACT_ID
@@ -690,6 +690,11 @@ export async function runBlindPairEvaluation(options) {
     runRoot: structuredRunRoot,
     profileHome,
     profileId: input.reviewer.profileId,
+    expectedProfileRuntime: {
+      model: input.reviewer.model,
+      profileConfigSha256: input.reviewer.configSha256,
+      soulSha256: input.reviewer.soulSha256,
+    },
     prompt,
     expectedReadPaths: [evaluatorInputPath],
     inputDigest,

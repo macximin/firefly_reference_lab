@@ -11,8 +11,39 @@ const BLIND_EVALUATOR_PROFILE_ID = "inkos_blind_evaluator";
 // profile.  A valid-looking digest is not sufficient: accepting one would let a
 // caller substitute a different evaluator configuration or Soul under the same
 // profile ID.
-export const INKOS_BLIND_EVALUATOR_CONFIG_SHA256 = "4124e16bc40d28732d1dd02f9f2e8b78127a202313e1ace21021f16fca809f46";
-export const INKOS_BLIND_EVALUATOR_SOUL_SHA256 = "5c4cca60c9971312682f7b71cac5d4d61b6f9e2c42d19af99c8fe6daedacd94b";
+export const INKOS_BLIND_EVALUATOR_CONFIG_SHA256 = "29b62899ee1ef10fe021c9dd028a8ddd690d38a0e0da475d132b071eb50a800e";
+export const HISTORICAL_ASTRA_HIGH_EVALUATOR_CONFIG_SHA256 = "e75d85c0085769a347820ba9f040e4098112f7ae84aa5c22f82a0b33f6476c27";
+export const LEGACY_INKOS_BLIND_EVALUATOR_CONFIG_SHA256 = "4124e16bc40d28732d1dd02f9f2e8b78127a202313e1ace21021f16fca809f46";
+export const INKOS_BLIND_EVALUATOR_SOUL_SHA256 = "abd78aa24facfaa885128aa3a995af5e7116d8f1038c856813fec000682bd2d1";
+export const LEGACY_INKOS_BLIND_EVALUATOR_SOUL_SHA256 = "5c4cca60c9971312682f7b71cac5d4d61b6f9e2c42d19af99c8fe6daedacd94b";
+export const INKOS_BLIND_EVALUATOR_MODEL = "gpt-6-astra";
+export const INKOS_BLIND_EVALUATOR_RUNTIME = Object.freeze({
+  provider: "openai-codex",
+  model: INKOS_BLIND_EVALUATOR_MODEL,
+  reasoning: "medium",
+  configSha256: INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
+  soulSha256: INKOS_BLIND_EVALUATOR_SOUL_SHA256,
+});
+
+// Legacy evidence stays readable only with its original model/reasoning/config pair.
+// New execution additionally requires the current tuple.
+export function validateBlindEvaluatorRuntime(reviewer, { currentOnly = false } = {}) {
+  const current = reviewer?.model === INKOS_BLIND_EVALUATOR_MODEL && reviewer?.reasoning === "medium";
+  const configSha256 = current ? INKOS_BLIND_EVALUATOR_CONFIG_SHA256
+    : !currentOnly && reviewer?.reasoning === "high"
+      ? reviewer?.model === INKOS_BLIND_EVALUATOR_MODEL ? HISTORICAL_ASTRA_HIGH_EVALUATOR_CONFIG_SHA256
+        : reviewer?.model === "gpt-5.6-sol" ? LEGACY_INKOS_BLIND_EVALUATOR_CONFIG_SHA256 : null
+      : null;
+  const soulSha256 = reviewer?.model === INKOS_BLIND_EVALUATOR_MODEL
+    ? INKOS_BLIND_EVALUATOR_SOUL_SHA256 : LEGACY_INKOS_BLIND_EVALUATOR_SOUL_SHA256;
+  if (configSha256 === null
+    || reviewer.configSha256 !== configSha256
+    || reviewer.soulSha256 !== soulSha256
+    || reviewer.provider !== "openai-codex") {
+    throw new Error("Blind reviewer must use the fixed audited model/reasoning/config/Soul tuple.");
+  }
+  return true;
+}
 export const BLIND_EVALUATOR_EXACT_INPUT_MAX_BYTES = HERMES_READ_SOURCE_MAX_BYTES;
 const GENRES = new Set(["modern-fantasy-ko", "fantasy-ko", "murim-ko"]);
 const CANDIDATE_IDS = Object.freeze(["candidate-A", "candidate-B"]);
@@ -198,14 +229,8 @@ export function validateBlindPairEvaluationInput(input) {
   }
   assertSha(input.reviewer.configSha256, "blind evaluation input.reviewer.configSha256");
   assertSha(input.reviewer.soulSha256, "blind evaluation input.reviewer.soulSha256");
-  if (input.reviewer.configSha256 !== INKOS_BLIND_EVALUATOR_CONFIG_SHA256
-    || input.reviewer.soulSha256 !== INKOS_BLIND_EVALUATOR_SOUL_SHA256) {
-    throw new Error("Blind reviewer must use the fixed audited inkos_blind_evaluator config/Soul digests.");
-  }
+  validateBlindEvaluatorRuntime(input.reviewer);
   if (actorIds.has(input.reviewer.actorId)) throw new Error("Blind reviewer must be actor-distinct from both producers.");
-  if (input.reviewer.provider !== "openai-codex" || input.reviewer.model !== "gpt-5.6-sol" || input.reviewer.reasoning !== "high") {
-    throw new Error("Blind reviewer runtime must be openai-codex/gpt-5.6-sol/high.");
-  }
   exactKeys(input.contentContract, ["id", "sha256", "intensityDirectiveSha256"], "blind evaluation input.contentContract");
   if (input.contentContract.id !== "fiction-content-neutral-ko/v1") throw new Error("Blind content contract ID is invalid.");
   assertSha(input.contentContract.sha256, "blind evaluation input.contentContract.sha256");
@@ -300,8 +325,11 @@ export function assembleBlindPairEvaluationInputFromInkOSTransfer({
   reviewPacket,
   producerActors,
   reviewerActorId,
+  reviewerRuntime = INKOS_BLIND_EVALUATOR_RUNTIME,
   contentContract,
 }) {
+  exactKeys(reviewerRuntime, Object.keys(INKOS_BLIND_EVALUATOR_RUNTIME), "Blind reviewer runtime");
+  validateBlindEvaluatorRuntime(reviewerRuntime);
   validateInkOSBlindPairEvaluationTransfer(transfer);
   assertArtifactRef(reviewPacket, "InkOS transfer reviewPacket");
   const transferBytes = canonicalBytes(transfer);
@@ -325,11 +353,7 @@ export function assembleBlindPairEvaluationInputFromInkOSTransfer({
     reviewer: {
       actorId: reviewerActorId,
       profileId: BLIND_EVALUATOR_PROFILE_ID,
-      provider: "openai-codex",
-      model: "gpt-5.6-sol",
-      reasoning: "high",
-      configSha256: INKOS_BLIND_EVALUATOR_CONFIG_SHA256,
-      soulSha256: INKOS_BLIND_EVALUATOR_SOUL_SHA256,
+      ...reviewerRuntime,
     },
     contentContract,
     authority: BLIND_PAIR_AUTHORITY,
@@ -697,8 +721,8 @@ export function buildBlindReviewReceiptFromRawEvidence({
     || hostReceipt.profileConfigSha256 !== input.reviewer.configSha256
     || hostReceipt.soulSha256 !== input.reviewer.soulSha256
     || hostReceipt.provider !== "openai-codex"
-    || hostReceipt.model !== "gpt-5.6-sol"
-    || hostReceipt.reasoningEffort !== "high"
+    || hostReceipt.model !== input.reviewer.model
+    || hostReceipt.reasoningEffort !== input.reviewer.reasoning
     || hostReceipt.inputDigest !== hashBlindEvaluationArtifact(input)
     || !SHA256.test(hostReceipt.inputSha256 ?? "")
     || hostReceipt.expectedReadCount !== 1

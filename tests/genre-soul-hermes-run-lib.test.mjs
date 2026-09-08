@@ -176,7 +176,8 @@ test("validates canonical structured-attempt input attestation bytes and all con
   }), /inputSha256 drifted from expectedReads/u);
 });
 
-function configBytes() {
+function configBytes(model = "gpt-5.6-sol", reasoningEffort = "high") {
+  if (model === "gpt-6-astra") return Buffer.from(`model:\n  provider: openai-codex\n  default: ${model}\n  openai_runtime: auto\nagent:\n  reasoning_effort: ${reasoningEffort}\n  coding_context: off\nplatform_toolsets:\n  cli: []\n`);
   return Buffer.from(`model:
   provider: openai-codex
   default: gpt-5.6-sol
@@ -202,7 +203,7 @@ function soulBytes(profileId) {
 `);
 }
 
-function usage(runId = "20260829_000000_mock") {
+function usage(runId = "20260829_000000_mock", model = "gpt-5.6-sol") {
   return {
     estimated_cost_usd: 0,
     cost_status: "included",
@@ -214,7 +215,7 @@ function usage(runId = "20260829_000000_mock") {
     reasoning_tokens: 50,
     total_tokens: 1900,
     api_calls: 2,
-    model: "gpt-5.6-sol",
+    model,
     provider: "openai-codex",
     session_id: runId,
     completed: true,
@@ -223,11 +224,11 @@ function usage(runId = "20260829_000000_mock") {
   };
 }
 
-function traceFixture({ profileId, prompt, soul, path, fileContent, result, runId = "20260829_000000_mock" }) {
+function traceFixture({ profileId, prompt, soul, path, fileContent, result, runId = "20260829_000000_mock", model = "gpt-5.6-sol" }) {
   const fileBytes = Buffer.from(fileContent);
   return {
     id: runId,
-    model: "gpt-5.6-sol",
+    model,
     billing_provider: "openai-codex",
     profile_name: profileId,
     end_reason: "agent_close",
@@ -322,7 +323,7 @@ test("validates the real sol/high profile, SOUL, and content-neutral runtime evi
     configBytes: Buffer.from("model:\n  provider: mock\n  default: gpt-5.6-sol\nagent:\n  reasoning_effort: high\n"),
     soulBytes: soulBytes(profileId),
     contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
-  }), /not gpt-5\.6-sol\/openai-codex\/high/u);
+  }), /not supported Sol\/Astra\/openai-codex\/high/u);
 
   const commentSpoof = Buffer.from(`model:
   provider: wrong-provider
@@ -354,6 +355,47 @@ agent:
     soulBytes: Buffer.from(soulBytes(profileId).toString("utf8").replace(FICTION_CONTENT_CONTRACT_SHA256, "0".repeat(64))),
     contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
   }), /content-neutral contract identity drifted/u);
+});
+
+test("Astra profile context entry and trace must match the attested model", () => {
+  const model = "gpt-6-astra";
+  const profileId = "inkos_test_profile";
+  const contextLimitEntryBytes = Buffer.from(`${model}@https://chatgpt.com/backend-api/codex: 272000`);
+  const runtime = validateHermesProfileRuntime({ profileId, configBytes: configBytes(model), soulBytes: soulBytes(profileId), contextLimitEntryBytes });
+  assert.equal(runtime.model, model);
+  const mediumRuntime = validateHermesProfileRuntime({
+    profileId, configBytes: configBytes(model, "medium"), soulBytes: soulBytes(profileId), contextLimitEntryBytes,
+  });
+  assert.equal(mediumRuntime.reasoningEffort, "medium");
+  assert.notEqual(mediumRuntime.profileConfigSha256, runtime.profileConfigSha256);
+  assert.throws(() => validateHermesProfileRuntime({
+    profileId,
+    configBytes: Buffer.from(configBytes().toString("utf8").replace("reasoning_effort: high", "reasoning_effort: medium")),
+    soulBytes: soulBytes(profileId),
+    contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
+  }), /reasoning is unsupported/u);
+  assert.deepEqual(extractHermesContextLimitEntry(Buffer.from(`context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 128000\n  ${contextLimitEntryBytes}\n`), model), contextLimitEntryBytes);
+  assert.throws(() => validateHermesProfileRuntime({
+    profileId, configBytes: configBytes(), soulBytes: soulBytes(profileId), contextLimitEntryBytes,
+  }), /context limit readback/u);
+  assert.throws(() => validateHermesProfileRuntime({
+    profileId, configBytes: configBytes(model), soulBytes: soulBytes(profileId),
+    contextLimitEntryBytes: Buffer.from("gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000"),
+  }), /context limit readback/u);
+  const prompt = "read one input and return JSON";
+  const soul = soulBytes(profileId).toString("utf8");
+  const path = "/private/input.txt";
+  const fileContent = "첫 줄\n둘째 줄\n";
+  const result = { schemaVersion: "mock-result/v1", status: "ok" };
+  const trace = traceFixture({ profileId, prompt, soul, path, fileContent, result, model });
+  const args = {
+    trace, usage: usage(undefined, model), profileId, prompt, soulText: soul,
+    expectedReadPaths: [path], result, contextLimit: 272000,
+    inputEvidenceBytes: Buffer.byteLength(fileContent), outputReserveTokens: 48_000, model,
+  };
+  assert.equal(validateHermesStructuredTrace(args).exactReadCount, 1);
+  assert.throws(() => validateHermesStructuredTrace({ ...args, usage: usage() }), /usage readback/u);
+  assert.throws(() => validateHermesStructuredTrace({ ...args, trace: { ...trace, model: "gpt-5.6-sol" } }), /identity readback/u);
 });
 
 test("pure trace validation rejects extra paths, non-read tools, compaction, and result drift", () => {
@@ -1117,13 +1159,22 @@ creds = auth.resolve_codex_runtime_credentials(refresh_if_expiring=False)
 assert creds["api_key"] == expected["access_token"]
 assert creds["source"] == "credential_pool"
 assert auth._import_codex_cli_tokens() is None
-print(json.dumps({"ready": True, "label": entry.label}, separators=(",", ":")))
+if auth._read_codex_tokens.__module__ == "hermes_cli.auth_codex":
+    import hermes_cli.auth_codex as codex_auth
+    assert codex_auth._import_codex_cli_tokens is auth._import_codex_cli_tokens
+    assert codex_auth._import_codex_cli_tokens() is None
+    assert codex_auth._recover_codex_tokens_from_cli("fixture") is None
+    assert credential_pool._global_auth_file_path is auth._global_auth_file_path
+print(json.dumps({"ready": True, "label": entry.label, "codexLayout": "split" if auth._read_codex_tokens.__module__ == "hermes_cli.auth_codex" else "legacy"}, separators=(",", ":")))
 `;
   const probed = await execFileAsync(delegatedPython, ["-c", probe], {
     env: adapterEnvironment,
     maxBuffer: 1024 * 1024,
   });
-  assert.deepEqual(JSON.parse(probed.stdout), { ready: true, label: "firefly-source-canary" });
+  const adapterReadback = JSON.parse(probed.stdout);
+  assert.equal(adapterReadback.ready, true);
+  assert.equal(adapterReadback.label, "firefly-source-canary");
+  assert.ok(["legacy", "split"].includes(adapterReadback.codexLayout));
   assert.equal(probed.stdout.includes(accessCanary), false);
   assert.equal(probed.stdout.includes(refreshCanary), false);
   assert.equal(probed.stderr.includes(accessCanary), false);
@@ -1230,6 +1281,25 @@ auth._load_auth_store = bypassed_load_auth_store
 import agent.credential_pool as credential_pool
 credential_pool._load_auth_store = lambda _auth_file=None: {"version": 1, "providers": {}}
 `);
+  // New split-module paths must retain the same central-store/ambient-import boundary.
+  if (adapterReadback.codexLayout === "split") for (const mutation of [
+    "import hermes_cli.auth_codex as codex_auth\ncodex_auth._import_codex_cli_tokens = lambda: None",
+    "import hermes_cli.auth as auth\nauth._read_codex_tokens = lambda: {}",
+    String.raw`
+import hermes_cli.auth_codex as codex_auth
+def bypassed_reader(_lock=True):
+    from hermes_cli.auth import _auth_store_lock, _load_auth_store
+    return {}
+codex_auth._load_auth_store_maybe_locked = bypassed_reader
+`,
+    String.raw`
+import agent.credential_pool as credential_pool
+def bypassed_persist(*args, **kwargs):
+    write_credential_pool, _profile_owns_pool_provider, _borrowed_single_use_pool_root
+credential_pool.persist_pool_entries = bypassed_persist
+`,
+    "import agent.credential_pool as credential_pool\ncredential_pool._global_auth_file_path = lambda: None",
+  ]) await runManualActivationProbe(mutation);
   await runManualActivationProbe(String.raw`
 import sys, types
 import hermes_cli.env_loader as env_loader
@@ -1448,6 +1518,53 @@ fi
   );
 });
 
+test("fingerprints internal web CLI links and rejects escaping, broken, chained, directory, and other links", async (t) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-web-bin-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const installRoot = join(root, "install");
+  const binRoot = join(installRoot, "web/node_modules/.bin");
+  const packageRoot = join(installRoot, "web/node_modules/example");
+  const target = join(packageRoot, "cli.js");
+  const alternate = join(packageRoot, "alternate.js");
+  const binLink = join(binRoot, "example");
+  const wrapper = join(root, "mock-hermes");
+  await mkdir(binRoot, { recursive: true });
+  await mkdir(packageRoot);
+  await writeFile(target, "first\n");
+  await writeFile(alternate, "first\n");
+  await writeFile(wrapper, `#!/usr/bin/env node\nprocess.stdout.write(${JSON.stringify(`mock-hermes 1.0.0\nInstall directory: ${installRoot}\n`)});\n`);
+  await chmod(wrapper, 0o755);
+  await symlink("../example/cli.js", binLink);
+  const first = await loadHermesBinaryRuntimeEvidence(wrapper);
+  await unlink(binLink);
+  await symlink("../example/alternate.js", binLink);
+  const moved = await loadHermesBinaryRuntimeEvidence(wrapper);
+  assert.notEqual(moved.hermesImplementationSha256, first.hermesImplementationSha256);
+  await writeFile(alternate, "changed bytes\n");
+  const changed = await loadHermesBinaryRuntimeEvidence(wrapper);
+  assert.notEqual(changed.hermesImplementationSha256, moved.hermesImplementationSha256);
+
+  const stableWrapper = await readFile(wrapper);
+  await writeFile(wrapper, `#!/usr/bin/env node\nimport {appendFileSync} from "node:fs";\nappendFileSync(${JSON.stringify(alternate)}, "mutation\\n");\nprocess.stdout.write(${JSON.stringify(`mock-hermes 1.0.0\nInstall directory: ${installRoot}\n`)});\n`);
+  await assert.rejects(loadHermesBinaryRuntimeEvidence(wrapper), /changed across hash\/version\/hash attestation/u);
+  await writeFile(wrapper, stableWrapper);
+
+  const outside = join(root, "outside.js");
+  await writeFile(outside, "external\n");
+  await symlink("cli.js", join(packageRoot, "chained.js"));
+  for (const destination of ["../../../../outside.js", "../example/missing.js", "../example", "../example/chained.js", target]) {
+    await unlink(binLink);
+    await symlink(destination, binLink);
+    await assert.rejects(loadHermesBinaryRuntimeEvidence(wrapper), /web CLI link must target a direct internal regular file/u);
+  }
+  await unlink(binLink);
+  await unlink(join(packageRoot, "chained.js"));
+  await symlink("../example/cli.js", binLink);
+  await mkdir(join(installRoot, "agent"));
+  await symlink(target, join(installRoot, "agent/not-allowed.js"));
+  await assert.rejects(loadHermesBinaryRuntimeEvidence(wrapper), /contains a symbolic link: agent\/not-allowed/u);
+});
+
 test("bypasses only the exact reviewed Hermes environment scrubber wrapper", () => {
   const delegated = "/opt/hermes/venv/bin/hermes";
   const canonical = Buffer.from(`#!/usr/bin/env bash
@@ -1580,7 +1697,8 @@ test("keeps project runtime identity stable across volatile Git/date state and b
   }
 });
 
-test("runs through an injectable mock Hermes binary, seals immutable completion, and reuses it", { concurrency: false }, async () => {
+for (const [model, reasoningEffort] of [["gpt-5.6-sol", "high"], ["gpt-6-astra", "high"], ["gpt-6-astra", "medium"]]) {
+test(`${model}/${reasoningEffort}: runs through an injectable mock Hermes binary, seals immutable completion, and reuses it`, { concurrency: false }, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), "hermes-structured-run-")));
   const profileId = "inkos_test_profile";
   const profileHome = join(root, "hermes", "profiles", profileId);
@@ -1648,11 +1766,11 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     await chmod(join(root, "hermes"), 0o700);
     await Promise.all([
       writeFile(join(root, "hermes", "auth.json"), "{\"version\":1,\"providers\":{},\"credential_pool\":{}}\n", { mode: 0o600 }),
-      writeFile(join(profileHome, "config.yaml"), configBytes()),
+      writeFile(join(profileHome, "config.yaml"), configBytes(model, reasoningEffort)),
       writeFile(join(profileHome, "SOUL.md"), soulBytes(profileId)),
-      writeFile(join(root, "hermes", "context_length_cache.yaml"), "context_lengths:\n  gpt-5.6-sol@https://chatgpt.com/backend-api/codex: 272000\n"),
+      writeFile(join(root, "hermes", "context_length_cache.yaml"), `context_lengths:\n  ${model}@https://chatgpt.com/backend-api/codex: 272000\n`),
       writeFile(inputPath, inputText),
-      writeFile(usageSource, `${JSON.stringify(usage(runId), null, 2)}\n`),
+      writeFile(usageSource, `${JSON.stringify(usage(runId, model), null, 2)}\n`),
       writeFile(resultSource, `${JSON.stringify(result, null, 2)}\n`),
       writeFile(traceSource, `${JSON.stringify(traceFixture({
         profileId,
@@ -1662,6 +1780,7 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
         fileContent: inputText,
         result,
         runId,
+        model,
       }))}\n`),
       writeFile(mockBin, `#!/usr/bin/env node
 	import { appendFileSync, copyFileSync, readFileSync, writeFileSync } from "node:fs";
@@ -1676,7 +1795,7 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
 		  const toolsetIndex = args.indexOf("--toolsets");
 		  if (toolsetIndex < 0 || args.filter((value) => value === "--toolsets").length !== 1 || args[toolsetIndex + 1] !== "firefly-source-read") throw new Error("exact read-only toolset missing");
 		  if (args.includes("--approve-all") || args.includes("--safe-mode") || args.includes("--toolset")) throw new Error("unsafe or ambiguous CLI policy enabled");
-		  if (args.filter((value) => value === "--model").length !== 1 || args[args.indexOf("--model") + 1] !== "gpt-5.6-sol") throw new Error("model drifted");
+		  if (args.filter((value) => value === "--model").length !== 1 || args[args.indexOf("--model") + 1] !== "${model}") throw new Error("model drifted");
 		  if (args.filter((value) => value === "--provider").length !== 1 || args[args.indexOf("--provider") + 1] !== "openai-codex") throw new Error("provider drifted");
 		  const hermesKeys = Object.keys(process.env).filter((key) => key.startsWith("HERMES_")).sort();
 		  if (JSON.stringify(hermesKeys) !== JSON.stringify(["HERMES_API_CALL_STALE_TIMEOUT", "HERMES_BUNDLED_PLUGINS", "HERMES_CODEX_EVENT_STALE_TIMEOUT_SECONDS", "HERMES_CODEX_TTFB_TIMEOUT_SECONDS", "HERMES_CONTEXT_CACHE_PATH", "HERMES_HOME"])) throw new Error("non-canonical HERMES variables leaked: " + hermesKeys.join(","));
@@ -1745,6 +1864,11 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
       runRoot,
       profileHome,
       profileId,
+      expectedProfileRuntime: {
+        model,
+        profileConfigSha256: digest(configBytes(model, reasoningEffort)),
+        soulSha256: digest(soulBytes(profileId)),
+      },
       projectCwd: root,
       prompt,
       expectedReadPaths: [inputPath],
@@ -1764,6 +1888,15 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
       /auth-store adapter planning evidence is required/u,
     );
     options.expectedAuthAdapterPlanningEvidence = authAdapterPlanningEvidence;
+    for (const key of ["model", "profileConfigSha256", "soulSha256"]) {
+      await assert.rejects(runHermesStructuredAttempt({
+        ...options, runRoot: join(root, `wrong-profile-${key}`), progress: () => {},
+        expectedProfileRuntime: {
+          ...options.expectedProfileRuntime,
+          [key]: key === "model" ? (model === "gpt-6-astra" ? "gpt-5.6-sol" : "gpt-6-astra") : digest(`wrong-${key}`),
+        },
+      }), new RegExp(`sealed reviewer runtime: ${key}`, "u"));
+    }
     const driftedPlanningDescriptor = {
       schemaVersion: pluginPlanningEvidence.schemaVersion,
       files: pluginPlanningEvidence.files.map((file, index) => (
@@ -1818,6 +1951,17 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     assert.equal(first.reused, false);
     assert.equal(first.receipt.exactReadCount, 1);
     assert.equal(first.receipt.inputDigest, options.inputDigest);
+    assert.equal(first.receipt.model, model);
+    assert.equal(first.receipt.reasoningEffort, reasoningEffort);
+    assert.throws(() => validateHermesStructuredReceipt({
+      ...first.receipt, model: model === "gpt-6-astra" ? "gpt-5.6-sol" : "gpt-6-astra", reasoningEffort: "high",
+    }, { model }), /receipt drifted: model/u);
+    if (model === "gpt-6-astra") assert.throws(() => validateHermesStructuredReceipt({
+      ...first.receipt, reasoningEffort: reasoningEffort === "high" ? "medium" : "high",
+    }, { reasoningEffort }), /receipt drifted: reasoningEffort/u);
+    assert.throws(() => validateHermesStructuredReceipt({
+      ...first.receipt, model: "gpt-5.6-sol", reasoningEffort: "medium",
+    }), /receipt identity/u);
     assert.equal(validateHermesStructuredReceipt(first.receipt), true);
     assert.deepEqual(progress, ["attempt-start", "attempt-complete"]);
     let invocations = (await readFile(invocationLog, "utf8")).trim().split("\n");
@@ -2056,7 +2200,9 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     await writeFile(inputPath, "changed while runtime attestation was still running\n");
     await assert.rejects(
       driftingReuse,
-      /expected source binding drifted|exact-input result is partial or drifted|pre-return input changed/u,
+      // Input hashing and runtime attestation run concurrently; if the write wins
+      // the input read, the existing immutable manifest rejects it even earlier.
+      /expected source binding drifted|exact-input result is partial or drifted|pre-return input changed|exact-input manifest drifted from its immutable bytes/u,
     );
     delete process.env.MOCK_HERMES_VERSION_DELAY_MS;
     await writeFile(inputPath, inputText);
@@ -2325,3 +2471,4 @@ test("runs through an injectable mock Hermes binary, seals immutable completion,
     await rm(root, { recursive: true, force: true });
   }
 });
+}

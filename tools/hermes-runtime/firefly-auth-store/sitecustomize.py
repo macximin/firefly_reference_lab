@@ -26,13 +26,40 @@ _AUTH_CONSUMER_BINDINGS = {
     "_load_auth_store": ("_auth_file_path",),
     "_save_auth_store": ("_auth_file_path",),
     "_load_global_auth_store": ("_global_auth_file_path",),
-    "_recover_codex_tokens_from_cli": ("_import_codex_cli_tokens",),
-    "_read_codex_tokens": ("_load_auth_store", "_load_provider_state"),
     "read_credential_pool": ("_load_auth_store", "_load_global_auth_store"),
     "write_credential_pool": ("_load_auth_store", "_save_auth_store"),
+}
+
+_LEGACY_CODEX_CONSUMER_BINDINGS = {
+    "_recover_codex_tokens_from_cli": ("_import_codex_cli_tokens",),
+    "_read_codex_tokens": ("_load_auth_store", "_load_provider_state"),
     "resolve_codex_runtime_credentials": (
         "_read_codex_tokens",
         "_recover_codex_tokens_from_cli",
+    ),
+}
+
+_SPLIT_CODEX_CONSUMER_BINDINGS = {
+    "_import_codex_cli_tokens": ("hermes_cli.auth", "_codex_access_token_is_expiring"),
+    "_load_auth_store_maybe_locked": (
+        "hermes_cli.auth", "_auth_store_lock", "_load_auth_store",
+    ),
+    "_read_codex_tokens": (
+        "hermes_cli.auth", "_load_provider_state", "_load_auth_store_maybe_locked",
+    ),
+    "_save_codex_tokens": (
+        "hermes_cli.auth", "_auth_store_lock", "_load_auth_store", "_save_auth_store",
+    ),
+    "_recover_codex_tokens_from_cli": (
+        "hermes_cli.auth", "_import_codex_cli_tokens", "_save_codex_tokens",
+    ),
+    "_read_codex_pool_entries": (
+        "hermes_cli.auth", "_auth_store_lock", "_load_auth_store",
+    ),
+    "_pool_codex_access_token": ("_read_codex_pool_entries",),
+    "resolve_codex_runtime_credentials": (
+        "hermes_cli.auth", "_read_codex_tokens", "_recover_codex_tokens_from_cli",
+        "_pool_codex_access_token",
     ),
 }
 
@@ -118,6 +145,33 @@ def _validate_adapter_origin() -> None:
         _abort()
 
 
+def _validate_codex_consumers(hermes_auth: object) -> object | None:
+    reader = _require_callable(hermes_auth, "_read_codex_tokens")
+    if getattr(reader, "__globals__", None) is getattr(hermes_auth, "__dict__", None):
+        for name, required_names in _LEGACY_CODEX_CONSUMER_BINDINGS.items():
+            _require_consumer_binding(
+                hermes_auth, _require_callable(hermes_auth, name), required_names,
+            )
+        return None
+
+    # Hermes 0.21 split these functions into auth_codex. Its helpers lazily
+    # import the central auth module, so that exact module relationship is part
+    # of the contract; an arbitrary re-export or imported function is rejected.
+    import hermes_cli.auth_codex as codex_auth
+
+    for name in (
+        "_read_codex_tokens", "_save_codex_tokens",
+        "resolve_codex_runtime_credentials", "_import_codex_cli_tokens",
+    ):
+        if _require_callable(hermes_auth, name) is not _require_callable(codex_auth, name):
+            _abort()
+    for name, required_names in _SPLIT_CODEX_CONSUMER_BINDINGS.items():
+        _require_consumer_binding(
+            codex_auth, _require_callable(codex_auth, name), required_names,
+        )
+    return codex_auth
+
+
 def _install() -> None:
     os.environ.pop(READY_ENV, None)
     raw_store = os.environ.get(STORE_ENV, "").strip()
@@ -183,6 +237,7 @@ def _install() -> None:
     for consumer_name, required_names in _AUTH_CONSUMER_BINDINGS.items():
         consumer = _require_callable(hermes_auth, consumer_name)
         _require_consumer_binding(hermes_auth, consumer, required_names)
+    codex_auth = _validate_codex_consumers(hermes_auth)
 
     def _firefly_auth_file_path() -> Path:
         return store
@@ -202,6 +257,8 @@ def _install() -> None:
     hermes_auth._auth_file_path = _firefly_auth_file_path
     hermes_auth._global_auth_file_path = _disable_global_auth_file_path
     hermes_auth._import_codex_cli_tokens = _disable_codex_cli_import
+    if codex_auth is not None:
+        codex_auth._import_codex_cli_tokens = _disable_codex_cli_import
     env_loader.load_hermes_dotenv = _disable_ambient_environment_loading
 
     try:
@@ -218,17 +275,37 @@ def _install() -> None:
         if getattr(credential_pool, binding_name, None) is not auth_binding:
             _abort()
     load_pool = _require_callable(credential_pool, "load_pool")
-    _require_consumer_binding(
-        credential_pool,
-        load_pool,
-        ("read_credential_pool", "_load_auth_store", "write_credential_pool"),
-    )
+    if codex_auth is None:
+        _require_consumer_binding(
+            credential_pool, load_pool,
+            ("read_credential_pool", "_load_auth_store", "write_credential_pool"),
+        )
+    else:
+        _require_consumer_binding(
+            credential_pool, load_pool,
+            ("read_credential_pool", "_load_auth_store", "persist_pool_entries"),
+        )
+        _require_consumer_binding(
+            credential_pool, _require_callable(credential_pool, "persist_pool_entries"),
+            ("write_credential_pool", "_profile_owns_pool_provider", "_borrowed_single_use_pool_root"),
+        )
+        _require_consumer_binding(
+            credential_pool, _require_callable(credential_pool, "_profile_owns_pool_provider"),
+            ("_load_auth_store",),
+        )
+        _require_consumer_binding(
+            credential_pool, _require_callable(credential_pool, "_borrowed_single_use_pool_root"),
+            ("_global_auth_file_path",),
+        )
+        if getattr(credential_pool, "_global_auth_file_path", None) is not _disable_global_auth_file_path:
+            _abort()
     if getattr(hermes_main, "load_hermes_dotenv", None) is not _disable_ambient_environment_loading:
         _abort()
     if (
         hermes_auth._auth_file_path is not _firefly_auth_file_path
         or hermes_auth._global_auth_file_path is not _disable_global_auth_file_path
         or hermes_auth._import_codex_cli_tokens is not _disable_codex_cli_import
+        or (codex_auth is not None and codex_auth._import_codex_cli_tokens is not _disable_codex_cli_import)
         or env_loader.load_hermes_dotenv is not _disable_ambient_environment_loading
         or hermes_auth._auth_file_path() != store
         or hermes_auth._global_auth_file_path() is not None
